@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1840 1120" width="1840" height="1120" role="img" aria-labelledby="title desc">
+  <title id="title">Loop structure</title>
+  <desc id="desc">A left-to-right diagram showing direct mode, SOP routing, Gatekeeper, Sensemaker, execution roles, deterministic hooks, memory, learning audit, and the human loop-back to the next turn.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="100%" stop-color="#eef2f7"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4c6ef5"/>
+      <stop offset="100%" stop-color="#12b886"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#556b86"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f7b5a"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#16324f" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .title { font: 700 30px/1.2 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #102a43; }
+      .subtitle { font: 500 16px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+      .label { font: 700 17px/1.3 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #102a43; }
+      .small { font: 500 14px/1.35 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #334e68; }
+      .tiny { font: 500 13px/1.3 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+      .node { fill: #ffffff; stroke-width: 2.2; rx: 18; ry: 18; filter: url(#shadow); }
+      .decision { fill: #fff8eb; stroke: #f08c00; }
+      .entry { fill: #eef4ff; stroke: #4c6ef5; }
+      .exec { fill: #f3f0ff; stroke: #7950f2; }
+      .control { fill: #e6fcf5; stroke: #12b886; }
+      .memory { fill: #e6fcf5; stroke: #12b886; }
+      .audit { fill: #f8f0fc; stroke: #ae3ec9; }
+      .human { fill: #fff0f6; stroke: #d6336c; }
+      .stop { fill: #f1f3f5; stroke: #868e96; }
+      .connector { stroke: #556b86; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .connector-accent { stroke: #0f7b5a; stroke-width: 2.8; fill: none; marker-end: url(#arrow-accent); }
+      .connector-dashed { stroke: #d6336c; stroke-width: 2.8; stroke-dasharray: 8 7; fill: none; marker-end: url(#arrow); }
+      .guide { stroke: #d9e2ec; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1840" height="1120" fill="url(#bg)"/>
+  <rect x="32" y="32" width="1776" height="1056" rx="30" ry="30" fill="#ffffff" opacity="0.55"/>
+
+  <text x="80" y="92" class="title">Loop structure</text>
+  <text x="80" y="125" class="subtitle">Direct mode, SOP routing, gatekeeping, execution, durable memory, learning audit, and human policy changes in one loop.</text>
+
+  <!-- Top lane -->
+  <rect x="80" y="170" width="220" height="92" class="node entry"/>
+  <text x="190" y="206" text-anchor="middle" class="label">User prompt</text>
+  <text x="190" y="232" text-anchor="middle" class="small">entry point</text>
+
+  <path d="M 300 216 L 348 216" class="connector"/>
+  <rect x="350" y="170" width="240" height="92" class="node decision"/>
+  <text x="470" y="205" text-anchor="middle" class="label">direct: prefix?</text>
+  <text x="470" y="231" text-anchor="middle" class="small">bypass Gatekeeper</text>
+
+  <path d="M 590 216 L 642 216" class="connector"/>
+  <rect x="644" y="170" width="250" height="92" class="node exec"/>
+  <text x="769" y="204" text-anchor="middle" class="label">DIRECT execution</text>
+  <text x="769" y="231" text-anchor="middle" class="small">read-only by default</text>
+
+  <path d="M 470 262 C 470 324, 470 324, 470 372" class="connector"/>
+  <path d="M 470 372 L 520 372" class="connector"/>
+  <rect x="520" y="326" width="270" height="92" class="node decision"/>
+  <text x="655" y="361" text-anchor="middle" class="label">&lt;header&gt; prefix?</text>
+  <text x="655" y="387" text-anchor="middle" class="small">SOP route or autonomous loop</text>
+
+  <path d="M 790 372 L 840 372" class="connector"/>
+  <rect x="842" y="326" width="230" height="92" class="node entry"/>
+  <text x="957" y="361" text-anchor="middle" class="label">SOP Router</text>
+  <text x="957" y="387" text-anchor="middle" class="small">mandatory skill load</text>
+
+  <path d="M 1072 372 L 1120 372" class="connector"/>
+  <rect x="1122" y="326" width="260" height="92" class="node exec"/>
+  <text x="1252" y="360" text-anchor="middle" class="label">SOP execution</text>
+  <text x="1252" y="387" text-anchor="middle" class="small">bounded read-only turn</text>
+
+  <!-- Autonomous loop lane -->
+  <path d="M 655 418 L 655 460" class="connector"/>
+  <rect x="520" y="460" width="270" height="92" class="node control"/>
+  <text x="655" y="494" text-anchor="middle" class="label">Gatekeeper</text>
+  <text x="655" y="521" text-anchor="middle" class="small">READY / NEEDS_INPUT / REJECT</text>
+
+  <path d="M 790 506 L 840 506" class="connector"/>
+  <rect x="842" y="460" width="230" height="92" class="node human"/>
+  <text x="957" y="494" text-anchor="middle" class="label">NEEDS_INPUT</text>
+  <text x="957" y="521" text-anchor="middle" class="small">Loop Brief Assistant</text>
+
+  <path d="M 940 552 C 940 610, 760 610, 655 552" class="connector-dashed"/>
+  <path d="M 1122 506 L 1180 506" class="connector"/>
+  <rect x="1182" y="460" width="260" height="92" class="node stop"/>
+  <text x="1312" y="494" text-anchor="middle" class="label">REJECT</text>
+  <text x="1312" y="521" text-anchor="middle" class="small">stop autonomous loop</text>
+
+  <path d="M 1312 552 C 1312 628, 1178 632, 1040 612" class="connector"/>
+  <path d="M 1122 506 C 1140 506, 1140 650, 1040 650" class="connector"/>
+  <rect x="842" y="610" width="250" height="92" class="node entry"/>
+  <text x="967" y="644" text-anchor="middle" class="label">READY</text>
+  <text x="967" y="671" text-anchor="middle" class="small">Sensemaker</text>
+
+  <path d="M 1092 656 L 1140 656" class="connector"/>
+  <rect x="1142" y="610" width="286" height="92" class="node exec"/>
+  <text x="1285" y="644" text-anchor="middle" class="label">Generator / Evaluator</text>
+  <text x="1285" y="671" text-anchor="middle" class="small">discretionary judgment</text>
+
+  <!-- Control / learning grid -->
+  <rect x="840" y="760" width="250" height="92" class="node control"/>
+  <text x="965" y="794" text-anchor="middle" class="label">Governor</text>
+  <text x="965" y="821" text-anchor="middle" class="small">execution constraints</text>
+
+  <rect x="1110" y="760" width="250" height="92" class="node control"/>
+  <text x="1235" y="794" text-anchor="middle" class="label">State Steward</text>
+  <text x="1235" y="821" text-anchor="middle" class="small">state reconstruction</text>
+
+  <rect x="1380" y="760" width="250" height="92" class="node control"/>
+  <text x="1505" y="794" text-anchor="middle" class="label">Watchdog / Recovery</text>
+  <text x="1505" y="821" text-anchor="middle" class="small">pause and recover</text>
+
+  <rect x="1110" y="872" width="250" height="92" class="node audit"/>
+  <text x="1235" y="906" text-anchor="middle" class="label">Meta-Evaluator</text>
+  <text x="1235" y="933" text-anchor="middle" class="small">policy and evidence check</text>
+
+  <rect x="1380" y="872" width="250" height="92" class="node memory"/>
+  <text x="1505" y="906" text-anchor="middle" class="label">Deterministic hooks</text>
+  <text x="1505" y="933" text-anchor="middle" class="small">persistent state + sanitized OTel</text>
+
+  <rect x="840" y="872" width="250" height="92" class="node memory"/>
+  <text x="965" y="906" text-anchor="middle" class="label">Learning observer</text>
+  <text x="965" y="933" text-anchor="middle" class="small">cross-turn learning signal</text>
+
+  <rect x="590" y="872" width="230" height="92" class="node memory"/>
+  <text x="705" y="906" text-anchor="middle" class="label">Memory Curator</text>
+  <text x="705" y="933" text-anchor="middle" class="small">OKF documents</text>
+
+  <rect x="340" y="872" width="210" height="92" class="node memory"/>
+  <text x="445" y="906" text-anchor="middle" class="label">Go okfctl</text>
+  <text x="445" y="933" text-anchor="middle" class="small">transaction</text>
+
+  <rect x="80" y="872" width="230" height="92" class="node memory"/>
+  <text x="195" y="906" text-anchor="middle" class="label">OKF LLMWiki</text>
+  <text x="195" y="933" text-anchor="middle" class="small">durable memory</text>
+
+  <rect x="590" y="990" width="320" height="92" class="node human"/>
+  <text x="750" y="1024" text-anchor="middle" class="label">Learning audit</text>
+  <text x="750" y="1051" text-anchor="middle" class="small">human approval / escalation</text>
+
+  <rect x="960" y="990" width="260" height="92" class="node human"/>
+  <text x="1090" y="1024" text-anchor="middle" class="label">Next turn</text>
+  <text x="1090" y="1051" text-anchor="middle" class="small">state, memory, policy</text>
+
+  <!-- Connectors -->
+  <path d="M 1285 702 C 1285 740, 1240 748, 1165 760" class="connector"/>
+  <path d="M 1285 702 C 1285 760, 1370 760, 1505 760" class="connector"/>
+  <path d="M 1235 852 C 1235 872, 1235 872, 1235 872" class="guide"/>
+  <path d="M 965 852 C 965 872, 965 872, 965 872" class="guide"/>
+  <path d="M 1505 852 C 1505 872, 1505 872, 1505 872" class="guide"/>
+  <path d="M 965 964 L 965 990" class="connector-accent"/>
+  <path d="M 1235 964 L 1235 990" class="connector"/>
+  <path d="M 1505 964 L 1505 872" class="connector"/>
+  <path d="M 840 918 L 820 918" class="connector"/>
+  <path d="M 590 918 L 570 918" class="connector"/>
+  <path d="M 340 918 L 320 918" class="connector"/>
+  <path d="M 820 918 L 820 918" class="connector"/>
+  <path d="M 320 918 C 300 918, 280 918, 310 918" class="connector"/>
+
+  <path d="M 195 964 C 195 1030, 470 1070, 960 1036" class="connector-dashed"/>
+  <path d="M 910 1036 C 910 1080, 510 1080, 470 262" class="connector-dashed"/>
+  <text x="480" y="1086" class="tiny">loop back to the next user turn</text>
+
+  <!-- Extra cues -->
+  <path d="M 470 262 C 470 262, 470 262, 470 262" class="guide"/>
+  <text x="470" y="148" text-anchor="middle" class="tiny">branch 1: direct mode</text>
+  <text x="655" y="310" text-anchor="middle" class="tiny">branch 2: SOP or autonomous loop</text>
+  <text x="1030" y="744" text-anchor="middle" class="tiny">execution, state, audit, and memory feed the next turn</text>
+  <rect x="80" y="18" width="1680" height="2" fill="url(#accent)" opacity="0.9"/>
+</svg>

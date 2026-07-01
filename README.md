@@ -10,65 +10,9 @@ Main roles are: Gatekeeper, Loop Brief Assistant, Sensemaker, Governor, State St
 
 ## Loop structure
 
-```mermaid
-flowchart LR
-  U[User prompt]
+![Loop structure diagram](docs/loop-structure.svg)
 
-  U --> D{direct: prefix?}
-  D -->|yes| DIRECT[DIRECT execution<br/>(read-only by default)]
-  D -->|no| H{<header>: prefix?}
-
-  H -->|yes| ROUTER[SOP Router]
-  ROUTER --> SOP[mandatory sop-<header> skill]
-  SOP --> SOPEX[SOP execution]
-
-  H -->|no| GK[Gatekeeper]
-  GK --> DEC{READY / NEEDS_INPUT / REJECT}
-
-  DEC -->|NEEDS_INPUT| LBA[Loop Brief Assistant]
-  LBA --> GK
-  DEC -->|REJECT| STOP[Stop]
-  DEC -->|READY| SM[Sensemaker]
-
-  SM --> GE[Generator / normal Evaluator]
-  GE --> GOV[Governor]
-  GE --> SS[State Steward]
-  GE --> WR[Watchdog / Recovery]
-  GE --> ME[Meta-Evaluator]
-
-  GOV --> CTRL[Deterministic hooks<br/>persistent state<br/>sanitized OTel]
-  SS --> CTRL
-  WR --> CTRL
-  ME --> CTRL
-
-  CTRL --> OBS[Deterministic learning observer]
-  OBS --> MC[Memory Curator]
-  MC --> TX[Go okfctl transaction]
-  TX --> WIKI[OKF LLMWiki<br/>llmwiki/]
-
-  OBS --> LA[learning-audit:<br/>Learning Auditor]
-  LA --> HUMAN[Human approval / escalation<br/>watchdog reset / policy change]
-
-  WIKI --> NEXT[Next loop turn]
-  TX --> NEXT
-  HUMAN --> NEXT
-
-  style D fill:#eef4ff,stroke:#4c6ef5,color:#102a43
-  style H fill:#eef4ff,stroke:#4c6ef5,color:#102a43
-  style GK fill:#fff4e6,stroke:#f08c00,color:#5c3a00
-  style SM fill:#fff4e6,stroke:#f08c00,color:#5c3a00
-  style GE fill:#f3f0ff,stroke:#7950f2,color:#2f1f5b
-  style CTRL fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style OBS fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style MC fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style TX fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style WIKI fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style LA fill:#f8f0fc,stroke:#ae3ec9,color:#49116d
-  style HUMAN fill:#fff0f6,stroke:#d6336c,color:#6f1034
-  style NEXT fill:#f1f3f5,stroke:#868e96,color:#343a40
-```
-
-The graph is acyclic for one pass through the system, but it still makes the loop boundary explicit: state, memory, and human policy changes are the outputs that seed the next turn.
+The SVG above makes the loop boundary explicit: state, memory, and human policy changes are the outputs that seed the next turn.
 
 ## Design philosophy and architecture decisions
 

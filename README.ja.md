@@ -10,65 +10,9 @@ Loop engineering 向けの Codex と Claude Code の基礎的な設定です。
 
 ## ループ構造
 
-```mermaid
-flowchart LR
-  U[ユーザー入力]
+![ループ構造図](docs/loop-structure.svg)
 
-  U --> D{direct: プレフィックス?}
-  D -->|yes| DIRECT[DIRECT 実行<br/>(既定で read-only)]
-  D -->|no| H{<header>: プレフィックス?}
-
-  H -->|yes| ROUTER[SOP Router]
-  ROUTER --> SOP[mandatory sop-<header> skill]
-  SOP --> SOPEX[SOP 実行]
-
-  H -->|no| GK[Gatekeeper]
-  GK --> DEC{READY / NEEDS_INPUT / REJECT}
-
-  DEC -->|NEEDS_INPUT| LBA[Loop Brief Assistant]
-  LBA --> GK
-  DEC -->|REJECT| STOP[停止]
-  DEC -->|READY| SM[Sensemaker]
-
-  SM --> GE[Generator / 通常 Evaluator]
-  GE --> GOV[Governor]
-  GE --> SS[State Steward]
-  GE --> WR[Watchdog / Recovery]
-  GE --> ME[Meta-Evaluator]
-
-  GOV --> CTRL[決定論的 hooks<br/>persistent state<br/>サニタイズ済み OTel]
-  SS --> CTRL
-  WR --> CTRL
-  ME --> CTRL
-
-  CTRL --> OBS[決定論的 learning observer]
-  OBS --> MC[Memory Curator]
-  MC --> TX[Go okfctl transaction]
-  TX --> WIKI[OKF LLMWiki<br/>llmwiki/]
-
-  OBS --> LA[learning-audit:<br/>Learning Auditor]
-  LA --> HUMAN[人間の承認 / エスカレーション<br/>watchdog reset / policy change]
-
-  WIKI --> NEXT[次の loop turn]
-  TX --> NEXT
-  HUMAN --> NEXT
-
-  style D fill:#eef4ff,stroke:#4c6ef5,color:#102a43
-  style H fill:#eef4ff,stroke:#4c6ef5,color:#102a43
-  style GK fill:#fff4e6,stroke:#f08c00,color:#5c3a00
-  style SM fill:#fff4e6,stroke:#f08c00,color:#5c3a00
-  style GE fill:#f3f0ff,stroke:#7950f2,color:#2f1f5b
-  style CTRL fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style OBS fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style MC fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style TX fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style WIKI fill:#e6fcf5,stroke:#12b886,color:#0b3b2e
-  style LA fill:#f8f0fc,stroke:#ae3ec9,color:#49116d
-  style HUMAN fill:#fff0f6,stroke:#d6336c,color:#6f1034
-  style NEXT fill:#f1f3f5,stroke:#868e96,color:#343a40
-```
-
-1 回の実行は DAG として表せますが、ループの境界は明示的です。状態、メモリ、人間のポリシー更新が、次のターンを立ち上げる入力になります。
+この SVG により、ループの境界が明示されます。状態、メモリ、人間のポリシー更新が、次のターンを立ち上げる入力になります。
 
 ## 設計思想とアーキテクチャ上の判断
 

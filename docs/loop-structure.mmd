@@ -1,0 +1,42 @@
+%% Loop structure source used to generate docs/loop-structure.svg
+flowchart LR
+  U["User prompt"]
+
+  U --> D{"direct: prefix?"}
+  D -->|yes| DIRECT["DIRECT execution\n(read-only by default)"]
+  D -->|no| H{"<header>: prefix?"}
+
+  H -->|yes| ROUTER["SOP Router"]
+  ROUTER --> SOP["mandatory sop-<header> skill"]
+  SOP --> SOPEX["SOP execution"]
+
+  H -->|no| GK["Gatekeeper"]
+  GK --> DEC{"READY / NEEDS_INPUT / REJECT"}
+
+  DEC -->|NEEDS_INPUT| LBA["Loop Brief Assistant"]
+  LBA --> GK
+  DEC -->|REJECT| STOP["Stop"]
+  DEC -->|READY| SM["Sensemaker"]
+
+  SM --> GE["Generator / normal Evaluator"]
+  GE --> GOV["Governor"]
+  GE --> SS["State Steward"]
+  GE --> WR["Watchdog / Recovery"]
+  GE --> ME["Meta-Evaluator"]
+
+  GOV --> CTRL["Deterministic hooks\npersistent state\nsanitized OTel"]
+  SS --> CTRL
+  WR --> CTRL
+  ME --> CTRL
+
+  CTRL --> OBS["Deterministic learning observer"]
+  OBS --> MC["Memory Curator"]
+  MC --> TX["Go okfctl transaction"]
+  TX --> WIKI["OKF LLMWiki\nllmwiki/"]
+
+  OBS --> LA["learning-audit:\nLearning Auditor"]
+  LA --> HUMAN["Human approval / escalation\nwatchdog reset / policy change"]
+
+  WIKI --> NEXT["Next loop turn"]
+  TX --> NEXT
+  HUMAN --> NEXT
