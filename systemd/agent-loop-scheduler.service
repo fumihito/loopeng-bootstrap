@@ -1,0 +1,14 @@
+[Unit]
+Description=Loop engineering next-turn scheduler daemon
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=__REPO_ROOT__
+ExecStart=/usr/bin/env python3 __REPO_ROOT__/.agent-loop/bin/next_turn_scheduler_daemon.py --repo __REPO_ROOT__
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

@@ -356,23 +356,28 @@ class Installer:
         direct = [
             '.agent-loop/hooks/loop_hook.py',
             '.agent-loop/policy.json',
+            '.agent-loop/scheduler-policy.json',
             '.agent-loop/learning-policy.json',
             '.agent-loop/memory-policy.json',
             '.agent-loop/brief-pattern-policy.json',
             '.agent-loop/sop-policy.json',
             '.agent-loop/direct-policy.json',
             '.agent-loop/bin/learning_health.py',
+            '.agent-loop/bin/next_turn_scheduler.py',
+            '.agent-loop/bin/next_turn_scheduler_daemon.py',
             '.agent-loop/bin/okfctl',
             '.agent-loop/bin/build-okfctl.sh',
             '.agent-loop/cmd/okfctl/main.go',
             '.agent-loop/lib/learning_observer.py',
             '.agent-loop/otel.json',
             '.agent-loop/otel-collector.yaml',
+            '.agent-loop/systemd/agent-loop-scheduler.service',
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
             '.agent-loop/docs/DIRECT_MODE.md',
             '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
+            '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
             '.agent-loop/docs/SOP_ROUTING.md',
             '.agent-loop/docs/LLM_ASSISTED_INSTALL.md',
             '.agent-loop/docs/MERGE_RULES.md',
@@ -687,6 +692,18 @@ class Installer:
         shutil.copy2(source, destination)
         self.record('copy', source, destination)
 
+    def copy_rendered_file(self, source: Path, destination: Path, *, replacements: dict[str, str]) -> None:
+        if self.dry_run:
+            print(f'[dry-run] render {source.relative_to(SRC)} -> {destination}')
+            return
+        self.backup_existing(destination)
+        self.ensure_parent(destination)
+        text = source.read_text(encoding='utf-8')
+        for needle, replacement in replacements.items():
+            text = text.replace(needle, replacement)
+        self.atomic_write_text(destination, text)
+        self.record('copy', source, destination)
+
     def copy_file_if_missing(self, source: Path, destination: Path) -> None:
         if destination.exists() or destination.is_symlink():
             if destination.is_file() and not destination.is_symlink():
@@ -942,6 +959,23 @@ class Installer:
 
     def validate_installation(self) -> list[str]:
         errors: list[str] = []
+        frame_skills = [
+            'frame-diag',
+            'frame-plandev',
+            'frame-plantask',
+            'frame-first-principles',
+            'frame-experiments',
+            'frame-cynefin',
+            'frame-smeac',
+            'frame-proofread-ja',
+            'frame-blind-spot',
+            'frame-inertia',
+            'frame-waiwad-grill',
+            'frame-distributed-incident-analysis',
+            'frame-critical-review',
+            'frame-research-arch',
+            'frame-research-tactics',
+        ]
 
         canonical_skills = self.canonical_skill_root
         if canonical_skills.is_symlink() or not canonical_skills.is_dir():
@@ -976,23 +1010,28 @@ class Installer:
         required_files = [
             '.agent-loop/hooks/loop_hook.py',
             '.agent-loop/policy.json',
+            '.agent-loop/scheduler-policy.json',
             '.agent-loop/learning-policy.json',
             '.agent-loop/memory-policy.json',
             '.agent-loop/brief-pattern-policy.json',
             '.agent-loop/sop-policy.json',
             '.agent-loop/direct-policy.json',
             '.agent-loop/bin/learning_health.py',
+            '.agent-loop/bin/next_turn_scheduler.py',
+            '.agent-loop/bin/next_turn_scheduler_daemon.py',
             '.agent-loop/bin/okfctl',
             '.agent-loop/bin/build-okfctl.sh',
             '.agent-loop/cmd/okfctl/main.go',
             '.agent-loop/lib/learning_observer.py',
             '.agent-loop/otel.json',
+            '.agent-loop/systemd/agent-loop-scheduler.service',
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
             '.agent-loop/docs/DIRECT_MODE.md',
             '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
             '.agent-loop/docs/ARCHITECTURE.md',
+            '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
             '.agent-loop/docs/LEARNING_OBSERVABILITY.md',
             '.agent-loop/docs/OKF_LLMWIKI.md',
             '.agent-loop/templates/OKF_CONCEPT.md',
@@ -1010,7 +1049,7 @@ class Installer:
             if not path.is_file() or path.is_symlink():
                 errors.append(f'missing or unsafe required file: {rel}')
 
-        for rel in ['.codex/hooks.json', '.claude/settings.json', '.agent-loop/policy.json', '.agent-loop/learning-policy.json', '.agent-loop/memory-policy.json', '.agent-loop/brief-pattern-policy.json', '.agent-loop/sop-policy.json', '.agent-loop/direct-policy.json', '.agent-loop/otel.json']:
+        for rel in ['.codex/hooks.json', '.claude/settings.json', '.agent-loop/policy.json', '.agent-loop/scheduler-policy.json', '.agent-loop/learning-policy.json', '.agent-loop/memory-policy.json', '.agent-loop/brief-pattern-policy.json', '.agent-loop/sop-policy.json', '.agent-loop/direct-policy.json', '.agent-loop/otel.json']:
             path = self.repo / rel
             if path.is_file():
                 try:
@@ -1025,7 +1064,7 @@ class Installer:
             if path.is_file() and MANAGED_HOOK_MARKER not in path.read_text(encoding='utf-8'):
                 errors.append(f'managed hook command absent: {rel}')
 
-        roles = ['gatekeeper', 'loop-brief-assistant', 'brief-pattern-curator', 'sensemaker', 'governor', 'state-steward', 'watchdog-recovery', 'meta-evaluator', 'learning-auditor', 'memory-curator']
+        roles = ['gatekeeper', 'loop-brief-assistant', 'brief-pattern-curator', 'sensemaker', 'integrator', 'governor', 'state-steward', 'watchdog-recovery', 'meta-evaluator', 'learning-auditor', 'memory-curator']
         for role in roles:
             toml_path = self.repo / f'.codex/agents/{role}.toml'
             if toml_path.is_file():
@@ -1073,7 +1112,24 @@ class Installer:
                             errors.append(f'platform role skill is not the canonical shared file: {rel}')
                     except OSError as exc:
                         errors.append(f'cannot compare platform role skill identity: {rel}: {exc}')
-        for skill in ['sop-diag', 'sop-install', 'sop-learning-audit']:
+        for frame in frame_skills:
+            canonical = self.repo / f'skills/{frame}/SKILL.md'
+            if not canonical.is_file() or canonical.is_symlink():
+                errors.append(f'missing or unsafe human frame skill: skills/{frame}/SKILL.md')
+                continue
+            if skill_name(canonical) != frame:
+                errors.append(f'frame skill frontmatter name mismatch: skills/{frame}/SKILL.md')
+            for rel in [f'.agents/skills/{frame}/SKILL.md', f'.claude/skills/{frame}/SKILL.md']:
+                path = self.repo / rel
+                if not path.is_file():
+                    errors.append(f'missing platform-visible frame skill: {rel}')
+                else:
+                    try:
+                        if not os.path.samefile(path, canonical):
+                            errors.append(f'platform frame skill is not the canonical shared file: {rel}')
+                    except OSError as exc:
+                        errors.append(f'cannot compare platform frame skill identity: {rel}: {exc}')
+        for skill in ['sop-diag', 'sop-list', 'sop-install', 'sop-learning-audit']:
             canonical = self.repo / f'skills/{skill}/SKILL.md'
             if not canonical.is_file() or canonical.is_symlink():
                 errors.append(f'missing or unsafe canonical SOP skill: skills/{skill}/SKILL.md')
@@ -1157,12 +1213,15 @@ class Installer:
         for rel in [
             '.agent-loop/hooks/loop_hook.py',
             '.agent-loop/policy.json',
+            '.agent-loop/scheduler-policy.json',
             '.agent-loop/learning-policy.json',
             '.agent-loop/memory-policy.json',
             '.agent-loop/brief-pattern-policy.json',
             '.agent-loop/sop-policy.json',
             '.agent-loop/direct-policy.json',
             '.agent-loop/bin/learning_health.py',
+            '.agent-loop/bin/next_turn_scheduler.py',
+            '.agent-loop/bin/next_turn_scheduler_daemon.py',
             '.agent-loop/bin/okfctl',
             '.agent-loop/bin/build-okfctl.sh',
             '.agent-loop/cmd/okfctl/main.go',
@@ -1171,12 +1230,18 @@ class Installer:
             '.agent-loop/otel-collector.yaml',
         ]:
             self.copy_file(SRC / rel, self.repo / rel)
+        self.copy_rendered_file(
+            SRC / 'systemd/agent-loop-scheduler.service',
+            self.repo / '.agent-loop/systemd/agent-loop-scheduler.service',
+            replacements={'__REPO_ROOT__': str(self.repo)},
+        )
         for source_rel, destination_rel in [
             ('docs/GATEKEEPER_PROTOCOL.md', '.agent-loop/docs/GATEKEEPER_PROTOCOL.md'),
             ('docs/LOOP_BRIEF_ASSISTANT.md', '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md'),
             ('docs/LOOP_BRIEF_PATTERN_MEMORY.md', '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md'),
             ('docs/DIRECT_MODE.md', '.agent-loop/docs/DIRECT_MODE.md'),
             ('docs/LOOP_INPUT_GUIDE.md', '.agent-loop/docs/LOOP_INPUT_GUIDE.md'),
+            ('docs/HUMAN_SKILL_NAMESPACE.md', '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md'),
             ('docs/SOP_ROUTING.md', '.agent-loop/docs/SOP_ROUTING.md'),
             ('docs/LLM_ASSISTED_INSTALL.md', '.agent-loop/docs/LLM_ASSISTED_INSTALL.md'),
             ('docs/MERGE_RULES.md', '.agent-loop/docs/MERGE_RULES.md'),
@@ -1230,6 +1295,8 @@ class Installer:
         if not self.dry_run:
             (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o755)
             (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o755)
+            (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o755)
+            (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o755)
             (self.repo / '.agent-loop/bin/okfctl').chmod(0o755)
             (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o755)
         self.write_install_manifest()

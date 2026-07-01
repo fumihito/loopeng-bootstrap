@@ -91,6 +91,20 @@ class SopRoutingTests(unittest.TestCase):
         self.assertEqual(state["routing_mode"], "SOP")
         self.assertTrue(state["sop"]["allow_mutations"])
 
+    def test_list_loads_mode_index_sop(self):
+        event = self.event("UserPromptSubmit", "list-sop", "list-turn")
+        event["prompt"] = "list: show the current mode families"
+        output = self.call(event, "claude")
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Required skill: sop-list", context)
+        self.assertIn("# SOP: Mode index", context)
+        self.assertIn("direct:", context)
+        self.assertIn("frame-<name>", context)
+        state = json.loads((self.repo / ".agent-loop/runtime/sessions/list-sop.json").read_text())
+        self.assertEqual(state["routing_mode"], "SOP")
+        self.assertEqual(state["sop"]["required_skill"], "sop-list")
+        self.assertFalse(state["sop"]["allow_mutations"])
+
 
 
     def test_learning_audit_sop_requires_trusted_auditor_report(self):
@@ -149,7 +163,9 @@ class SopRoutingTests(unittest.TestCase):
 
     def test_platform_skill_layout(self):
         self.assertTrue((self.repo / ".agents/skills/sop-diag/SKILL.md").exists())
+        self.assertTrue((self.repo / ".agents/skills/sop-list/SKILL.md").exists())
         self.assertTrue((self.repo / ".claude/skills/sop-diag/SKILL.md").exists())
+        self.assertTrue((self.repo / ".claude/skills/sop-list/SKILL.md").exists())
         self.assertTrue((self.repo / ".agent-loop/sop-policy.json").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/SOP_ROUTING.md").exists())
 

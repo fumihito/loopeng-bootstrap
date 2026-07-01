@@ -5,12 +5,14 @@ import json
 import subprocess
 import sys
 import tempfile
+import shutil
 import tomllib
 import unittest
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parents[1]
-ROLES = ["gatekeeper", "loop-brief-assistant", "brief-pattern-curator", "sensemaker", "governor", "state-steward", "watchdog-recovery", "meta-evaluator", "learning-auditor", "memory-curator"]
+ROLES = ["gatekeeper", "loop-brief-assistant", "brief-pattern-curator", "sensemaker", "integrator", "governor", "state-steward", "watchdog-recovery", "meta-evaluator", "learning-auditor", "memory-curator"]
+FRAME_SKILLS = ["frame-diag", "frame-plandev", "frame-plantask", "frame-first-principles", "frame-experiments", "frame-cynefin", "frame-smeac", "frame-proofread-ja", "frame-blind-spot", "frame-inertia", "frame-waiwad-grill", "frame-distributed-incident-analysis", "frame-critical-review", "frame-research-arch", "frame-research-tactics"]
 
 
 def load_hook_module(path: Path):
@@ -143,16 +145,24 @@ class IntegrationTest(unittest.TestCase):
         json.loads((self.repo / ".codex/hooks.json").read_text())
         json.loads((self.repo / ".claude/settings.json").read_text())
         self.assertTrue((self.repo / "skills/sop-diag/SKILL.md").exists())
+        self.assertTrue((self.repo / "skills/sop-list/SKILL.md").exists())
         self.assertTrue((self.repo / ".agents/skills").is_symlink())
         self.assertTrue((self.repo / ".claude/skills").is_symlink())
         self.assertEqual(__import__("os").readlink(self.repo / ".agents/skills"), "../skills/")
         self.assertEqual(__import__("os").readlink(self.repo / ".claude/skills"), "../skills/")
         self.assertTrue((self.repo / ".agents/skills/sop-diag/SKILL.md").exists())
+        self.assertTrue((self.repo / ".agents/skills/sop-list/SKILL.md").exists())
         self.assertTrue((self.repo / ".claude/skills/sop-diag/SKILL.md").exists())
+        self.assertTrue((self.repo / ".claude/skills/sop-list/SKILL.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/DESIGN_PHILOSOPHY.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/ARCHITECTURE.md").exists())
+        self.assertTrue((self.repo / ".agent-loop/docs/HUMAN_SKILL_NAMESPACE.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/LEARNING_OBSERVABILITY.md").exists())
         self.assertTrue((self.repo / ".agent-loop/bin/learning_health.py").exists())
+        self.assertTrue((self.repo / ".agent-loop/bin/next_turn_scheduler_daemon.py").exists())
+        self.assertTrue((self.repo / ".agent-loop/scheduler-policy.json").exists())
+        self.assertTrue((self.repo / ".agent-loop/systemd/agent-loop-scheduler.service").exists())
+        self.assertIn(str(self.repo), (self.repo / ".agent-loop/systemd/agent-loop-scheduler.service").read_text())
         self.assertTrue((self.repo / ".agent-loop/learning-policy.json").exists())
         self.assertTrue((self.repo / ".agents/skills/sop-learning-audit/SKILL.md").exists())
         for role in ROLES:
@@ -160,6 +170,10 @@ class IntegrationTest(unittest.TestCase):
             self.assertTrue((self.repo / f".agents/skills/{role}/SKILL.md").exists())
             self.assertTrue((self.repo / f".claude/agents/{role}.md").exists())
             self.assertTrue((self.repo / f".claude/skills/{role}/SKILL.md").exists())
+        for frame in FRAME_SKILLS:
+            self.assertTrue((self.repo / f"skills/{frame}/SKILL.md").exists())
+            self.assertTrue((self.repo / f".agents/skills/{frame}/SKILL.md").exists())
+            self.assertTrue((self.repo / f".claude/skills/{frame}/SKILL.md").exists())
 
         session, turn = "integration-main", "turn-main"
         self.start(session, turn)
@@ -292,6 +306,14 @@ class IntegrationTest(unittest.TestCase):
         health = json.loads(learning_health.read_text())
         self.assertEqual(health["window"]["all_completed_turns"], 1)
         self.assertEqual(health["metrics"]["accepted_lesson_count"], 1)
+        handoff = json.loads((self.repo / ".agent-loop/runtime/turns/turn-main/next-turn.json").read_text())
+        self.assertTrue(handoff["ready_for_next_turn"])
+        self.assertEqual(handoff["next_entry_role"], "gatekeeper")
+        scheduler = subprocess.run(
+            [sys.executable, str(self.repo / ".agent-loop/bin/next_turn_scheduler.py"), "validate", "--repo", str(self.repo), "--turn-id", "turn-main"],
+            text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(scheduler.returncode, 0)
 
         fsession, fturn = "integration-failure", "turn-failure"
         self.start(fsession, fturn)
@@ -304,6 +326,113 @@ class IntegrationTest(unittest.TestCase):
         runtime = json.loads(runtime_path.read_text())
         self.assertEqual(runtime["mutation_epoch"], 0)
         self.assertTrue(runtime["watchdog"]["tripped"])
+
+    def test_scheduler_daemon_triggers_ready_handoff_once(self):
+        policy_path = self.repo / ".agent-loop/scheduler-policy.json"
+        policy = json.loads(policy_path.read_text())
+        old_handoff = self.repo / ".agent-loop/runtime/turns/turn-main/next-turn.json"
+        if old_handoff.exists():
+            old_handoff.unlink()
+        scheduler_runtime = self.repo / ".agent-loop/runtime/scheduler"
+        if scheduler_runtime.exists():
+            shutil.rmtree(scheduler_runtime)
+        scheduler_runtime.mkdir(parents=True, exist_ok=True)
+        policy["trigger_command"] = [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('triggered\\n', encoding='utf-8')",
+            "{runtime_dir}/triggered.txt",
+        ]
+        policy["trigger_command_timeout_seconds"] = 10
+        policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
+
+        turn_dir = self.repo / ".agent-loop/runtime/turns/turn-scheduler"
+        turn_dir.mkdir(parents=True, exist_ok=True)
+        handoff = {
+            "source_turn_id": "turn-scheduler",
+            "session_id": "scheduler-session",
+            "routing_mode": "LOOP",
+            "final_status": "PASS",
+            "ready_for_next_turn": True,
+            "next_entry_role": "gatekeeper",
+            "trigger_kind": "external-user-prompt",
+            "started_at": "2026-07-01T00:00:00+00:00",
+            "completed_at": "2026-07-01T00:01:00+00:00",
+            "resume_hint": "Submit the next ordinary user message to enter Gatekeeper.",
+        }
+        (turn_dir / "next-turn.json").write_text(json.dumps(handoff, indent=2) + "\n", encoding="utf-8")
+
+        proc = subprocess.run(
+            [sys.executable, str(self.repo / ".agent-loop/bin/next_turn_scheduler_daemon.py"), "--repo", str(self.repo), "--once"],
+            cwd=self.repo,
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=20,
+        )
+        self.assertIn("turn-scheduler", proc.stdout)
+        self.assertTrue((self.repo / ".agent-loop/runtime/scheduler/triggered.txt").exists())
+        state = json.loads((self.repo / ".agent-loop/runtime/scheduler/state.json").read_text())
+        self.assertIn("turn-scheduler", state["processed_turns"])
+        last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text())
+        self.assertEqual(last_trigger["turn_id"], "turn-scheduler")
+        self.assertEqual(last_trigger["scheduler_action"], "triggered")
+
+    def test_frame_prefix_routes_to_frame_mode(self):
+        session, turn = "integration-frame", "turn-frame"
+        event = self.event("UserPromptSubmit", session, turn)
+        event["prompt"] = "frame-plandev: sketch a delivery plan"
+        response = self.call(event)
+        context = response["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("[MANDATORY_FRAME_ROUTING]", context)
+        self.assertIn("Routing mode: FRAME", context)
+        self.assertIn("frame-plandev", context)
+
+        runtime = json.loads((self.repo / ".agent-loop/runtime/sessions/integration-frame.json").read_text())
+        self.assertEqual(runtime["routing_mode"], "FRAME")
+        self.assertEqual(runtime["frame"]["required_skill"], "frame-plandev")
+        self.assertTrue(runtime["frame"]["loaded"])
+
+        frame_route = json.loads((self.repo / ".agent-loop/runtime/turns/turn-frame/frame-route.json").read_text())
+        self.assertEqual(frame_route["skill_name"], "frame-plandev")
+        self.assertFalse(frame_route["allow_mutations"])
+
+    def test_integrator_is_required_before_mutation_when_policy_requests_it(self):
+        policy_path = self.repo / ".agent-loop/policy.json"
+        policy = json.loads(policy_path.read_text())
+        policy["require_integrator_before_mutation"] = True
+        policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
+
+        session, turn = "integration-integrator", "turn-integrator"
+        self.start(session, turn)
+        self.report(session, turn, "gatekeeper", self.gatekeeper("READY"))
+        self.report(session, turn, "sensemaker", self.sensemaker())
+
+        pre = self.event("PreToolUse", session, turn)
+        pre.update({"tool_name": "apply_patch", "tool_input": {"command": "*** Begin Patch"}})
+        denied = self.call(pre)
+        self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("Integrator", denied["hookSpecificOutput"]["permissionDecisionReason"])
+
+        integrator = {
+            "role": "integrator",
+            "status": "MERGED",
+            "inputs": [
+                {
+                    "source_role": "sensemaker",
+                    "summary": "Merged the candidate changes into one evaluation-ready frame.",
+                }
+            ],
+            "merged_result": {
+                "candidate_result": "apply_patch",
+                "notes": "Ready for downstream evaluation.",
+            },
+            "conflicts": [],
+            "resolution_strategy": "single merged candidate",
+            "handoff_to_evaluator": True,
+        }
+        self.report(session, turn, "integrator", integrator)
+        self.assertEqual(self.call(pre), {})
 
         # Gatekeeper state survives to the next user turn in the same session.
         next_turn = "turn-main-2"

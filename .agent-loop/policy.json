@@ -3,6 +3,7 @@
   "require_gatekeeper_before_sensemaker": true,
   "require_gatekeeper_before_mutation": true,
   "require_sensemaker_before_mutation": true,
+  "require_integrator_before_mutation": false,
   "require_state_steward_after_mutation": true,
   "require_meta_evaluator_after_mutation": true,
   "max_stop_continuations": 4,

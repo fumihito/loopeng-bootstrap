@@ -14,6 +14,21 @@ Loop engineering 向けの Codex と Claude Code の基礎的な設定です。
 
 この SVG により、ループの境界が明示されます。状態、メモリ、人間のポリシー更新が、次のターンを立ち上げる入力になります。
 
+systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bin/next_turn_scheduler_daemon.py` と `.agent-loop/systemd/agent-loop-scheduler.service` があり、`next-turn.json` を監視して scheduler state を記録し、次のターンが準備できたときは設定済みの trigger command を実行できます。
+
+## 入口モード
+
+このリポジトリが現在認識するユーザー入力の系統は次のとおりです。
+
+- `direct:` は、Gatekeeper を経由しない bounded な非自律入力です。
+- `list:` は、現在の入口モード群と正規ソースを一覧する mode index です。
+- `sop-<header>:` は、先頭 `<header>:` で始まる必須 SOP です。`diag:` や `learning-audit:` が該当します。
+- `frame-<name>:` は、人間向けの計画・レビュー・トラブルシュート用 frame です。
+- 無接頭辞は、Gatekeeper を起点にする自律ループの入口です。
+
+詳細は `docs/DIRECT_MODE.md`、`docs/SOP_ROUTING.md`、`docs/HUMAN_SKILL_NAMESPACE.md` を参照してください。
+フックは先頭が `direct:`、`list:`、`frame-<name>:`、およびその他の `<header>:` のプロンプトを、それぞれ専用モードへ自動ルーティングします。
+
 ## 設計思想とアーキテクチャ上の判断
 
 このアーカイブには、運用者だけでなく保守者とレビュー担当者向けの日本語設計文書が 2 つ含まれています。
@@ -34,6 +49,10 @@ direct: このテストが flaky な理由を説明して
 Direct モードは、一回限りの質問、調査、説明を想定しています。Gatekeeper や loop-control roles を呼び出さず、ターン横断学習の観測も生成せず、OKF メモリの昇格も行いません。ただし、破壊的コマンド、保護パス、権限、Watchdog、LLMWiki、テレメトリの各制御は引き続き適用されます。`.agent-loop/direct-policy.json` では、変更はデフォルトで無効です。
 
 詳細は `docs/DIRECT_MODE.md` を参照してください。
+
+## モード一覧
+
+`list:` で始まるプロンプトは `sop-list` を読み込み、現在利用できるユーザー入力モード群とその正規ソースの一覧を返します。
 
 ## 必須 SOP ヘッダールーティング
 

@@ -4,7 +4,7 @@ This package supports a workflow that is separate from the autonomous Loop Engin
 
 ## Routing rule
 
-When a user prompt begins at character 1 with a lowercase header followed by a colon, the hook maps it to `sop-<header>`, except for the reserved `direct:` header:
+When a user prompt begins at character 1 with a lowercase header followed by a colon, the hook maps it to `sop-<header>`, except for the reserved `direct:` header and the discoverability header `list:`:
 
 ```text
 diag: investigate why the integration test is flaky
@@ -16,7 +16,9 @@ loads:
 sop-diag
 ```
 
-Accepted headers match `[a-z][a-z0-9-]{0,31}`. URI prefixes such as `https://` are excluded. `direct:` is resolved first into dedicated DIRECT mode and never maps to `sop-direct`. All remaining headers have precedence over Gatekeeper routing.
+`list:` loads `sop-list`, which exists to enumerate the currently available user-entry modes and route families from the canonical repository sources.
+
+Accepted headers match `[a-z][a-z0-9-]{0,31}`. URI prefixes such as `https://` are excluded. `direct:` is resolved first into dedicated DIRECT mode and never maps to `sop-direct`. `list:` maps to the mode-index SOP and never bypasses the router. All remaining headers have precedence over Gatekeeper routing.
 
 ## Enforcement model
 
@@ -61,6 +63,12 @@ Then use:
 
 ```text
 security: inspect the reported finding
+```
+
+For mode discovery, use:
+
+```text
+list: show the currently available modes
 ```
 
 Do not place credentials or secrets in a skill file. The skill body is injected into model context, but is not written to telemetry or runtime journals.

@@ -5,6 +5,7 @@
 Choose the interaction mode explicitly when the distinction matters:
 
 - `direct:` for a bounded one-shot question or inspection without Gatekeeper. It is read-only by default and does not create a learning or memory record.
+- `list:` for a mode index that shows the current user-entry prefixes and how to find their canonical sources.
 - `<header>:` for a mandatory SOP such as `diag:` or `learning-audit:`.
 - no header for an autonomous-loop request. This enters Gatekeeper and, when incomplete, the Loop Brief Assistant dialogue.
 

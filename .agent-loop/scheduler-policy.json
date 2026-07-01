@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "enabled": true,
+  "poll_interval_seconds": 5,
+  "trigger_command": [],
+  "trigger_command_timeout_seconds": 30,
+  "record_events": true
+}

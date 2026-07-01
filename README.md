@@ -14,6 +14,21 @@ Main roles are: Gatekeeper, Loop Brief Assistant, Sensemaker, Governor, State St
 
 The SVG above makes the loop boundary explicit: state, memory, and human policy changes are the outputs that seed the next turn.
 
+The repository also ships a systemd-backed scheduler daemon at `.agent-loop/bin/next_turn_scheduler_daemon.py` with a matching unit file at `.agent-loop/systemd/agent-loop-scheduler.service`. It polls `next-turn.json` handoffs, records scheduler state, and can run a configured trigger command when the next turn is ready.
+
+## Entry Modes
+
+The repository currently recognizes these user-entry families:
+
+- `direct:` for bounded non-autonomous questions and inspection.
+- `list:` for a mode index that reports the current entry families and their canonical sources.
+- `sop-<header>:` via a strict leading `<header>:` prompt for mandatory SOPs such as `diag:` and `learning-audit:`.
+- `frame-<name>:` via a strict leading `frame-<name>:` prompt for human-facing planning, review, and troubleshooting frames.
+- no prefix for the autonomous loop and Gatekeeper intake path.
+
+See `docs/DIRECT_MODE.md`, `docs/SOP_ROUTING.md`, and `docs/HUMAN_SKILL_NAMESPACE.md`.
+The hook auto-routes strict leading `direct:`, `list:`, `frame-<name>:`, and other `<header>:` prompts into their dedicated modes before the model processes the request.
+
 ## Design philosophy and architecture decisions
 
 This archive now includes two Japanese design documents intended for maintainers and reviewers, not only operators.
@@ -34,6 +49,10 @@ direct: explain why this test is flaky
 Direct mode is intended for one-shot questions, inspection, and explanation. It does not invoke Gatekeeper or the loop-control roles, does not produce cross-turn learning observations, and does not promote OKF memory. It remains subject to destructive-command, protected-path, permission, Watchdog, LLMWiki, and telemetry controls. Mutations are disabled by default in `.agent-loop/direct-policy.json`.
 
 See `docs/DIRECT_MODE.md`.
+
+## Mode index
+
+A prompt beginning with `list:` loads `sop-list` and returns a human-readable index of the currently available user-entry mode families and canonical sources.
 
 ## Mandatory SOP header routing
 

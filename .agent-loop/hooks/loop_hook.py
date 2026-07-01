@@ -22,6 +22,7 @@ ROLES = {
     "gatekeeper": ({"role","verdict","mode","condition_checklist","normalized_loop_brief","missing_conditions","ambiguities","questions_to_user","risk_class","rejection_reasons","handoff_to_loop_brief_assistant","assistant_handoff_reason","handoff_to_sensemaker","brief_pattern_directive","brief_pattern_assessment"}, "gatekeeper.json"),
     "loop-brief-assistant": ({"role","status","interaction_mode","draft_loop_brief","resolved_conditions","remaining_conditions","assumptions","questions_to_user","conflicts","handoff_to_gatekeeper","pattern_retrieval","pattern_application","pattern_proposals"}, "loop-brief-assistant.json"),
     "sensemaker": ({"role","problem_frame","problem_signature","observations","inferences","alternative_frames","acceptance_criteria","non_goals","risks","recommended_action","prior_learning_considered","learning_retrieval","memory_retrieval","hypothesis_updates"}, "sensemaker.json"),
+    "integrator": ({"role","status","inputs","merged_result","conflicts","resolution_strategy","handoff_to_evaluator"}, "integrator.json"),
     "governor": ({"role","classification","reasons","constraints","approval_scope"}, "governor.json"),
     "state-steward": ({"role","facts","inferences","decisions","open_questions","artifacts","next_state","learning_records","question_updates","memory_proposals"}, "state-steward.json"),
     "watchdog-recovery": ({"role","status","trigger","root_cause_hypotheses","safe_checkpoint","recovery_steps","human_action_required"}, "watchdog-recovery.json"),
@@ -44,13 +45,16 @@ LOOP_BRIEF_FIELDS = {
 SOP_HEADER_PATTERN = re.compile(r"^([a-z][a-z0-9-]{0,31}):(?!//)[ \t]*(.*)$", re.S)
 DIRECT_HEADER_PATTERN = re.compile(r"^direct:[ \t]*(.*)$", re.S)
 SOP_ROUTING_MODE = "SOP"
+FRAME_ROUTING_MODE = "FRAME"
 DIRECT_ROUTING_MODE = "DIRECT"
 LOOP_ROUTING_MODE = "LOOP"
 LEARNING_AUDIT_SKILL = "sop-learning-audit"
 MEMORY_CURATOR_ROLE = "memory-curator"
 BRIEF_PATTERN_CURATOR_ROLE = "brief-pattern-curator"
 LOOP_BRIEF_ASSISTANT_ROLE = "loop-brief-assistant"
+INTEGRATOR_ROLE = "integrator"
 LOOP_BRIEF_ASSISTANT_STATUSES = {"ASK_USER", "READY_FOR_REVIEW", "BLOCKED"}
+INTEGRATOR_STATUSES = {"MERGED", "BLOCKED", "NO_CHANGE"}
 LOOP_BRIEF_ASSISTANT_MODES = {"CLARIFY", "PATTERN_CAPTURE"}
 BRIEF_PATTERN_ACTIONS = {"NONE", "CAPTURE"}
 BRIEF_PATTERN_HANDOFF_REASONS = {"MISSING_INPUT", "PATTERN_CAPTURE", "NONE"}
@@ -139,6 +143,27 @@ def save_runtime(root: Path, event: dict[str, Any], value: dict[str, Any]) -> No
     atomic(session_path(root, event), value)
 
 
+def next_turn_handoff_path(root: Path, state: dict[str, Any]) -> Path:
+    return turn_dir(root, state) / "next-turn.json"
+
+
+def write_next_turn_handoff(root: Path, state: dict[str, Any]) -> dict[str, Any]:
+    handoff = {
+        "source_turn_id": state.get("turn_id"),
+        "session_id": state.get("session_id"),
+        "routing_mode": state.get("routing_mode"),
+        "final_status": state.get("final_status"),
+        "ready_for_next_turn": state.get("routing_mode") == LOOP_ROUTING_MODE and state.get("final_status") == "PASS",
+        "next_entry_role": "gatekeeper",
+        "trigger_kind": "external-user-prompt",
+        "started_at": state.get("started_at"),
+        "completed_at": state.get("completed_at"),
+        "resume_hint": "Submit the next ordinary user message to enter Gatekeeper.",
+    }
+    atomic(next_turn_handoff_path(root, state), handoff)
+    return handoff
+
+
 def turn_dir(root: Path, state: dict[str, Any]) -> Path:
     return root / ".agent-loop/runtime/turns" / safe(state.get("turn_id"))
 
@@ -175,6 +200,16 @@ def sop_route(prompt: str) -> tuple[str, str, str] | None:
     if header == "direct":
         return None
     return header, f"sop-{header}", match.group(2)
+
+
+def frame_route(prompt: str) -> tuple[str, str, str] | None:
+    match = SOP_HEADER_PATTERN.match(prompt)
+    if not match:
+        return None
+    header = match.group(1)
+    if not header.startswith("frame-"):
+        return None
+    return header, header, match.group(2)
 
 
 def parse_skill_name(content: str) -> str | None:
@@ -244,6 +279,46 @@ def resolve_sop_skill(root: Path, platform: str, skill_name: str) -> dict[str, A
     }
 
 
+def resolve_frame_skill(root: Path, platform: str, skill_name: str) -> dict[str, Any]:
+    """Resolve and validate a human-facing frame skill."""
+    relative_candidates: list[Path] = []
+    if platform == "claude":
+        relative_candidates.append(Path(".claude/skills") / skill_name / "SKILL.md")
+    elif platform == "codex":
+        relative_candidates.append(Path(".agents/skills") / skill_name / "SKILL.md")
+    else:
+        relative_candidates.extend([
+            Path(".agents/skills") / skill_name / "SKILL.md",
+            Path(".claude/skills") / skill_name / "SKILL.md",
+        ])
+    selected: Path | None = None
+    selected_relative: Path | None = None
+    root_resolved = root.resolve()
+    for relative in relative_candidates:
+        candidate = root / relative
+        if not candidate.is_file():
+            continue
+        resolved = candidate.resolve()
+        if resolved != root_resolved and root_resolved not in resolved.parents:
+            raise ValueError("frame skill resolves outside the repository")
+        selected, selected_relative = resolved, relative
+        break
+    if selected is None or selected_relative is None:
+        expected = ", ".join(str(path) for path in relative_candidates)
+        raise FileNotFoundError(f"required skill {skill_name} is not installed; expected {expected}")
+    content = selected.read_text(encoding="utf-8")
+    declared_name = parse_skill_name(content)
+    if declared_name != skill_name:
+        raise ValueError(f"SKILL.md name mismatch: expected {skill_name}, found {declared_name or 'missing'}")
+    return {
+        "name": skill_name,
+        "relative_path": str(selected_relative),
+        "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        "content": content,
+        "allow_mutations": False,
+    }
+
+
 def sop_context(skill: dict[str, Any], header: str) -> str:
     return (
         "[MANDATORY_SOP_ROUTING]\n"
@@ -259,6 +334,23 @@ def sop_context(skill: dict[str, Any], header: str) -> str:
         f"{skill['content'].rstrip()}\n"
         "----- END REQUIRED SKILL -----\n"
         "[/MANDATORY_SOP_ROUTING]"
+    )
+
+
+def frame_context(skill: dict[str, Any], header: str) -> str:
+    return (
+        "[MANDATORY_FRAME_ROUTING]\n"
+        f"Routing mode: {FRAME_ROUTING_MODE}\n"
+        f"Header: {header}\n"
+        f"Required skill: {skill['name']}\n"
+        f"Skill SHA-256: {skill['sha256']}\n"
+        "The project hook has loaded the complete required human-facing frame below before the prompt is processed. "
+        "Follow it for this turn. Do not invoke Gatekeeper, the autonomous-loop workflow, or loop-control subagents. "
+        "Treat the text after the leading header as the task. Read-only inspection is allowed; mutations remain blocked unless a separate explicit policy permits them.\n\n"
+        "----- BEGIN REQUIRED FRAME -----\n"
+        f"{skill['content'].rstrip()}\n"
+        "----- END REQUIRED FRAME -----\n"
+        "[/MANDATORY_FRAME_ROUTING]"
     )
 
 
@@ -774,6 +866,38 @@ def validate(role: str, body: dict[str, Any], root: Path | None = None) -> list[
                 errors.append("memory_retrieval.unavailable_reason is required when retrieval was not performed")
         if not isinstance(body.get("hypothesis_updates"), list):
             errors.append("hypothesis_updates must be an array")
+    if role == INTEGRATOR_ROLE:
+        if body.get("status") not in INTEGRATOR_STATUSES:
+            errors.append("integrator status must be MERGED, BLOCKED, or NO_CHANGE")
+        inputs = body.get("inputs")
+        if not isinstance(inputs, list):
+            errors.append("inputs must be an array")
+        else:
+            for index, item in enumerate(inputs):
+                if not isinstance(item, dict):
+                    errors.append(f"inputs[{index}] must be an object")
+                    continue
+                if not isinstance(item.get("source_role"), str) or not item.get("source_role").strip():
+                    errors.append(f"inputs[{index}].source_role must be a string")
+                if not isinstance(item.get("summary"), str) or not item.get("summary").strip():
+                    errors.append(f"inputs[{index}].summary must be a string")
+        if body.get("status") == "MERGED":
+            if not inputs:
+                errors.append("MERGED requires at least one input")
+            if not isinstance(body.get("merged_result"), dict):
+                errors.append("merged_result must be an object")
+            if body.get("handoff_to_evaluator") is not True:
+                errors.append("MERGED requires handoff_to_evaluator=true")
+        else:
+            if body.get("merged_result") not in ({}, None):
+                errors.append("non-MERGED integrator reports must not include merged_result")
+            if body.get("handoff_to_evaluator") not in {False, None}:
+                errors.append("non-MERGED integrator reports must not hand off to Evaluator")
+        conflicts = body.get("conflicts")
+        if not isinstance(conflicts, list):
+            errors.append("conflicts must be an array")
+        if not isinstance(body.get("resolution_strategy"), str):
+            errors.append("resolution_strategy must be a string")
     if role == "state-steward":
         records = body.get("learning_records")
         if not isinstance(records, list):
@@ -1161,7 +1285,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
     telemetry_for_hook(root, event, platform)
 
     if name == "SessionStart":
-        return emit(add_context(name, "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."))
+        return emit(add_context(name, "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."))
     if name == "UserPromptSubmit":
         prompt = str(event.get("prompt", ""))
         if prompt.startswith(CONTINUATION_MARKER):
@@ -1185,6 +1309,39 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             append_jsonl(target / "journal.jsonl", {"time": now(), "event": "direct-started", "routing_mode": DIRECT_ROUTING_MODE, "allow_mutations": bool(config.get("allow_mutations")), "content_logged": False, "arguments_logged": False})
             send_otel(root, "agent.loop.direct.started", telemetry_attributes(event, platform, {"routing.mode": DIRECT_ROUTING_MODE, "direct.allow_mutations": bool(config.get("allow_mutations")), "prompt.content_logged": False}))
             return emit(add_context(name, "[DIRECT_MODE] The leading direct: prefix selected a bounded Gatekeeper-free turn. Answer the task after the prefix directly. Do not invoke Gatekeeper, Loop Brief Assistant, Sensemaker, State Steward, Meta-Evaluator, Memory Curator, or the autonomous-loop workflow. Direct mode is read-only unless .agent-loop/direct-policy.json explicitly allows mutations. Destructive-command, protected-path, LLMWiki, permission, Watchdog, and telemetry controls remain active. [/DIRECT_MODE]"))
+        frame = frame_route(prompt)
+        if frame:
+            header, required_skill, _task_body = frame
+            state = start_turn(root, event, FRAME_ROUTING_MODE)
+            target = turn_dir(root, state)
+            try:
+                skill = resolve_frame_skill(root, platform, required_skill)
+            except (FileNotFoundError, ValueError, UnicodeError, OSError) as exc:
+                state["frame"] = {"header": header, "required_skill": required_skill, "loaded": False, "error": type(exc).__name__}
+                save_runtime(root, event, state)
+                atomic(target / "turn.json", state)
+                send_otel(root, "agent.loop.frame.load_failed", telemetry_attributes(event, platform, {"routing.mode": FRAME_ROUTING_MODE, "frame.header": header, "skill.name": required_skill, "frame.loaded": False}), "ERROR")
+                return emit(prompt_block(platform, f"Mandatory FRAME routing failed: {exc}. Install and validate {required_skill} before retrying."))
+            state["frame"] = {
+                "header": header, "required_skill": required_skill, "loaded": True,
+                "skill_sha256": skill["sha256"], "allow_mutations": skill["allow_mutations"],
+            }
+            save_runtime(root, event, state)
+            atomic(target / "turn.json", state)
+            atomic(target / "frame-route.json", {
+                "header": header, "skill_name": required_skill, "skill_sha256": skill["sha256"],
+                "allow_mutations": skill["allow_mutations"], "loaded_at": now(), "content_logged": False,
+            })
+            append_jsonl(target / "journal.jsonl", {
+                "time": now(), "event": "frame-loaded", "routing_mode": FRAME_ROUTING_MODE,
+                "frame_header": header, "skill_name": required_skill, "skill_sha256": skill["sha256"],
+                "allow_mutations": skill["allow_mutations"], "content_logged": False, "arguments_logged": False,
+            })
+            send_otel(root, "agent.loop.frame.loaded", telemetry_attributes(event, platform, {
+                "routing.mode": FRAME_ROUTING_MODE, "frame.header": header, "skill.name": required_skill,
+                "frame.loaded": True, "frame.allow_mutations": skill["allow_mutations"],
+            }))
+            return emit(add_context(name, frame_context(skill, header)))
         route = sop_route(prompt)
         if route:
             header, required_skill, _task_body = route
@@ -1241,6 +1398,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             config = direct_config(root)
             if not config.get("allow_loop_control_roles", False):
                 return emit(add_context("SubagentStart", "This turn is in direct mode. Loop-control roles are not part of this workflow; return immediately to the parent agent."))
+        if state.get("routing_mode") == FRAME_ROUTING_MODE and agent_type in ROLES:
+            return emit(add_context("SubagentStart", "This turn is in isolated FRAME mode. Loop-control roles are not part of this workflow; return immediately to the parent agent."))
         if state.get("routing_mode") == SOP_ROUTING_MODE and agent_type in ROLES:
             sop = state.get("sop", {}) if isinstance(state.get("sop"), dict) else {}
             allowed_learning_audit = agent_type == "learning-auditor" and sop.get("required_skill") == LEARNING_AUDIT_SKILL
@@ -1291,6 +1450,15 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             if mutation and not config.get("allow_mutations", False):
                 return emit(deny(name, "Direct mode is read-only. Use the autonomous loop or explicitly review direct-policy.json before permitting mutations."))
             return 0
+        if state.get("routing_mode") == FRAME_ROUTING_MODE:
+            frame = state.get("frame", {}) if isinstance(state.get("frame"), dict) else {}
+            if not frame.get("loaded"):
+                return emit(deny(name, "Mandatory FRAME skill was not successfully loaded; no tool use is permitted."))
+            if agent in ROLES:
+                return emit(deny(name, f"Loop-control role {agent} is not permitted in isolated FRAME mode."))
+            if mutation:
+                return emit(deny(name, f"FRAME {frame.get('required_skill', 'unknown')} is read-only."))
+            return 0
         if state.get("routing_mode") == SOP_ROUTING_MODE:
             sop = state.get("sop", {}) if isinstance(state.get("sop"), dict) else {}
             if not sop.get("loaded"):
@@ -1319,6 +1487,12 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             report = load(target / "sensemaker.json", {})
             if not report.get("_trusted_subagent"):
                 return emit(deny(name, "No trusted Sensemaker report exists for this turn. Invoke the sensemaker skill after Gatekeeper READY."))
+        if mutation and policy.get("require_integrator_before_mutation", False):
+            report = load(target / "integrator.json", {})
+            if not report.get("_trusted_subagent"):
+                return emit(deny(name, "No trusted Integrator report exists for this turn. Invoke the integrator skill after Sensemaker and before mutation."))
+            if report.get("status") != "MERGED":
+                return emit(deny(name, "Integrator must report MERGED before mutation can proceed."))
         return 0
 
     if name == "PermissionRequest":
@@ -1377,6 +1551,9 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             return 0
         if state.get("routing_mode") == DIRECT_ROUTING_MODE:
             append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report-ignored", "role": role, "routing_mode": DIRECT_ROUTING_MODE, "content_logged": False})
+            return 0
+        if state.get("routing_mode") == FRAME_ROUTING_MODE:
+            append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report-ignored", "role": role, "routing_mode": FRAME_ROUTING_MODE, "content_logged": False})
             return 0
         if state.get("routing_mode") == SOP_ROUTING_MODE:
             sop = state.get("sop", {}) if isinstance(state.get("sop"), dict) else {}
@@ -1538,6 +1715,18 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             atomic(target / "turn.json", state)
             send_otel(root, "agent.loop.direct.completed", telemetry_attributes(event, platform, {"routing.mode": DIRECT_ROUTING_MODE, "turn.status": "DIRECT_COMPLETE", "mutation.epoch": int(state.get("mutation_epoch", 0))}))
             return 0
+        if state.get("routing_mode") == FRAME_ROUTING_MODE:
+            frame = state.get("frame", {}) if isinstance(state.get("frame"), dict) else {}
+            if not frame.get("loaded"):
+                return emit({"continue": False, "stopReason": "Mandatory FRAME was not loaded.", "systemMessage": "Retry after installing the required frame-<name> skill."})
+            if state.get("watchdog", {}).get("tripped"):
+                return emit({"continue": False, "stopReason": "Watchdog tripped during FRAME execution.", "systemMessage": "Stop the FRAME and request human intervention; no autonomous recovery role is started in isolated FRAME mode."})
+            state["final_status"] = "FRAME_COMPLETE"
+            state["completed_at"] = now()
+            save_runtime(root, event, state)
+            atomic(target / "turn.json", state)
+            send_otel(root, "agent.loop.frame.completed", telemetry_attributes(event, platform, {"routing.mode": FRAME_ROUTING_MODE, "skill.name": frame.get("required_skill"), "frame.header": frame.get("header"), "turn.status": "FRAME_COMPLETE", "mutation.epoch": int(state.get("mutation_epoch", 0))}))
+            return 0
         if state.get("routing_mode") == SOP_ROUTING_MODE:
             sop = state.get("sop", {}) if isinstance(state.get("sop"), dict) else {}
             if not sop.get("loaded"):
@@ -1642,6 +1831,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         state["completed_at"] = now()
         save_runtime(root, event, state)
         atomic(target / "turn.json", state)
+        if state.get("routing_mode") == LOOP_ROUTING_MODE:
+            write_next_turn_handoff(root, state)
         try:
             observation, health = observe_learning_health(root, target)
             state["learning_observation"] = {"status": "RECORDED", "observation_complete": bool(observation.get("observation_complete")), "health": health.get("health")}

@@ -8,6 +8,9 @@
     "sop-diag": {
       "allow_mutations": false
     },
+    "sop-list": {
+      "allow_mutations": false
+    },
     "sop-install": {
       "allow_mutations": true
     },

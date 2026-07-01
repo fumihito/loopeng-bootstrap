@@ -1,42 +1,118 @@
-%% Loop structure source used to generate docs/loop-structure.svg
-flowchart LR
-  U["User prompt"]
+flowchart TD
+    USER[Human input]
 
-  U --> D{"direct: prefix?"}
-  D -->|yes| DIRECT["DIRECT execution\n(read-only by default)"]
-  D -->|no| H{"<header>: prefix?"}
+    ROUTER{Entry router}
 
-  H -->|yes| ROUTER["SOP Router"]
-  ROUTER --> SOP["mandatory sop-<header> skill"]
-  SOP --> SOPEX["SOP execution"]
+    DIRECT[Direct mode<br/>single controlled inquiry]
+    SOP[SOP router<br/>load sop-header skill]
 
-  H -->|no| GK["Gatekeeper"]
-  GK --> DEC{"READY / NEEDS_INPUT / REJECT"}
+    GK[Gatekeeper<br/>validate operating contract]
+    GK_RESULT{Gatekeeper verdict}
 
-  DEC -->|NEEDS_INPUT| LBA["Loop Brief Assistant"]
-  LBA --> GK
-  DEC -->|REJECT| STOP["Stop"]
-  DEC -->|READY| SM["Sensemaker"]
+    LBA[Loop Brief Assistant<br/>identify missing conditions]
+    HUMAN_FILL[Human supplies<br/>missing conditions]
+    GK_RECHECK[Gatekeeper re-evaluation]
 
-  SM --> GE["Generator / normal Evaluator"]
-  GE --> GOV["Governor"]
-  GE --> SS["State Steward"]
-  GE --> WR["Watchdog / Recovery"]
-  GE --> ME["Meta-Evaluator"]
+    REJECT[Reject / stop]
+    BRIEF[Trusted Loop Brief]
 
-  GOV --> CTRL["Deterministic hooks\npersistent state\nsanitized OTel"]
-  SS --> CTRL
-  WR --> CTRL
-  ME --> CTRL
+    SM[Sensemaker<br/>frame problem and retrieve memory]
+    PLAN[Normalized task frame<br/>criteria, risks, non-goals]
 
-  CTRL --> OBS["Deterministic learning observer"]
-  OBS --> MC["Memory Curator"]
-  MC --> TX["Go okfctl transaction"]
-  TX --> WIKI["OKF LLMWiki\nllmwiki/"]
+    GOV[Governor<br/>policy and authority enforcement]
 
-  OBS --> LA["learning-audit:\nLearning Auditor"]
-  LA --> HUMAN["Human approval / escalation\nwatchdog reset / policy change"]
+    GEN[Generator / Actor<br/>produce changes or candidate result]
+    INT[Integrator<br/>compose parallel outputs]
+    EVAL[Evaluator<br/>verify explicit criteria]
 
-  WIKI --> NEXT["Next loop turn"]
-  TX --> NEXT
-  HUMAN --> NEXT
+    RESULT{Evaluation result}
+
+    STATE[State Steward<br/>record state transition<br/>and memory proposals]
+    META[Meta-Evaluator<br/>challenge frame, evidence,<br/>metrics and completion claim]
+
+    META_RESULT{Meta verdict}
+
+    MEM_DECISION{Accepted durable<br/>knowledge exists?}
+    MC[Memory Curator<br/>produce OKF documents]
+    OKF[okfctl transaction<br/>validate, index, commit]
+    WIKI[(LLMWiki<br/>OKF knowledge bundle)]
+
+    COMPLETE[Turn completed]
+    REVISE[Revision required<br/>start next iteration]
+    ESCALATE[Escalate to human]
+
+    WD[Watchdog<br/>deterministic runtime monitoring]
+    RECOVERY[Watchdog / Recovery<br/>continue, rollback or escalate]
+
+    LEARN[Learning Observer<br/>cross-turn deterministic metrics]
+    AUDIT[Learning Auditor<br/>interpret long-term learning health]
+
+    TRIGGER[Scheduler / external trigger]
+    NEXT[Next loop execution]
+
+    USER --> ROUTER
+
+    ROUTER -->|direct:| DIRECT
+    ROUTER -->|header:| SOP
+    ROUTER -->|normal input| GK
+
+    GK --> GK_RESULT
+    GK_RESULT -->|READY| BRIEF
+    GK_RESULT -->|NEEDS_INPUT| LBA
+    GK_RESULT -->|REJECT| REJECT
+
+    LBA --> HUMAN_FILL
+    HUMAN_FILL --> GK_RECHECK
+    GK_RECHECK -->|READY| BRIEF
+    GK_RECHECK -->|NEEDS_INPUT| REJECT
+    GK_RECHECK -->|REJECT| REJECT
+
+    BRIEF --> SM
+    WIKI -. selected prior knowledge .-> SM
+    SM --> PLAN
+
+    PLAN --> GOV
+    GOV -->|allowed| GEN
+    GOV -->|denied| ESCALATE
+    GOV -->|human approval required| ESCALATE
+
+    GEN --> INT
+    INT --> EVAL
+    EVAL --> RESULT
+
+    RESULT -->|PASS candidate| STATE
+    RESULT -->|FAIL| REVISE
+
+    STATE --> META
+    META --> META_RESULT
+
+    META_RESULT -->|PASS| MEM_DECISION
+    META_RESULT -->|REVISE| REVISE
+    META_RESULT -->|ESCALATE| ESCALATE
+
+    MEM_DECISION -->|yes| MC
+    MEM_DECISION -->|no| COMPLETE
+    MC --> OKF
+    OKF --> WIKI
+    OKF --> COMPLETE
+
+    GEN -. tool events .-> WD
+    INT -. tool events .-> WD
+    EVAL -. tool events .-> WD
+    STATE -. tool events .-> WD
+    META -. tool events .-> WD
+
+    WD -->|healthy| COMPLETE
+    WD -->|tripped| RECOVERY
+
+    RECOVERY -->|continue with changed approach| REVISE
+    RECOVERY -->|rollback| ESCALATE
+    RECOVERY -->|escalate| ESCALATE
+
+    COMPLETE --> LEARN
+    LEARN --> AUDIT
+
+    TRIGGER --> NEXT
+    COMPLETE -. persisted state .-> NEXT
+    WIKI -. reusable knowledge .-> NEXT
+    AUDIT -. policy and process recommendations .-> NEXT
