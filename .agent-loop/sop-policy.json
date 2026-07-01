@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "defaults": {
+    "allow_mutations": false,
+    "max_skill_bytes": 65536
+  },
+  "skills": {
+    "sop-diag": {
+      "allow_mutations": false
+    },
+    "sop-install": {
+      "allow_mutations": true
+    },
+    "sop-learning-audit": {
+      "allow_mutations": false
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "enabled": true,
+  "exporter": "otlp-http",
+  "endpoint": "http://127.0.0.1:4318/v1/logs",
+  "timeout_seconds": 0.5,
+  "environment": "dev",
+  "service_name": "loop-engineering-agents",
+  "service_version": "15.0.0",
+  "spool_on_failure": true,
+  "spool_path": ".agent-loop/runtime/telemetry.jsonl",
+  "headers_env": "AGENT_LOOP_OTEL_HEADERS",
+  "endpoint_env": "AGENT_LOOP_OTEL_ENDPOINT",
+  "exporter_env": "AGENT_LOOP_OTEL_EXPORTER",
+  "environment_env": "AGENT_LOOP_ENVIRONMENT"
+}

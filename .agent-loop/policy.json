@@ -1,0 +1,72 @@
+{
+  "version": 8,
+  "require_gatekeeper_before_sensemaker": true,
+  "require_gatekeeper_before_mutation": true,
+  "require_sensemaker_before_mutation": true,
+  "require_state_steward_after_mutation": true,
+  "require_meta_evaluator_after_mutation": true,
+  "max_stop_continuations": 4,
+  "max_tool_calls_per_turn": 80,
+  "max_mutations_per_turn": 30,
+  "max_failures_per_turn": 5,
+  "max_same_action_repeats": 3,
+  "protected_path_fragments": [
+    ".agent-loop/",
+    ".codex/hooks.json",
+    ".codex/agents/",
+    ".agents/skills/",
+    ".claude/settings.json",
+    ".claude/agents/",
+    ".claude/skills/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".env"
+  ],
+  "deny_command_patterns": [
+    "(^|\\s)rm\\s+-rf\\s+/(?:\\s|$)",
+    "(^|\\s)mkfs(?:\\.|\\s)",
+    "(^|\\s)dd\\s+if=",
+    "(^|\\s)(shutdown|reboot|halt|poweroff)(\\s|$)",
+    ":\\(\\)\\s*\\{\\s*:\\|:&\\s*\\};:",
+    "(^|\\s)chmod\\s+-R\\s+777\\s+/",
+    "(^|\\s)curl\\b.*\\|\\s*(sh|bash)\\b",
+    "(^|\\s)wget\\b.*\\|\\s*(sh|bash)\\b"
+  ],
+  "high_risk_command_patterns": [
+    "(^|\\s)git\\s+push\\b",
+    "(^|\\s)git\\s+reset\\s+--hard\\b",
+    "(^|\\s)git\\s+clean\\s+-[^\\s]*f",
+    "(^|\\s)gh\\s+pr\\s+merge\\b",
+    "(^|\\s)kubectl\\s+(apply|delete|replace|patch|rollout)\\b",
+    "(^|\\s)terraform\\s+(apply|destroy)\\b",
+    "(^|\\s)(aws|gcloud|az)\\b.*\\b(delete|destroy|terminate|purge)\\b",
+    "(^|\\s)(npm|pnpm|yarn)\\s+publish\\b",
+    "(^|\\s)docker\\s+system\\s+prune\\b",
+    "(^|\\s)helm\\s+(install|upgrade|uninstall)\\b"
+  ],
+  "bash_mutation_patterns": [
+    "(^|\\s)(sed\\s+-i|perl\\s+-pi|truncate|touch|mkdir|rmdir|mv|cp|install)\\b",
+    "(^|\\s)git\\s+(add|commit|merge|rebase|cherry-pick|revert)\\b",
+    "(^|\\s)(tee|cat)\\b.*(?:>|>>)",
+    "(?:^|[^<])(?:>|>>)\\s*[^\\s]"
+  ],
+  "failure_markers": [
+    "error",
+    "failed",
+    "failure",
+    "traceback",
+    "exception",
+    "permission denied",
+    "not found"
+  ],
+  "sop_header_routing": true,
+  "require_learning_contract": true,
+  "learning_observer_enabled": true,
+  "require_memory_contract": true,
+  "memory_curator_enabled": true,
+  "okf_llmwiki_write_mode": "trusted-curator-report-only",
+  "direct_mode_enabled": true,
+  "loop_brief_assistant_enabled": true,
+  "loop_brief_pattern_memory_enabled": true,
+  "brief_pattern_curator_enabled": true
+}

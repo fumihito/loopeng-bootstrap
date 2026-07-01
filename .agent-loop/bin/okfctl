@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT=$(CDPATH= cd -- "$SELF_DIR/../.." && pwd)
+SOURCE="$ROOT/.agent-loop/cmd/okfctl/main.go"
+BINARY="$ROOT/.agent-loop/bin/okfctl.bin"
+if [ ! -f "$SOURCE" ]; then
+  echo "okfctl: missing Go source: $SOURCE" >&2
+  exit 1
+fi
+if [ ! -x "$BINARY" ] || [ "$SOURCE" -nt "$BINARY" ]; then
+  if ! command -v go >/dev/null 2>&1; then
+    echo "okfctl: Go is required to build the local OKF utility" >&2
+    exit 1
+  fi
+  TMP="$BINARY.tmp.$$"
+  trap 'rm -f "$TMP"' EXIT HUP INT TERM
+  GOWORK=off go build -trimpath -ldflags='-s -w' -o "$TMP" "$SOURCE"
+  chmod 0755 "$TMP"
+  mv "$TMP" "$BINARY"
+  trap - EXIT HUP INT TERM
+fi
+exec "$BINARY" "$@"

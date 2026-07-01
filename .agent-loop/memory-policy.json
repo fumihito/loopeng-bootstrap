@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "format": "Open Knowledge Format",
+  "okf_version": "0.1",
+  "bundle_root": "llmwiki",
+  "profile": "agent-loop-llmwiki-v1",
+  "require_meta_evaluator_acceptance": true,
+  "require_memory_curator": true,
+  "allowed_types": [
+    "Concept",
+    "Decision",
+    "Constraint",
+    "Failure Pattern",
+    "Evaluation Rule",
+    "Recovery Pattern",
+    "Runbook",
+    "Reference",
+    "Loop Brief Pattern"
+  ],
+  "allowed_statuses": [
+    "active",
+    "deprecated"
+  ],
+  "allowed_sensitivity": [
+    "public",
+    "internal"
+  ],
+  "default_sensitivity": "internal",
+  "required_frontmatter": [
+    "type",
+    "title",
+    "description",
+    "timestamp",
+    "status",
+    "sensitivity",
+    "authority",
+    "confidence"
+  ],
+  "required_body_sections": [
+    "# Summary",
+    "# Evidence",
+    "# Applicability",
+    "# Invalidation Conditions",
+    "# Decision Log",
+    "# Citations"
+  ],
+  "forbidden_content": [
+    "credentials",
+    "access tokens",
+    "private keys",
+    "raw prompts",
+    "raw tool inputs",
+    "raw tool outputs",
+    "full command arguments",
+    "customer personal data",
+    "absolute home-directory paths"
+  ],
+  "max_concept_bytes": 131072,
+  "preserve_unknown_frontmatter": true,
+  "require_citations_for_external_claims": true,
+  "never_silently_repurpose_concept_id": true,
+  "deprecate_instead_of_delete": true,
+  "max_operations_per_commit": 20,
+  "producer_profile_yaml": "top-level scalar and inline-list fields only",
+  "consumer_expectation": "preserve unknown frontmatter fields and tolerate broader valid OKF YAML"
+}

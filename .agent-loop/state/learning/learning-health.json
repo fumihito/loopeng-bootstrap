@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-01T03:05:54.410785+00:00",
+  "health": "UNKNOWN",
+  "reasons": [
+    "insufficient completed loop turns"
+  ],
+  "window": {
+    "configured_turns": 50,
+    "observed_turns": 0,
+    "all_completed_turns": 0
+  },
+  "metrics": {
+    "observation_coverage": null,
+    "learning_retrieval_coverage": null,
+    "knowledge_capture_rate": null,
+    "eligible_turns_for_reuse": 0,
+    "turns_considering_prior_learning": 0,
+    "learning_reuse_rate": null,
+    "considered_learning_events": 0,
+    "unknown_lesson_reference_count": 0,
+    "missing_learning_retrieval_count": 0,
+    "unconsidered_relevant_lesson_count": 0,
+    "unassessed_reuse_count": 0,
+    "learning_chain_completion_rate": null,
+    "average_turns_to_first_reuse": null,
+    "helpful_reuse_rate": null,
+    "helpful_reuse_count": 0,
+    "neutral_reuse_count": 0,
+    "harmful_reuse_count": 0,
+    "unverified_reuse_count": 0,
+    "problem_signature_recurrence_count": 0,
+    "recurrence_after_learning_count": 0,
+    "recurrence_after_learning_rate": null,
+    "accepted_lesson_count": 0,
+    "proposed_lesson_count": 0,
+    "rejected_lesson_count": 0,
+    "challenged_lesson_count": 0,
+    "superseded_lesson_count": 0,
+    "knowledge_correction_rate": null,
+    "stale_lesson_count": 0,
+    "orphan_lesson_count": 0,
+    "lesson_identifier_collision_count": 0,
+    "accepted_without_record_count": 0,
+    "weak_lesson_evidence_count": 0,
+    "open_question_count": 0,
+    "overdue_question_count": 0,
+    "question_resolution_rate": null,
+    "accepted_evaluation_change_count": 0,
+    "evaluation_adaptation_rate": null,
+    "learning_debt_score": 0
+  },
+  "debt_components": {
+    "missing_observation": 0,
+    "overdue_question": 0,
+    "orphan_lesson": 0,
+    "stale_lesson": 0,
+    "contradiction": 0,
+    "harmful_reuse": 0,
+    "recurrence_after_learning": 0,
+    "unknown_lesson_reference": 0,
+    "accepted_without_record": 0,
+    "unassessed_reuse": 0,
+    "weak_lesson_evidence": 0,
+    "missing_learning_retrieval": 0,
+    "unconsidered_relevant_lesson": 0
+  },
+  "sets": {
+    "stale_lesson_ids": [],
+    "orphan_lesson_ids": [],
+    "overdue_question_ids": []
+  },
+  "interpretation_limits": [
+    "Metric association does not prove that a reused lesson caused the outcome.",
+    "A recurring problem signature may represent a legitimate repeated task rather than a failed lesson.",
+    "Low correction counts are not automatically positive; they may indicate missing challenge behavior.",
+    "Textual similarity and embeddings are intentionally not used by the deterministic observer."
+  ],
+  "trend": {
+    "comparison_available": false,
+    "previous_health": null,
+    "metric_deltas": {}
+  }
+}
