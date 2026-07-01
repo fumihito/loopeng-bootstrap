@@ -7,7 +7,7 @@ user-invocable: true
 ## Purpose
 
 Use this frame when a request feels underspecified, overly analogical, or too large to attack directly.
-It helps a human separate facts from assumptions, break the work into minimal subproblems, and verify each step.
+It helps separate facts from assumptions, break the work into minimal subproblems, and verify each step.
 
 ## Procedure
 
@@ -18,6 +18,28 @@ It helps a human separate facts from assumptions, break the work into minimal su
 5. Define the done condition and verification step for each subproblem.
 6. Order subproblems by dependency and risk.
 7. Replan if assumptions fail or evidence is missing.
+
+## Decomposition contract
+
+For each subproblem, include:
+
+- objective
+- inputs
+- expected output
+- done condition
+- verification step
+
+## Replanning triggers
+
+- A major assumption breaks
+- A subproblem does not satisfy its done condition
+- Required evidence is missing
+- A tool limitation makes the current plan invalid
+
+## Interaction with other frames
+
+- Use `frame-cynefin` first if the question itself may not be stable
+- Use `frame-smeac` after decomposition when you need a handoffable brief
 
 ## Output structure
 

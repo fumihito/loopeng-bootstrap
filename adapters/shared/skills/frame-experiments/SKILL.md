@@ -7,7 +7,7 @@ user-invocable: true
 ## Purpose
 
 Use this frame when the question cannot be settled confidently by reasoning alone.
-It helps a human choose the right experiment model, limit blast radius, and define what observation would change the next step.
+It helps choose the right experiment model, limit blast radius, and define what observation changes the next step.
 
 ## Core loop
 
@@ -19,7 +19,29 @@ It helps a human choose the right experiment model, limit blast radius, and defi
 - `design-optimization`: tune a few interacting factors
 - `exploratory-probe`: learn what matters when the space is unclear
 
-## Procedure
+## Domain split
+
+- Complicated: a specialist can probably narrow the answer with good comparison
+- Complex: you need probing and learning from the result
+
+## Risk bounding
+
+For every experiment, specify:
+
+- blast radius
+- reversibility
+- timebox
+- cost
+
+## Decision rules
+
+State what will:
+
+- amplify a promising path
+- dampen a weak path
+- stop the next round
+
+## Workflow
 
 1. State the learning target.
 2. Decide whether the problem is Complicated or Complex.

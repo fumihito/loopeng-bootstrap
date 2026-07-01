@@ -10,7 +10,15 @@ argument-hint: <filepath>
 Use this frame to review Japanese Markdown or text.
 It is for human editing: spelling, grammar, structure, and AI-smell all get checked, but nothing is auto-written.
 
-If a local checker exists, run it first. If not, perform the review manually.
+## Activation
+
+- User calls `/frame-proofread-ja <filepath>` or `proofread-ja: <filepath>`
+- If the path is missing, ask for it before continuing
+
+## Input
+
+- Required: file path
+- Optional: `--scope <blog|technical article|report>`
 
 ## Workflow
 
@@ -20,6 +28,15 @@ If a local checker exists, run it first. If not, perform the review manually.
 4. Flag AI-smell patterns and repetition.
 5. Summarize findings and offer repair options.
 
+## Review passes
+
+- Pass A: lint for spelling and particle usage
+- Pass B: editor review for structure, paragraph logic, and readability
+- Pass C: AI-smell review for repetition, weak endings, over-marking, and generic phrasing
+
+If a local checker exists, run it first. If not, review manually.
+Do not auto-write changes.
+
 ## Output structure
 
 - Lint
@@ -28,3 +45,8 @@ If a local checker exists, run it first. If not, perform the review manually.
 - Total issues
 - Suggested fixes
 
+## Constraints
+
+- Do not auto-write changes
+- Do not start without a file path
+- If a local checker exists, run it first; otherwise review manually

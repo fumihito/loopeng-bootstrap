@@ -17,10 +17,22 @@ It is useful for meetings, planning, and operational summaries.
 - Administration / Logistics: resources and support
 - Command / Signal: who decides, who is informed, and how escalation works
 
-## Required addition
+## Distortion report
 
 Always note what SMEAC flattens or obscures.
 If the fit is weak, say so explicitly.
+
+When useful, mark items as:
+
+- `baseline`: already provided by the surrounding skill or runtime
+- `override`: specific to this case
+- `open`: still needs to be decided
+
+## Required additions
+
+- Always note what SMEAC flattens or obscures
+- If the fit is weak, say so explicitly
+- Keep `Execution` limited to the current case rather than generic procedure
 
 ## Output structure
 
@@ -30,4 +42,3 @@ If the fit is weak, say so explicitly.
 - Distortion Report
 - Not Yet Actionable
 - Next Step
-
