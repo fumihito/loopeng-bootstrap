@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import routing_hints as routing_hints_lib
+
 KIT = Path(__file__).resolve().parents[1]
 
 
@@ -42,6 +44,16 @@ class SopRoutingTests(unittest.TestCase):
 
     def event(self, name, session, turn):
         return {"hook_event_name": name, "session_id": session, "turn_id": turn, "cwd": str(self.repo)}
+
+    @staticmethod
+    def command_route_body(candidate_frames, selected_frame, needs_user_turn, reason, confidence):
+        return {
+            "candidate_frames": candidate_frames,
+            "selected_frame": selected_frame,
+            "needs_user_turn": needs_user_turn,
+            "reason": reason,
+            "confidence": confidence,
+        }
 
     def test_header_parser_excludes_uri(self):
         self.assertEqual(self.hook.sop_route("diag: inspect"), ("diag", "sop-diag", "inspect"))
@@ -90,6 +102,73 @@ class SopRoutingTests(unittest.TestCase):
         state = json.loads((self.repo / ".agent-loop/runtime/sessions/install-sop.json").read_text())
         self.assertEqual(state["routing_mode"], "SOP")
         self.assertTrue(state["sop"]["allow_mutations"])
+
+    def test_route_loads_command_route_skill_and_selected_frame(self):
+        session, turn = "route-session", "route-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "route: help me decide the right planning frame"
+        output = self.call(start, "claude")
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Required skill: command-route", context)
+        self.assertIn("Routing mode: COMMAND_ROUTE", context)
+        self.assertIn("candidate_shortlist:", context)
+        self.assertIn("Multi-step delivery work with scope, phases, verification, and handoff.", context)
+        state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(state["routing_mode"], "COMMAND_ROUTE")
+        self.assertTrue(state["command_route"]["loaded"])
+
+        report = self.event("Stop", session, turn)
+        report.update({
+            "background_tasks": [],
+            "last_assistant_message": json.dumps(self.command_route_body(
+                [
+                    {"frame": "frame-plandev", "confidence": 0.8, "reason": "multi-step delivery work"},
+                    {"frame": "frame-first-principles", "confidence": 0.4, "reason": "needs decomposition"},
+                ],
+                "frame-plandev",
+                False,
+                "planning work is the best fit",
+                0.8,
+            )),
+        })
+        routed = self.call(report, "claude")
+        routed_context = routed["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Required skill: frame-plandev", routed_context)
+        self.assertIn("Routing mode: FRAME", routed_context)
+        final_state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(final_state["routing_mode"], "FRAME")
+        self.assertTrue(final_state["frame"]["loaded"])
+        self.assertEqual(final_state["frame"]["required_skill"], "frame-plandev")
+        self.assertEqual(final_state["command_route"]["selected_frame"], "frame-plandev")
+        self.assertTrue(final_state["command_route"]["frame_loaded"])
+
+    def test_route_needs_user_turn_records_fallback(self):
+        session, turn = "route-needs-input", "route-needs-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "route: choose between several possible planning frames"
+        output = self.call(start, "claude")
+        self.assertIn("Required skill: command-route", output["hookSpecificOutput"]["additionalContext"])
+
+        report = self.event("Stop", session, turn)
+        report.update({
+            "background_tasks": [],
+            "last_assistant_message": json.dumps(self.command_route_body(
+                [
+                    {"frame": "frame-plandev", "confidence": 0.6, "reason": "delivery planning"},
+                    {"frame": "frame-first-principles", "confidence": 0.5, "reason": "decomposition needed"},
+                ],
+                None,
+                True,
+                "the request is ambiguous",
+                0.6,
+            )),
+        })
+        result = self.call(report, "claude")
+        self.assertEqual(result, {})
+        state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(state["final_status"], "COMMAND_ROUTE_COMPLETE")
+        self.assertTrue(state["command_route"]["needs_user_turn"])
+        self.assertIsNone(state["command_route"]["selected_frame"])
 
     def test_list_loads_mode_index_sop(self):
         event = self.event("UserPromptSubmit", "list-sop", "list-turn")
@@ -164,10 +243,46 @@ class SopRoutingTests(unittest.TestCase):
     def test_platform_skill_layout(self):
         self.assertTrue((self.repo / ".agents/skills/sop-diag/SKILL.md").exists())
         self.assertTrue((self.repo / ".agents/skills/sop-list/SKILL.md").exists())
+        self.assertTrue((self.repo / ".agents/skills/command-route/SKILL.md").exists())
+        self.assertTrue((self.repo / ".agents/skills/frame-plandev/routing.md").exists())
         self.assertTrue((self.repo / ".claude/skills/sop-diag/SKILL.md").exists())
         self.assertTrue((self.repo / ".claude/skills/sop-list/SKILL.md").exists())
+        self.assertTrue((self.repo / ".claude/skills/command-route/SKILL.md").exists())
+        self.assertTrue((self.repo / ".claude/skills/frame-plandev/routing.md").exists())
         self.assertTrue((self.repo / ".agent-loop/sop-policy.json").exists())
+        self.assertTrue((self.repo / ".agent-loop/docs/COMMAND_ROUTING.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/SOP_ROUTING.md").exists())
+
+    def test_routing_md_parser_reads_toml_block(self):
+        doc = routing_hints_lib.parse_routing_hints_toml(
+            """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plandev"
+priority = 50
+summary = "Multi-step delivery work."
+
+[[prefer]]
+phrase = "multi-step delivery"
+weight = 4
+```
+"""
+        )
+        self.assertEqual(doc.schema, "routing-hints/v1")
+        self.assertEqual(doc.frame, "frame-plandev")
+        self.assertEqual(doc.priority, 50)
+        self.assertEqual(doc.summary, "Multi-step delivery work.")
+        self.assertEqual(doc.sections["prefer"][0].phrase, "multi-step delivery")
+
+    def test_routing_hints_lint_passes(self):
+        proc = subprocess.run(
+            [sys.executable, str(KIT / "utils/routing_hints_lint.py"), "--root", str(self.repo)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertIn("OK: all routing hint files passed lint", proc.stdout)
 
 
 if __name__ == "__main__":

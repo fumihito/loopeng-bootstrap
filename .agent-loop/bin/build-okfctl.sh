@@ -10,7 +10,9 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 TMP="$BINARY.tmp.$$"
 trap 'rm -f "$TMP"' EXIT HUP INT TERM
-GOWORK=off go build -trimpath -ldflags='-s -w' -o "$TMP" "$SOURCE"
+GOCACHE="${GOCACHE:-/tmp/loopeng-gocache}"
+mkdir -p "$GOCACHE"
+GOWORK=off GOCACHE="$GOCACHE" go build -trimpath -ldflags='-s -w' -o "$TMP" "$SOURCE"
 chmod 0755 "$TMP"
 mv "$TMP" "$BINARY"
 trap - EXIT HUP INT TERM

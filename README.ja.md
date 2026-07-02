@@ -22,12 +22,14 @@ systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bi
 
 - `direct:` は、Gatekeeper を経由しない bounded な非自律入力です。
 - `list:` は、現在の入口モード群と正規ソースを一覧する mode index です。
+- `route:` は、Gatekeeper の前に `frame-*` 候補を提案する pre-loop モードです。
 - `sop-<header>:` は、先頭 `<header>:` で始まる必須 SOP です。`diag:` や `learning-audit:` が該当します。
 - `frame-<name>:` は、人間向けの計画・レビュー・トラブルシュート用 frame です。
 - 無接頭辞は、Gatekeeper を起点にする自律ループの入口です。
 
 詳細は `docs/DIRECT_MODE.md`、`docs/SOP_ROUTING.md`、`docs/HUMAN_SKILL_NAMESPACE.md` を参照してください。
 フックは先頭が `direct:`、`list:`、`frame-<name>:`、およびその他の `<header>:` のプロンプトを、それぞれ専用モードへ自動ルーティングします。
+`route:` の pre-loop 提案モードについては `docs/COMMAND_ROUTING.md` にまとめています。
 
 ## 設計思想とアーキテクチャ上の判断
 

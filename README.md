@@ -22,12 +22,14 @@ The repository currently recognizes these user-entry families:
 
 - `direct:` for bounded non-autonomous questions and inspection.
 - `list:` for a mode index that reports the current entry families and their canonical sources.
+- `route:` for a pre-loop proposal mode that suggests `frame-*` candidates before Gatekeeper.
 - `sop-<header>:` via a strict leading `<header>:` prompt for mandatory SOPs such as `diag:` and `learning-audit:`.
 - `frame-<name>:` via a strict leading `frame-<name>:` prompt for human-facing planning, review, and troubleshooting frames.
 - no prefix for the autonomous loop and Gatekeeper intake path.
 
 See `docs/DIRECT_MODE.md`, `docs/SOP_ROUTING.md`, and `docs/HUMAN_SKILL_NAMESPACE.md`.
 The hook auto-routes strict leading `direct:`, `list:`, `frame-<name>:`, and other `<header>:` prompts into their dedicated modes before the model processes the request.
+See `docs/COMMAND_ROUTING.md` for the separate `route:` pre-loop proposal mode.
 
 ## Design philosophy and architecture decisions
 

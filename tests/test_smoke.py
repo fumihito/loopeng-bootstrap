@@ -13,6 +13,7 @@ from pathlib import Path
 KIT = Path(__file__).resolve().parents[1]
 ROLES = ["gatekeeper", "loop-brief-assistant", "brief-pattern-curator", "sensemaker", "integrator", "governor", "state-steward", "watchdog-recovery", "meta-evaluator", "learning-auditor", "memory-curator"]
 FRAME_SKILLS = ["frame-diag", "frame-plandev", "frame-plantask", "frame-first-principles", "frame-experiments", "frame-cynefin", "frame-smeac", "frame-proofread-ja", "frame-blind-spot", "frame-inertia", "frame-waiwad-grill", "frame-distributed-incident-analysis", "frame-critical-review", "frame-research-arch", "frame-research-tactics"]
+ROUTE_SKILLS = ["command-route"]
 
 
 def load_hook_module(path: Path):
@@ -146,17 +147,25 @@ class IntegrationTest(unittest.TestCase):
         json.loads((self.repo / ".claude/settings.json").read_text())
         self.assertTrue((self.repo / "skills/sop-diag/SKILL.md").exists())
         self.assertTrue((self.repo / "skills/sop-list/SKILL.md").exists())
+        for route in ROUTE_SKILLS:
+            self.assertTrue((self.repo / f"skills/{route}/SKILL.md").exists())
         self.assertTrue((self.repo / ".agents/skills").is_symlink())
         self.assertTrue((self.repo / ".claude/skills").is_symlink())
         self.assertEqual(__import__("os").readlink(self.repo / ".agents/skills"), "../skills/")
         self.assertEqual(__import__("os").readlink(self.repo / ".claude/skills"), "../skills/")
         self.assertTrue((self.repo / ".agents/skills/sop-diag/SKILL.md").exists())
         self.assertTrue((self.repo / ".agents/skills/sop-list/SKILL.md").exists())
+        self.assertTrue((self.repo / ".agents/skills/command-route/SKILL.md").exists())
+        self.assertTrue((self.repo / ".agents/skills/frame-plandev/routing.md").exists())
+        self.assertTrue((self.repo / "routing_hints.py").exists())
         self.assertTrue((self.repo / ".claude/skills/sop-diag/SKILL.md").exists())
         self.assertTrue((self.repo / ".claude/skills/sop-list/SKILL.md").exists())
+        self.assertTrue((self.repo / ".claude/skills/command-route/SKILL.md").exists())
+        self.assertTrue((self.repo / ".claude/skills/frame-plandev/routing.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/DESIGN_PHILOSOPHY.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/ARCHITECTURE.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/HUMAN_SKILL_NAMESPACE.md").exists())
+        self.assertTrue((self.repo / ".agent-loop/docs/COMMAND_ROUTING.md").exists())
         self.assertTrue((self.repo / ".agent-loop/docs/LEARNING_OBSERVABILITY.md").exists())
         self.assertTrue((self.repo / ".agent-loop/bin/learning_health.py").exists())
         self.assertTrue((self.repo / ".agent-loop/bin/next_turn_scheduler_daemon.py").exists())

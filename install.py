@@ -15,6 +15,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import routing_hints as routing_hints_lib
+
 SRC = Path(__file__).resolve().parent
 BEGIN = '<!-- LOOP-ENGINEERING:BEGIN -->'
 END = '<!-- LOOP-ENGINEERING:END -->'
@@ -22,7 +27,7 @@ MANAGED_HOOK_MARKER = '.agent-loop/hooks/loop_hook.py'
 
 
 def stamp() -> str:
-    return datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    return datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
 
 
 @dataclass(frozen=True)
@@ -102,6 +107,22 @@ class Installer:
             for path in source_root.rglob('*')
             if path.is_file()
         }
+
+    def command_skill_names(self) -> list[str]:
+        source_root = SRC / 'adapters/shared/skills'
+        names: list[str] = []
+        for path in sorted(source_root.glob('command-*/SKILL.md')):
+            if not path.is_file() or path.is_symlink():
+                continue
+            names.append(path.parent.name)
+        return names
+
+    def routing_hint_paths(self) -> list[Path]:
+        return [
+            path
+            for path in sorted(self.repo.rglob('routing.md'))
+            if path.is_file() and '.git' not in path.relative_to(self.repo).parts
+        ]
 
     def inspect_skill_tree(self, root: Path) -> list[Conflict]:
         conflicts: list[Conflict] = []
@@ -371,11 +392,13 @@ class Installer:
             '.agent-loop/lib/learning_observer.py',
             '.agent-loop/otel.json',
             '.agent-loop/otel-collector.yaml',
+            'routing_hints.py',
             '.agent-loop/systemd/agent-loop-scheduler.service',
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
             '.agent-loop/docs/DIRECT_MODE.md',
+            '.agent-loop/docs/COMMAND_ROUTING.md',
             '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
             '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
             '.agent-loop/docs/SOP_ROUTING.md',
@@ -401,6 +424,7 @@ class Installer:
         for source in (SRC / "llmwiki").rglob("*"):
             if source.is_file():
                 paths.append(self.repo / "llmwiki" / source.relative_to(SRC / "llmwiki"))
+        paths.append(self.repo / 'routing_hints.py')
         skill_mappings, _ = self.skill_install_layout()
         mappings = [
             *skill_mappings,
@@ -1024,11 +1048,13 @@ class Installer:
             '.agent-loop/cmd/okfctl/main.go',
             '.agent-loop/lib/learning_observer.py',
             '.agent-loop/otel.json',
+            'routing_hints.py',
             '.agent-loop/systemd/agent-loop-scheduler.service',
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
             '.agent-loop/docs/DIRECT_MODE.md',
+            '.agent-loop/docs/COMMAND_ROUTING.md',
             '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
             '.agent-loop/docs/ARCHITECTURE.md',
             '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
@@ -1129,6 +1155,32 @@ class Installer:
                             errors.append(f'platform frame skill is not the canonical shared file: {rel}')
                     except OSError as exc:
                         errors.append(f'cannot compare platform frame skill identity: {rel}: {exc}')
+        for skill in self.command_skill_names():
+            canonical = self.repo / f'skills/{skill}/SKILL.md'
+            if not canonical.is_file() or canonical.is_symlink():
+                errors.append(f'missing or unsafe command route skill: skills/{skill}/SKILL.md')
+                continue
+            if skill_name(canonical) != skill:
+                errors.append(f'command route skill frontmatter name mismatch: skills/{skill}/SKILL.md')
+            for rel in [f'.agents/skills/{skill}/SKILL.md', f'.claude/skills/{skill}/SKILL.md']:
+                path = self.repo / rel
+                if not path.is_file():
+                    errors.append(f'missing platform-visible command route skill: {rel}')
+                else:
+                    try:
+                        if not os.path.samefile(path, canonical):
+                            errors.append(f'platform command route skill is not the canonical shared file: {rel}')
+                    except OSError as exc:
+                        errors.append(f'cannot compare platform command route skill identity: {rel}: {exc}')
+        for path in self.routing_hint_paths():
+            try:
+                document = routing_hints_lib.load_routing_hints(path)
+                errors.extend(
+                    f'routing hint invalid: {path.relative_to(self.repo)}: {message}'
+                    for message in routing_hints_lib.validate_routing_hints_document(document, expected_frame=path.parent.name)
+                )
+            except Exception as exc:
+                errors.append(f'routing hint invalid: {path.relative_to(self.repo)}: {type(exc).__name__}: {exc}')
         for skill in ['sop-diag', 'sop-list', 'sop-install', 'sop-learning-audit']:
             canonical = self.repo / f'skills/{skill}/SKILL.md'
             if not canonical.is_file() or canonical.is_symlink():
@@ -1228,6 +1280,7 @@ class Installer:
             '.agent-loop/lib/learning_observer.py',
             '.agent-loop/otel.json',
             '.agent-loop/otel-collector.yaml',
+            'routing_hints.py',
         ]:
             self.copy_file(SRC / rel, self.repo / rel)
         self.copy_rendered_file(
@@ -1240,6 +1293,7 @@ class Installer:
             ('docs/LOOP_BRIEF_ASSISTANT.md', '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md'),
             ('docs/LOOP_BRIEF_PATTERN_MEMORY.md', '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md'),
             ('docs/DIRECT_MODE.md', '.agent-loop/docs/DIRECT_MODE.md'),
+            ('docs/COMMAND_ROUTING.md', '.agent-loop/docs/COMMAND_ROUTING.md'),
             ('docs/LOOP_INPUT_GUIDE.md', '.agent-loop/docs/LOOP_INPUT_GUIDE.md'),
             ('docs/HUMAN_SKILL_NAMESPACE.md', '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md'),
             ('docs/SOP_ROUTING.md', '.agent-loop/docs/SOP_ROUTING.md'),

@@ -18,6 +18,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+_hook_file = globals().get("__file__")
+if _hook_file:
+    HOOK_REPO_ROOT = Path(_hook_file).resolve().parents[2]
+    if str(HOOK_REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(HOOK_REPO_ROOT))
+
+try:
+    import routing_hints as routing_hints_lib
+except ModuleNotFoundError:
+    routing_hints_lib = None
+
 ROLES = {
     "gatekeeper": ({"role","verdict","mode","condition_checklist","normalized_loop_brief","missing_conditions","ambiguities","questions_to_user","risk_class","rejection_reasons","handoff_to_loop_brief_assistant","assistant_handoff_reason","handoff_to_sensemaker","brief_pattern_directive","brief_pattern_assessment"}, "gatekeeper.json"),
     "loop-brief-assistant": ({"role","status","interaction_mode","draft_loop_brief","resolved_conditions","remaining_conditions","assumptions","questions_to_user","conflicts","handoff_to_gatekeeper","pattern_retrieval","pattern_application","pattern_proposals"}, "loop-brief-assistant.json"),
@@ -44,11 +55,14 @@ LOOP_BRIEF_FIELDS = {
 }
 SOP_HEADER_PATTERN = re.compile(r"^([a-z][a-z0-9-]{0,31}):(?!//)[ \t]*(.*)$", re.S)
 DIRECT_HEADER_PATTERN = re.compile(r"^direct:[ \t]*(.*)$", re.S)
+COMMAND_ROUTE_HEADER_PATTERN = re.compile(r"^route:[ \t]*(.*)$", re.S)
 SOP_ROUTING_MODE = "SOP"
 FRAME_ROUTING_MODE = "FRAME"
+COMMAND_ROUTE_ROUTING_MODE = "COMMAND_ROUTE"
 DIRECT_ROUTING_MODE = "DIRECT"
 LOOP_ROUTING_MODE = "LOOP"
 LEARNING_AUDIT_SKILL = "sop-learning-audit"
+COMMAND_ROUTE_SKILL = "command-route"
 MEMORY_CURATOR_ROLE = "memory-curator"
 BRIEF_PATTERN_CURATOR_ROLE = "brief-pattern-curator"
 LOOP_BRIEF_ASSISTANT_ROLE = "loop-brief-assistant"
@@ -177,6 +191,11 @@ def direct_route(prompt: str) -> str | None:
     return match.group(1) if match else None
 
 
+def command_route(prompt: str) -> str | None:
+    match = COMMAND_ROUTE_HEADER_PATTERN.match(prompt)
+    return match.group(1) if match else None
+
+
 def direct_config(root: Path) -> dict[str, Any]:
     config = load(root / ".agent-loop/direct-policy.json", {})
     return {
@@ -212,6 +231,22 @@ def frame_route(prompt: str) -> tuple[str, str, str] | None:
     return header, header, match.group(2)
 
 
+def command_route_result(body: dict[str, Any]) -> dict[str, Any]:
+    candidate_frames = body.get("candidate_frames")
+    selected_frame = body.get("selected_frame")
+    needs_user_turn = body.get("needs_user_turn")
+    reason = body.get("reason")
+    confidence = body.get("confidence")
+    result: dict[str, Any] = {
+        "candidate_frames": candidate_frames,
+        "selected_frame": selected_frame,
+        "needs_user_turn": needs_user_turn,
+        "reason": reason,
+        "confidence": confidence,
+    }
+    return result
+
+
 def parse_skill_name(content: str) -> str | None:
     """Read only the name field from YAML-like SKILL.md frontmatter."""
     match = re.match(r"\A---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|\Z)", content, re.S)
@@ -222,6 +257,24 @@ def parse_skill_name(content: str) -> str | None:
         if sep and key.strip() == "name":
             return value.strip().strip('"\'')
     return None
+
+
+def parse_skill_field(content: str, field: str) -> str | None:
+    match = re.match(r"\A---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|\Z)", content, re.S)
+    if not match:
+        return None
+    for line in match.group(1).splitlines():
+        key, sep, value = line.partition(":")
+        if sep and key.strip() == field:
+            return value.strip().strip('"\'')
+    return None
+
+
+def parse_skill_description(content: str) -> str | None:
+    return parse_skill_field(content, "description")
+
+
+ROUTING_HINT_FIELDS = routing_hints_lib.ROUTING_HINT_FIELDS if routing_hints_lib is not None else ("prefer", "avoid", "good_for", "bad_for", "signals")
 
 
 def sop_config(root: Path, skill_name: str) -> dict[str, Any]:
@@ -319,6 +372,46 @@ def resolve_frame_skill(root: Path, platform: str, skill_name: str) -> dict[str,
     }
 
 
+def resolve_command_route_skill(root: Path, platform: str, skill_name: str) -> dict[str, Any]:
+    """Resolve and validate the command-route proposal skill."""
+    relative_candidates: list[Path] = []
+    if platform == "claude":
+        relative_candidates.append(Path(".claude/skills") / skill_name / "SKILL.md")
+    elif platform == "codex":
+        relative_candidates.append(Path(".agents/skills") / skill_name / "SKILL.md")
+    else:
+        relative_candidates.extend([
+            Path(".agents/skills") / skill_name / "SKILL.md",
+            Path(".claude/skills") / skill_name / "SKILL.md",
+        ])
+    selected: Path | None = None
+    selected_relative: Path | None = None
+    root_resolved = root.resolve()
+    for relative in relative_candidates:
+        candidate = root / relative
+        if not candidate.is_file():
+            continue
+        resolved = candidate.resolve()
+        if resolved != root_resolved and root_resolved not in resolved.parents:
+            raise ValueError("command-route skill resolves outside the repository")
+        selected, selected_relative = resolved, relative
+        break
+    if selected is None or selected_relative is None:
+        expected = ", ".join(str(path) for path in relative_candidates)
+        raise FileNotFoundError(f"required skill {skill_name} is not installed; expected {expected}")
+    content = selected.read_text(encoding="utf-8")
+    declared_name = parse_skill_name(content)
+    if declared_name != skill_name:
+        raise ValueError(f"SKILL.md name mismatch: expected {skill_name}, found {declared_name or 'missing'}")
+    return {
+        "name": skill_name,
+        "relative_path": str(selected_relative),
+        "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        "content": content,
+        "allow_mutations": False,
+    }
+
+
 def sop_context(skill: dict[str, Any], header: str) -> str:
     return (
         "[MANDATORY_SOP_ROUTING]\n"
@@ -351,6 +444,87 @@ def frame_context(skill: dict[str, Any], header: str) -> str:
         f"{skill['content'].rstrip()}\n"
         "----- END REQUIRED FRAME -----\n"
         "[/MANDATORY_FRAME_ROUTING]"
+    )
+
+
+def command_route_catalog(root: Path, route_task: str, limit: int = 6) -> str:
+    entries: list[tuple[int, str]] = []
+    skills_root = root / "skills"
+    if routing_hints_lib is None:
+        for path in sorted(skills_root.glob("frame-*/SKILL.md")):
+            if not path.is_file() or path.is_symlink():
+                continue
+            try:
+                content = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            name = parse_skill_name(content)
+            if not name:
+                continue
+            description = parse_skill_description(content) or "Human-facing frame"
+            line = f"- {name} [score=0]: {description}"
+            entries.append((0, line))
+        shortlisted = [line for _, line in entries[: max(1, limit)]]
+        header = [f"candidate_shortlist: {len(shortlisted)} of {len(entries)}"]
+        return "\n".join(header + shortlisted)
+    for path in sorted(skills_root.glob("frame-*/SKILL.md")):
+        if not path.is_file() or path.is_symlink():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        name = parse_skill_name(content)
+        if not name:
+            continue
+        description = parse_skill_description(content) or "Human-facing frame"
+        routing_hints_path = path.with_name("routing.md")
+        if not routing_hints_path.is_file() or routing_hints_path.is_symlink():
+            continue
+        try:
+            routing_document = routing_hints_lib.load_routing_hints(routing_hints_path)
+        except Exception:
+            continue
+        score, reasons = routing_hints_lib.score_routing_hints(route_task, routing_document)
+        hint_summary = routing_hints_lib.summarize_routing_hints(route_task, routing_document)
+        line = f"- {name} [score={score}, priority={routing_document.priority}]: {description}"
+        if routing_document.summary:
+            line += f" | summary: {routing_document.summary}"
+        if reasons:
+            line += f" | matches: {', '.join(reasons)}"
+        if hint_summary:
+            line += f"\n{hint_summary}"
+        entries.append((score, line))
+    entries.sort(key=lambda item: (-item[0], item[1]))
+    shortlisted = [line for _, line in entries[: max(1, limit)]]
+    total = len(entries)
+    omitted = max(0, total - len(shortlisted))
+    header = [f"candidate_shortlist: {len(shortlisted)} of {total}"]
+    if omitted:
+        header.append(f"omitted_candidates: {omitted}")
+    return "\n".join(header + shortlisted)
+
+
+def command_route_context(skill: dict[str, Any], catalog: str, route_task: str) -> str:
+    compact_route_task = re.sub(r"\s+", " ", route_task).strip()[:240]
+    return (
+        "[COMMAND_ROUTE]\n"
+        f"Routing mode: {COMMAND_ROUTE_ROUTING_MODE}\n"
+        f"Required skill: {skill['name']}\n"
+        f"Skill SHA-256: {skill['sha256']}\n"
+        "The project hook has loaded the complete routing skill below before the prompt is processed. "
+        "Use it to propose frame-* candidates only. Do not invoke Gatekeeper. Do not propose command-route itself. "
+        "Return exactly one JSON object that matches the documented command-route schema. "
+        "If the top two candidates are effectively tied, or if confidence is low, set needs_user_turn=true and leave selected_frame null. "
+        "When a single frame is selected, the hook will load that frame immediately before the turn exits.\n"
+        f"Route task: {compact_route_task}\n\n"
+        "----- BEGIN REQUIRED SKILL -----\n"
+        f"{skill['content'].rstrip()}\n"
+        "----- END REQUIRED SKILL -----\n\n"
+        "----- BEGIN FRAME CATALOG -----\n"
+        f"{catalog.rstrip()}\n"
+        "----- END FRAME CATALOG -----\n"
+        "[/COMMAND_ROUTE]"
     )
 
 
@@ -558,6 +732,109 @@ def parse_json_message(message: str) -> dict[str, Any] | None:
         except json.JSONDecodeError:
             pass
     return None
+
+
+def canonical_frame_names(root: Path) -> list[str]:
+    names: list[str] = []
+    skills_root = root / "skills"
+    if not skills_root.exists():
+        return names
+    for path in sorted(skills_root.glob("frame-*/SKILL.md")):
+        if not path.is_file() or path.is_symlink():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        name = parse_skill_name(content)
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
+def route_confidence_valid(value: Any) -> bool:
+    if not isinstance(value, (int, float)):
+        return False
+    numeric = float(value)
+    if numeric < 0.0 or numeric > 1.0:
+        return False
+    return abs(round(numeric * 10) / 10 - numeric) < 1e-9
+
+
+def validate_command_route_report(body: dict[str, Any], root: Path | None = None) -> list[str]:
+    errors: list[str] = []
+    required = {"candidate_frames", "selected_frame", "needs_user_turn", "reason", "confidence"}
+    missing = sorted(required - set(body))
+    if missing:
+        errors.append("missing keys: " + ", ".join(missing))
+    candidates = body.get("candidate_frames")
+    if not isinstance(candidates, list):
+        errors.append("candidate_frames must be an array")
+        candidates = []
+    canonical_frames = canonical_frame_names(root or root_for()) if root is not None else []
+    candidate_names: list[str] = []
+    prior_confidence: float | None = None
+    for index, item in enumerate(candidates):
+        if not isinstance(item, dict):
+            errors.append(f"candidate_frames[{index}] must be an object")
+            continue
+        frame_name = item.get("frame")
+        confidence = item.get("confidence")
+        reason = item.get("reason")
+        if not isinstance(frame_name, str) or not frame_name.strip():
+            errors.append(f"candidate_frames[{index}].frame must be a string")
+            continue
+        if frame_name == COMMAND_ROUTE_SKILL:
+            errors.append(f"candidate_frames[{index}].frame may not be command-route")
+        elif canonical_frames and frame_name not in canonical_frames:
+            errors.append(f"candidate_frames[{index}].frame is not a canonical frame skill")
+        if frame_name in candidate_names:
+            errors.append(f"candidate_frames[{index}].frame is duplicated")
+        candidate_names.append(frame_name)
+        if not route_confidence_valid(confidence):
+            errors.append(f"candidate_frames[{index}].confidence must be a 0.0-1.0 score in 0.1 steps")
+        elif prior_confidence is not None and float(confidence) > prior_confidence + 1e-9:
+            errors.append("candidate_frames must be ordered by descending confidence")
+        else:
+            prior_confidence = float(confidence)
+        if not isinstance(reason, str) or not reason.strip():
+            errors.append(f"candidate_frames[{index}].reason must be a non-empty string")
+    needs_user_turn = body.get("needs_user_turn")
+    if not isinstance(needs_user_turn, bool):
+        errors.append("needs_user_turn must be boolean")
+    selected_frame = body.get("selected_frame")
+    if selected_frame is not None and not isinstance(selected_frame, str):
+        errors.append("selected_frame must be a string or null")
+    reason = body.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        errors.append("reason must be a non-empty string")
+    confidence = body.get("confidence")
+    if not route_confidence_valid(confidence):
+        errors.append("confidence must be a 0.0-1.0 score in 0.1 steps")
+    if candidate_names:
+        top_confidence = float(candidates[0]["confidence"]) if isinstance(candidates[0], dict) and route_confidence_valid(candidates[0].get("confidence")) else None
+        if top_confidence is not None and route_confidence_valid(confidence) and abs(float(confidence) - top_confidence) > 1e-9:
+            errors.append("confidence must match the top candidate confidence")
+        if len(candidates) >= 2 and isinstance(candidates[0], dict) and isinstance(candidates[1], dict):
+            c0 = candidates[0].get("confidence")
+            c1 = candidates[1].get("confidence")
+            if route_confidence_valid(c0) and route_confidence_valid(c1) and float(c0) - float(c1) <= 0.2 + 1e-9 and not needs_user_turn:
+                errors.append("tied top candidates require needs_user_turn=true")
+    if needs_user_turn:
+        if selected_frame is not None:
+            errors.append("needs_user_turn=true requires selected_frame to be null")
+    else:
+        if not isinstance(selected_frame, str) or not selected_frame.strip():
+            errors.append("selected_frame is required when needs_user_turn=false")
+        elif candidate_names and selected_frame != candidate_names[0]:
+            errors.append("selected_frame must match the top candidate when needs_user_turn=false")
+        elif selected_frame == COMMAND_ROUTE_SKILL:
+            errors.append("selected_frame may not be command-route")
+        elif canonical_frames and selected_frame not in canonical_frames:
+            errors.append("selected_frame is not a canonical frame skill")
+    if canonical_frames and not candidate_names and not needs_user_turn:
+        errors.append("candidate_frames must not be empty when canonical frame skills exist")
+    return errors
 
 
 def validate(role: str, body: dict[str, Any], root: Path | None = None) -> list[str]:
@@ -1292,7 +1569,117 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             state = runtime(root, event)
             if not state:
                 state = start_turn(root, event)
+            command_route_state = state.get("command_route", {}) if isinstance(state.get("command_route"), dict) else {}
+            pending_frame = command_route_state.get("pending_frame") if isinstance(command_route_state.get("pending_frame"), dict) else None
+            if pending_frame and pending_frame.get("required_skill"):
+                try:
+                    skill = resolve_frame_skill(root, platform, str(pending_frame["required_skill"]))
+                except (FileNotFoundError, ValueError, UnicodeError, OSError) as exc:
+                    command_route_state["loaded"] = False
+                    command_route_state["error"] = type(exc).__name__
+                    state["command_route"] = command_route_state
+                    save_runtime(root, event, state)
+                    atomic(turn_dir(root, state) / "turn.json", state)
+                    send_otel(root, "agent.loop.command_route.frame_load_failed", telemetry_attributes(event, platform, {"routing.mode": COMMAND_ROUTE_ROUTING_MODE, "command_route.selected_frame": pending_frame.get("required_skill"), "command_route.loaded": False}), "ERROR")
+                    return emit(prompt_block(platform, f"Mandatory frame loading failed after route selection: {exc}. Install and validate {pending_frame['required_skill']} before retrying."))
+                frame_state = {
+                    "header": str(pending_frame.get("header") or pending_frame["required_skill"]),
+                    "required_skill": str(pending_frame["required_skill"]),
+                    "loaded": True,
+                    "skill_sha256": skill["sha256"],
+                    "allow_mutations": skill["allow_mutations"],
+                }
+                state["routing_mode"] = FRAME_ROUTING_MODE
+                state["frame"] = frame_state
+                command_route_state["pending_frame"] = None
+                command_route_state["frame_loaded"] = True
+                state["command_route"] = command_route_state
+                save_runtime(root, event, state)
+                target = turn_dir(root, state)
+                atomic(target / "turn.json", state)
+                atomic(target / "command-route.json", {
+                    **command_route_state,
+                    "loaded_at": command_route_state.get("_recorded_at"),
+                    "frame_loaded_at": now(),
+                })
+                atomic(target / "frame-route.json", {
+                    "header": frame_state["header"],
+                    "skill_name": frame_state["required_skill"],
+                    "skill_sha256": frame_state["skill_sha256"],
+                    "allow_mutations": frame_state["allow_mutations"],
+                    "loaded_at": now(),
+                    "content_logged": False,
+                    "route_origin": "command-route",
+                })
+                append_jsonl(target / "journal.jsonl", {
+                    "time": now(),
+                    "event": "command-route-frame-loaded",
+                    "routing_mode": FRAME_ROUTING_MODE,
+                    "frame_header": frame_state["header"],
+                    "skill_name": frame_state["required_skill"],
+                    "skill_sha256": frame_state["skill_sha256"],
+                    "allow_mutations": frame_state["allow_mutations"],
+                    "content_logged": False,
+                    "arguments_logged": False,
+                })
+                send_otel(root, "agent.loop.command_route.frame_loaded", telemetry_attributes(event, platform, {
+                    "routing.mode": FRAME_ROUTING_MODE,
+                    "command_route.selected_frame": frame_state["required_skill"],
+                    "skill.name": frame_state["required_skill"],
+                    "command_route.loaded": True,
+                }))
+                return emit(add_context(name, frame_context(skill, frame_state["header"])))
             return emit(add_context(name, "This is an internal loop-control continuation. Preserve the existing turn and follow the instruction after the continuation marker; do not invoke Gatekeeper again."))
+        route_task = command_route(prompt)
+        if route_task is not None:
+            state = start_turn(root, event, COMMAND_ROUTE_ROUTING_MODE)
+            target = turn_dir(root, state)
+            try:
+                skill = resolve_command_route_skill(root, platform, COMMAND_ROUTE_SKILL)
+            except (FileNotFoundError, ValueError, UnicodeError, OSError) as exc:
+                state["command_route"] = {"loaded": False, "error": type(exc).__name__}
+                save_runtime(root, event, state)
+                atomic(target / "turn.json", state)
+                send_otel(root, "agent.loop.command_route.load_failed", telemetry_attributes(event, platform, {"routing.mode": COMMAND_ROUTE_ROUTING_MODE, "skill.name": COMMAND_ROUTE_SKILL, "command_route.loaded": False}), "ERROR")
+                return emit(prompt_block(platform, f"Command routing failed to load {COMMAND_ROUTE_SKILL}: {exc}."))
+            catalog = command_route_catalog(root, route_task)
+            state["command_route"] = {
+                "header": "route",
+                "required_skill": COMMAND_ROUTE_SKILL,
+                "loaded": True,
+                "skill_sha256": skill["sha256"],
+                "allow_mutations": False,
+                "content_logged": False,
+                "catalog_count": len([line for line in catalog.splitlines() if line.strip()]),
+            }
+            save_runtime(root, event, state)
+            atomic(target / "turn.json", state)
+            atomic(target / "command-route.json", {
+                "header": "route",
+                "skill_name": COMMAND_ROUTE_SKILL,
+                "skill_sha256": skill["sha256"],
+                "allow_mutations": False,
+                "loaded_at": now(),
+                "content_logged": False,
+            })
+            append_jsonl(target / "journal.jsonl", {
+                "time": now(),
+                "event": "command-route-loaded",
+                "routing_mode": COMMAND_ROUTE_ROUTING_MODE,
+                "command_route_header": "route",
+                "skill_name": COMMAND_ROUTE_SKILL,
+                "skill_sha256": skill["sha256"],
+                "allow_mutations": False,
+                "content_logged": False,
+                "arguments_logged": False,
+            })
+            send_otel(root, "agent.loop.command_route.loaded", telemetry_attributes(event, platform, {
+                "routing.mode": COMMAND_ROUTE_ROUTING_MODE,
+                "command_route.header": "route",
+                "skill.name": COMMAND_ROUTE_SKILL,
+                "command_route.loaded": True,
+            }))
+            return emit(add_context(name, command_route_context(skill, catalog, route_task)))
         direct_task = direct_route(prompt)
         if direct_task is not None:
             config = direct_config(root)
@@ -1706,6 +2093,106 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
     if name == "Stop":
         if any(isinstance(item, dict) and str(item.get("status", "")).lower() in {"running", "pending"} for item in (event.get("background_tasks") or [])):
             return 0
+        if state.get("routing_mode") == COMMAND_ROUTE_ROUTING_MODE:
+            route_body = parse_json_message(str(event.get("last_assistant_message") or ""))
+            if route_body is None:
+                return emit(block("command-route must return exactly one valid JSON object with no surrounding prose."))
+            errors = validate_command_route_report(route_body, root)
+            if errors:
+                return emit(block("Invalid command-route report: " + "; ".join(errors) + ". Return a corrected JSON object."))
+            command_route_state = state.get("command_route", {}) if isinstance(state.get("command_route"), dict) else {}
+            command_route_state.update(command_route_result(route_body))
+            command_route_state["_trusted_subagent"] = True
+            command_route_state["_recorded_at"] = now()
+            command_route_state["_assistant_message_logged"] = False
+            state["command_route"] = command_route_state
+            target = turn_dir(root, state)
+            if route_body.get("needs_user_turn"):
+                state["final_status"] = "COMMAND_ROUTE_COMPLETE"
+                state["completed_at"] = now()
+                save_runtime(root, event, state)
+                atomic(target / "turn.json", state)
+                atomic(target / "command-route.json", {**command_route_state, "loaded_at": command_route_state.get("_recorded_at")})
+                append_jsonl(target / "journal.jsonl", {
+                    "time": now(),
+                    "event": "command-route-completed",
+                    "routing_mode": COMMAND_ROUTE_ROUTING_MODE,
+                    "needs_user_turn": True,
+                    "selected_frame": None,
+                    "content_logged": False,
+                })
+                send_otel(root, "agent.loop.command_route.completed", telemetry_attributes(event, platform, {
+                    "routing.mode": COMMAND_ROUTE_ROUTING_MODE,
+                    "command_route.needs_user_turn": True,
+                    "command_route.selected_frame": None,
+                    "turn.status": "COMMAND_ROUTE_COMPLETE",
+                }))
+                return 0
+            selected = str(route_body.get("selected_frame") or "").strip()
+            if not selected:
+                return emit(block("command-route requires selected_frame when needs_user_turn is false."))
+            try:
+                frame_skill = resolve_frame_skill(root, platform, selected)
+            except (FileNotFoundError, ValueError, UnicodeError, OSError) as exc:
+                return emit(prompt_block(platform, f"Command routing selected an unavailable frame: {exc}."))
+            frame_state = {
+                "header": selected,
+                "required_skill": selected,
+                "skill_sha256": frame_skill["sha256"],
+                "allow_mutations": frame_skill["allow_mutations"],
+                "loaded": True,
+            }
+            command_route_state["selected_frame"] = selected
+            command_route_state["pending_frame"] = None
+            command_route_state["frame_loaded"] = True
+            state["command_route"] = command_route_state
+            state["routing_mode"] = FRAME_ROUTING_MODE
+            state["frame"] = frame_state
+            save_runtime(root, event, state)
+            atomic(target / "turn.json", state)
+            atomic(target / "command-route.json", {
+                **command_route_state,
+                "loaded_at": command_route_state.get("_recorded_at"),
+                "frame_loaded_at": now(),
+            })
+            atomic(target / "frame-route.json", {
+                "header": frame_state["header"],
+                "skill_name": frame_state["required_skill"],
+                "skill_sha256": frame_state["skill_sha256"],
+                "allow_mutations": frame_state["allow_mutations"],
+                "loaded_at": now(),
+                "content_logged": False,
+                "route_origin": "command-route",
+            })
+            append_jsonl(target / "journal.jsonl", {
+                "time": now(),
+                "event": "command-route-frame-loaded",
+                "routing_mode": FRAME_ROUTING_MODE,
+                "selected_frame": selected,
+                "confidence": route_body.get("confidence"),
+                "content_logged": False,
+            })
+            append_jsonl(target / "journal.jsonl", {
+                "time": now(),
+                "event": "command-route-selected",
+                "routing_mode": COMMAND_ROUTE_ROUTING_MODE,
+                "selected_frame": selected,
+                "confidence": route_body.get("confidence"),
+                "content_logged": False,
+            })
+            send_otel(root, "agent.loop.command_route.selected", telemetry_attributes(event, platform, {
+                "routing.mode": COMMAND_ROUTE_ROUTING_MODE,
+                "command_route.selected_frame": selected,
+                "command_route.needs_user_turn": False,
+                "command_route.confidence": route_body.get("confidence"),
+            }))
+            send_otel(root, "agent.loop.command_route.frame_loaded", telemetry_attributes(event, platform, {
+                "routing.mode": FRAME_ROUTING_MODE,
+                "command_route.selected_frame": selected,
+                "skill.name": selected,
+                "command_route.loaded": True,
+            }))
+            return emit(add_context(name, frame_context(frame_skill, frame_state["header"])))
         if state.get("routing_mode") == DIRECT_ROUTING_MODE:
             if state.get("watchdog", {}).get("tripped"):
                 return emit({"continue": False, "stopReason": "Watchdog tripped during direct execution.", "systemMessage": "Stop the direct task and request human intervention."})
