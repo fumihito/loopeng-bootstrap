@@ -40,8 +40,9 @@ DEFAULT_POLICY: dict[str, Any] = {
         "memory_commit_failure": 4,
         "accepted_memory_not_committed": 3,
         "unverified_learning_retrieval": 2,
-        },
-    }
+        "unverified_memory_retrieval": 2,
+    },
+}
 
 
 def utc_now() -> str:
@@ -258,7 +259,14 @@ def load_journal_events(turn_path: Path) -> list[dict[str, Any]]:
     return events
 
 
-def retrieval_verified(turn_path: Path) -> bool:
+def learning_retrieval_verified(turn_path: Path) -> bool:
+    for event in load_journal_events(turn_path):
+        if event.get("event") == "learning-state-read" and bool(event.get("learning_state_read")):
+            return True
+    return False
+
+
+def memory_retrieval_verified(turn_path: Path) -> bool:
     for event in load_journal_events(turn_path):
         names = event.get("command_names")
         if isinstance(names, list) and any(str(name) == "okfctl" for name in names):
@@ -279,7 +287,8 @@ def build_turn_observation(turn_path: Path) -> dict[str, Any]:
     memory_proposals = normalize_memory_proposals(steward.get("memory_proposals"))
     memory_assessment = normalize_memory_assessment(meta.get("memory_assessment"))
     memory_commit = normalize_memory_commit(load_json(turn_path / "memory-commit.json", {}))
-    learning_retrieval_verified = retrieval_verified(turn_path) if retrieval.get("performed") else False
+    learning_state_verified = learning_retrieval_verified(turn_path) if retrieval.get("performed") else False
+    memory_state_verified = memory_retrieval_verified(turn_path) if memory_retrieval.get("performed") else False
     expected = [
         bool(sense.get("problem_signature")),
         isinstance(sense.get("prior_learning_considered"), list),
@@ -310,7 +319,8 @@ def build_turn_observation(turn_path: Path) -> dict[str, Any]:
         "memory_proposals": memory_proposals,
         "memory_assessment": memory_assessment,
         "memory_commit": memory_commit,
-        "learning_retrieval_verified": learning_retrieval_verified,
+        "learning_retrieval_verified": learning_state_verified,
+        "memory_retrieval_verified": memory_state_verified,
         "meta_verdict": meta.get("verdict"),
         "tool_calls": int(state.get("tool_calls", 0) or 0),
         "mutations": int(state.get("mutations", 0) or 0),
@@ -402,6 +412,7 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
     accepted_memory_not_committed = 0
     memory_commit_failures = 0
     unverified_learning_retrieval = 0
+    unverified_memory_retrieval = 0
 
     for index, record in enumerate(records):
         in_window = index >= window_start_index
@@ -441,6 +452,8 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
         memory_commit = safe_dict(record.get("memory_commit"))
         if in_window and memory_retrieval.get("performed"):
             memory_retrieval_turns += 1
+            if not bool(record.get("memory_retrieval_verified")):
+                unverified_memory_retrieval += 1
         elif in_window:
             missing_memory_retrieval += 1
         if in_window:
@@ -631,6 +644,7 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
         "memory_commit_failure": memory_commit_failures,
         "accepted_memory_not_committed": accepted_memory_not_committed,
         "unverified_learning_retrieval": unverified_learning_retrieval,
+        "unverified_memory_retrieval": unverified_memory_retrieval,
     }
     debt_score = sum(int(weights.get(key, 1)) * count for key, count in debt_components.items())
 
@@ -672,6 +686,9 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
     if unverified_learning_retrieval > 0:
         degraded = True
         reasons.append("claimed learning retrieval was not backed by journal evidence")
+    if unverified_memory_retrieval > 0:
+        degraded = True
+        reasons.append("claimed OKF memory retrieval was not backed by journal evidence")
     if memory_retrieval_coverage is not None and memory_retrieval_coverage < float(policy.get("minimum_memory_retrieval_coverage", 0.9)):
         degraded = True
         reasons.append("OKF LLMWiki retrieval was not performed consistently")
@@ -732,6 +749,7 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
             "unknown_lesson_reference_count": unknown_lesson_references,
             "missing_learning_retrieval_count": missing_learning_retrieval,
             "unverified_learning_retrieval_count": unverified_learning_retrieval,
+            "unverified_memory_retrieval_count": unverified_memory_retrieval,
             "unconsidered_relevant_lesson_count": unconsidered_relevant_lessons,
             "unassessed_reuse_count": unassessed_reuse_events,
             "learning_chain_completion_rate": learning_chain_completion_rate,

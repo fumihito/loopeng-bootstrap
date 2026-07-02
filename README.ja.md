@@ -14,7 +14,7 @@ Loop engineering 向けの Codex と Claude Code の基礎的な設定です。
 
 この SVG により、ループの境界が明示されます。状態、メモリ、人間のポリシー更新が、次のターンを立ち上げる入力になります。
 
-systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bin/next_turn_scheduler_daemon.py` と `.agent-loop/systemd/agent-loop-scheduler.service` があり、`next-turn.json` を監視して scheduler state を記録し、次のターンが準備できたときは設定済みの trigger command を実行できます。各ターンは `gatekeeper-prompt.json` と `trigger_cadence` も保存するため、次ターンの開始文を機械可読な形で再現できます。
+systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bin/next_turn_scheduler_daemon.py` と `.agent-loop/systemd/agent-loop-scheduler.service` があり、`next-turn.json` を監視して scheduler state を記録し、次のターンが準備できたときは設定済みの trigger command を実行できます。各ターンは `gatekeeper-prompt.json` と正規化済み `trigger_cadence`（`immediate` / `manual` / `external-user-prompt` / `on-event:<name>`）も保存するため、次ターンの開始文を機械可読な形で再現できます。Gatekeeper の `validation_commands` は policy の allowlist からのみ実行されます。
 
 ## 入口モード
 

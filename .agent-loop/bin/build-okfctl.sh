@@ -17,5 +17,6 @@ GOWORK=off GOCACHE="$GOCACHE" go build -trimpath -ldflags='-s -w' -o "$TMP" "$SO
 chmod 0755 "$TMP"
 mv "$TMP" "$BINARY"
 trap - EXIT HUP INT TERM
-sha256sum "$BINARY" | awk '{print $1 "  " $2}' > "$SHA_FILE"
+# This checksum only detects accidental drift in the local build tree; it is not a tamper-proof trust boundary.
+sha256sum "$BINARY" | awk '{print $1 "  okfctl.bin"}' > "$SHA_FILE"
 "$BINARY" version

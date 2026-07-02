@@ -131,6 +131,8 @@ PROPOSED
 
 完了ターンのうち、Sensemakerが過去learning stateを検索し、候補と関連lessonを明示した割合です。検索不能だった場合は理由を記録します。
 
+この証拠は Read ツールで learning state を参照した journal 記録から判定します。`okfctl` の実行痕跡は memory retrieval の証拠であり、learning retrieval とは区別します。
+
 ### learning_reuse_rate
 
 `learning_retrieval.relevant_lesson_ids`が一つ以上あるターンのうち、Sensemakerが関連lessonを明示的に検討した割合です。単に過去lessonが存在するだけの無関係なターンは分母に含めません。

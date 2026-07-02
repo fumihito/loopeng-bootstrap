@@ -116,14 +116,16 @@ def cadence_allows_auto_trigger(cadence: Any) -> bool:
     value = str(cadence or "").strip().lower()
     if not value or value in {"immediate", "external-user-prompt"}:
         return True
-    if value.startswith("manual"):
+    if value == "manual":
         return False
-    return not value.startswith("on-event:")
+    if value.startswith("on-event:"):
+        return False
+    return False
 
 
 def cadence_needs_notification(cadence: Any) -> bool:
     value = str(cadence or "").strip().lower()
-    return bool(value) and value not in {"immediate", "external-user-prompt"} and not value.startswith("manual")
+    return bool(value) and value not in {"immediate", "external-user-prompt", "manual"} and not value.startswith("on-event:")
 
 
 def discover_handoffs(root: Path) -> list[tuple[Path, dict[str, Any]]]:
@@ -265,7 +267,17 @@ def process_once(root: Path) -> dict[str, Any]:
         summary["ready_count"] += 1
         trigger_info: dict[str, Any] = {"scheduler_action": "recorded"}
         command = policy["trigger_command"]
-        if command and cadence_allows_auto_trigger(handoff.get("trigger_cadence")):
+        cadence = handoff.get("trigger_cadence")
+        cadence_kind = "unknown"
+        if isinstance(cadence, str):
+            normalized = cadence.strip().lower()
+            if normalized in {"", "immediate", "external-user-prompt"}:
+                cadence_kind = "immediate"
+            elif normalized == "manual":
+                cadence_kind = "manual"
+            elif normalized.startswith("on-event:"):
+                cadence_kind = "on-event"
+        if command and cadence_allows_auto_trigger(cadence):
             try:
                 trigger_info = run_trigger(command, context, policy["trigger_command_timeout_seconds"])
                 if trigger_info["scheduler_action"] == "triggered":
@@ -289,6 +301,30 @@ def process_once(root: Path) -> dict[str, Any]:
                     "command_error": str(exc),
                 }
                 summary["failed_count"] += 1
+        elif command and cadence_needs_notification(cadence):
+            trigger_info = {"scheduler_action": "skipped_unknown_cadence"}
+            summary["skipped_count"] += 1
+            command = policy["notification_command"]
+            if command:
+                try:
+                    notification_context = {**context, "scheduler_action": "notification"}
+                    trigger_info = run_trigger(command, notification_context, policy["trigger_command_timeout_seconds"])
+                    trigger_info["scheduler_action"] = "notified" if trigger_info["scheduler_action"] == "triggered" else trigger_info["scheduler_action"]
+                except subprocess.TimeoutExpired as exc:
+                    trigger_info = {
+                        "scheduler_action": "notification_failed",
+                        "error": "timeout",
+                        "timeout_seconds": policy["trigger_command_timeout_seconds"],
+                        "command": format_args(command, context),
+                        "command_error": str(exc),
+                    }
+                except OSError as exc:
+                    trigger_info = {
+                        "scheduler_action": "notification_failed",
+                        "error": type(exc).__name__,
+                        "command": format_args(command, context),
+                        "command_error": str(exc),
+                    }
         elif command:
             trigger_info = {"scheduler_action": "skipped_manual_cadence"}
             summary["skipped_count"] += 1

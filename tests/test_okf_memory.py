@@ -163,6 +163,7 @@ class MemoryHookIntegrationTests(unittest.TestCase):
         self.call(start)
         fields = ["outcome", "discovery_scope", "authority_envelope", "evaluation_contract", "persistence_contract", "learning_contract", "memory_contract", "stop_conditions", "escalation_contract", "trigger_cadence"]
         brief = {field: [field] for field in fields}
+        brief["trigger_cadence"] = "external-user-prompt"
         gate = {
             "role": "gatekeeper", "verdict": "READY", "mode": "AUTONOMOUS_LOOP",
             "condition_checklist": {field: True for field in fields},
@@ -171,6 +172,7 @@ class MemoryHookIntegrationTests(unittest.TestCase):
             "handoff_to_loop_brief_assistant": False, "assistant_handoff_reason": "NONE", "handoff_to_sensemaker": "frame it",
             "brief_pattern_directive": {"action": "NONE", "reason": "not requested"},
             "brief_pattern_assessment": {"accepted_proposal_ids": [], "rejected_proposal_ids": [], "challenged_proposal_ids": [], "duplicate_pattern_ids": [], "required_corrections": []},
+            "validation_commands": [],
         }
         self.assertEqual(self.report("gatekeeper", gate), {})
         sense = {

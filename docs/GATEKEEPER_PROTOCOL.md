@@ -25,6 +25,8 @@ Gatekeeper evaluates ten fields:
 
 It also classifies risk, detects irreversible operations and conflicting principals, and decides whether the request is an autonomous loop or advisory-only work.
 
+Gatekeeper output may also include `validation_commands`, but the hook only executes argv arrays that are present in `.agent-loop/policy.json` under `validation_command_allowlist`. Unlisted commands are rejected before execution. `trigger_cadence` must be one of `immediate`, `manual`, `external-user-prompt`, or `on-event:<safe-name>`.
+
 ## Verdicts
 
 ### READY

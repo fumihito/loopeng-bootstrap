@@ -81,4 +81,4 @@ The main loop is present and enforced, but it is implemented as a distributed se
 
 The repository now contains a dedicated Integrator implementation, a concrete next-turn handoff path, a deterministic continuation prompt bundle, support for read-only turn completion, and a persistent scheduler daemon suitable for systemd user service deployment.
 
-The remaining structural gaps are documentation-level only: the Mermaid diagram still abstracts the scheduler as an external trigger, the extra loop branches are intentionally omitted from the main DAG to keep the visual boundary readable, and the diagram does not spell out the prompt artifact and cadence metadata now written at turn completion.
+The follow-up defects from the companion review are now implemented and covered by targeted tests. What remains is deliberate diagram abstraction: the Mermaid view still compresses the scheduler into an external trigger, omits the extra loop branches to keep the boundary readable, and does not spell out the prompt artifact, cadence metadata, validation allowlist, or evidence distinctions enforced at turn completion.

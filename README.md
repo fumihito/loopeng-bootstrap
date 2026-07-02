@@ -15,7 +15,7 @@ Main roles are: Gatekeeper, Loop Brief Assistant, Sensemaker, Governor, State St
 The SVG above makes the loop boundary explicit: state, memory, and human policy changes are the outputs that seed the next turn.
 
 The repository also ships a systemd-backed scheduler daemon at `.agent-loop/bin/next_turn_scheduler_daemon.py` with a matching unit file at `.agent-loop/systemd/agent-loop-scheduler.service`. It polls `next-turn.json` handoffs, records scheduler state, and can run a configured trigger command when the next turn is ready.
-Each completed loop turn also writes a deterministic `gatekeeper-prompt.json` artifact and records `trigger_cadence` so the next turn can start from a machine-readable prompt bundle without manual reconstruction.
+Each completed loop turn also writes a deterministic `gatekeeper-prompt.json` artifact and records normalized `trigger_cadence` values (`immediate`, `manual`, `external-user-prompt`, or `on-event:<name>`) so the next turn can start from a machine-readable prompt bundle without manual reconstruction. Gatekeeper `validation_commands` are executed only from the policy allowlist.
 
 ## Entry Modes
 

@@ -64,7 +64,7 @@ class LoopBriefPatternMemoryTests(unittest.TestCase):
             "memory_contract": {"format": "OKF 0.1", "input_pattern_memory": {"read": True, "save": True}, "excluded": ["secrets", "raw prompts"]},
             "stop_conditions": ["PASS", "budget exceeded"],
             "escalation_contract": ["value conflict", "production access"],
-            "trigger_cadence": "on CI failure",
+            "trigger_cadence": "on-event:ci-failure",
         }
 
     def gate(self, *, capture, accepted=None):
@@ -84,6 +84,7 @@ class LoopBriefPatternMemoryTests(unittest.TestCase):
                 "rejected_proposal_ids": [], "challenged_proposal_ids": [],
                 "duplicate_pattern_ids": [], "required_corrections": [],
             },
+            "validation_commands": [],
         }
 
     def assistant_report(self):
@@ -199,7 +200,8 @@ No external citation is required for this internal operating-contract pattern.
         self.assertNotIn("Pattern\n", matched.stdout)
 
         after = self.call(stop)
-        self.assertIn("sensemaker", after["reason"])
+        message = after.get("reason") or after.get("stopReason") or ""
+        self.assertIn("sensemaker", message)
 
     def test_pattern_suggestion_must_be_confirmed(self):
         session, turn = "reuse-session", "reuse-turn"

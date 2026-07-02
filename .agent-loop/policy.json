@@ -8,6 +8,7 @@
   "require_meta_evaluator_after_mutation": true,
   "require_state_steward_on_completion": false,
   "require_meta_evaluator_on_completion": false,
+  "validation_command_allowlist": [],
   "max_stop_continuations": 4,
   "max_tool_calls_per_turn": 80,
   "max_mutations_per_turn": 30,

@@ -22,6 +22,8 @@ if [ ! -x "$BINARY" ] || [ "$SOURCE" -nt "$BINARY" ]; then
   chmod 0755 "$TMP"
   mv "$TMP" "$BINARY"
   trap - EXIT HUP INT TERM
+  # This checksum only detects accidental drift in the local build tree; it is not a tamper-proof trust boundary.
+  sha256sum "$BINARY" | awk '{print $1 "  okfctl.bin"}' > "$SHA_FILE"
 fi
 if [ -f "$SHA_FILE" ]; then
   EXPECTED=$(awk '{print $1}' "$SHA_FILE")

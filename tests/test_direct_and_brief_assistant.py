@@ -55,6 +55,8 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
 
     def gatekeeper(self, verdict, brief=None):
         brief = brief or {field: None for field in FIELDS}
+        if not isinstance(brief.get("trigger_cadence"), str):
+            brief = {**brief, "trigger_cadence": "external-user-prompt"}
         checklist = {field: bool(brief.get(field)) for field in FIELDS}
         return {
             "role": "gatekeeper",
@@ -72,6 +74,7 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
             "handoff_to_sensemaker": "Frame this brief." if verdict == "READY" else "",
             "brief_pattern_directive": {"action": "NONE", "reason": "pattern capture not requested"},
             "brief_pattern_assessment": {"accepted_proposal_ids": [], "rejected_proposal_ids": [], "challenged_proposal_ids": [], "duplicate_pattern_ids": [], "required_corrections": []},
+            "validation_commands": [],
         }
 
     def test_direct_mode_bypasses_gatekeeper_and_is_read_only(self):
@@ -162,7 +165,7 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
             "memory_contract": {"format": "OKF 0.1", "eligible": ["failure patterns"], "excluded": ["secrets"], "promoter": "memory-curator"},
             "stop_conditions": ["PASS", "budget exceeded"],
             "escalation_contract": ["value conflict", "production access required"],
-            "trigger_cadence": "one controlled turn",
+            "trigger_cadence": "external-user-prompt",
         }
         ready = {
             "role": "loop-brief-assistant",
