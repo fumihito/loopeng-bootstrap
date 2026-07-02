@@ -154,17 +154,20 @@ class SopRoutingTests(unittest.TestCase):
             "background_tasks": [],
             "last_assistant_message": json.dumps(self.command_route_body(
                 [
-                    {"frame": "frame-plandev", "confidence": 0.6, "reason": "delivery planning"},
-                    {"frame": "frame-first-principles", "confidence": 0.5, "reason": "decomposition needed"},
+                    {"frame": "frame-plandev", "confidence": 0.9, "reason": "delivery planning"},
+                    {"frame": "frame-first-principles", "confidence": 0.9, "reason": "decomposition needed"},
                 ],
                 None,
                 True,
                 "the request is ambiguous",
-                0.6,
+                0.9,
             )),
         })
         result = self.call(report, "claude")
-        self.assertEqual(result, {})
+        self.assertEqual(result["stopReason"], "Command routing requires additional user input.")
+        self.assertIn("frame-plandev", result["systemMessage"])
+        self.assertIn("frame-first-principles", result["systemMessage"])
+        self.assertIn("the request is ambiguous", result["systemMessage"])
         state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(state["final_status"], "COMMAND_ROUTE_COMPLETE")
         self.assertTrue(state["command_route"]["needs_user_turn"])

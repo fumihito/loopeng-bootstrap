@@ -528,6 +528,38 @@ def command_route_context(skill: dict[str, Any], catalog: str, route_task: str) 
     )
 
 
+def command_route_user_turn(route_body: dict[str, Any]) -> dict[str, Any]:
+    def format_confidence(value: Any) -> str:
+        if isinstance(value, (int, float)):
+            return f"{float(value):.1f}"
+        return str(value)
+
+    candidates = route_body.get("candidate_frames")
+    top_lines = ["Command routing needs more context before selecting a frame."]
+    if isinstance(candidates, list) and candidates:
+        first = candidates[0] if isinstance(candidates[0], dict) else {}
+        frame = first.get("frame")
+        confidence = first.get("confidence")
+        if isinstance(frame, str) and frame.strip():
+            top_lines.append(f"Top candidate: {frame} ({format_confidence(confidence)}).")
+        if len(candidates) >= 2 and isinstance(candidates[1], dict):
+            runner_up = candidates[1]
+            runner_frame = runner_up.get("frame")
+            runner_confidence = runner_up.get("confidence")
+            if isinstance(runner_frame, str) and runner_frame.strip():
+                top_lines.append(f"Runner-up: {runner_frame} ({format_confidence(runner_confidence)}).")
+    route_reason = route_body.get("reason")
+    if isinstance(route_reason, str) and route_reason.strip():
+        top_lines.append(route_reason.strip())
+    top_lines.append("Please clarify the intended task so a single frame can be selected.")
+    message = " ".join(top_lines)
+    return {
+        "continue": False,
+        "stopReason": "Command routing requires additional user input.",
+        "systemMessage": message,
+    }
+
+
 def prompt_block(platform: str, reason: str) -> dict[str, Any]:
     value: dict[str, Any] = {"decision": "block", "reason": reason}
     if platform == "claude":
@@ -2127,7 +2159,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                     "command_route.selected_frame": None,
                     "turn.status": "COMMAND_ROUTE_COMPLETE",
                 }))
-                return 0
+                return emit(command_route_user_turn(route_body))
             selected = str(route_body.get("selected_frame") or "").strip()
             if not selected:
                 return emit(block("command-route requires selected_frame when needs_user_turn is false."))
