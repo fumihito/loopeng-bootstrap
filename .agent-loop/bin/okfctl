@@ -4,6 +4,7 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(CDPATH= cd -- "$SELF_DIR/../.." && pwd)
 SOURCE="$ROOT/.agent-loop/cmd/okfctl/main.go"
 BINARY="$ROOT/.agent-loop/bin/okfctl.bin"
+SHA_FILE="$ROOT/.agent-loop/bin/okfctl.bin.sha256"
 if [ ! -f "$SOURCE" ]; then
   echo "okfctl: missing Go source: $SOURCE" >&2
   exit 1
@@ -21,5 +22,13 @@ if [ ! -x "$BINARY" ] || [ "$SOURCE" -nt "$BINARY" ]; then
   chmod 0755 "$TMP"
   mv "$TMP" "$BINARY"
   trap - EXIT HUP INT TERM
+fi
+if [ -f "$SHA_FILE" ]; then
+  EXPECTED=$(awk '{print $1}' "$SHA_FILE")
+  ACTUAL=$(sha256sum "$BINARY" | awk '{print $1}')
+  if [ "$EXPECTED" != "$ACTUAL" ]; then
+    echo "okfctl: checksum mismatch for $BINARY" >&2
+    exit 1
+  fi
 fi
 exec "$BINARY" "$@"

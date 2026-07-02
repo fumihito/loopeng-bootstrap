@@ -12,9 +12,10 @@ The core loop is largely implemented as a hook-driven policy system:
 - `sop-<header>` routing exists and is isolated from the autonomous loop.
 - Gatekeeper, Loop Brief Assistant, Sensemaker, Governor, State Steward, Meta-Evaluator, Memory Curator, Watchdog / Recovery, and Learning Auditor are all present as role contracts and enforced hook paths.
 
-The main gaps are structural rather than safety-related:
+The main structural additions are now:
 
-- the repository now contains a long-running scheduler daemon and a matching systemd unit that consume the deterministic next-turn handoff artifact;
+- the repository contains a long-running scheduler daemon and a matching systemd unit that consume the deterministic next-turn handoff artifact;
+- each completed loop turn writes a machine-readable `gatekeeper-prompt.json` bundle and carries `trigger_cadence` forward;
 - the repository has extra loop branches that the diagram does not show, especially `brief-pattern-curator` and `PATTERN_CAPTURE`.
 
 ## Mapping
@@ -36,9 +37,9 @@ The main gaps are structural rather than safety-related:
 | `Watchdog` / `Recovery` | Implemented | `ROLES` includes `watchdog-recovery`; the hook trips on failures and requires human reset. | The diagram compresses runtime monitoring and human reset into one node. |
 | `Learning Observer` | Implemented | `docs/LEARNING_OBSERVABILITY.md` defines the observer pipeline and metrics; the hook records learning observations at turn completion. | None. |
 | `Learning Auditor` | Implemented | `ROLES` includes `learning-auditor`; `sop-learning-audit` is read-only and isolated. | None. |
-| `Scheduler / external trigger` | Implemented as daemon + handoff artifact | `Stop` writes `next-turn.json`; `.agent-loop/bin/next_turn_scheduler.py` reports or validates the handoff; `.agent-loop/bin/next_turn_scheduler_daemon.py` polls ready handoffs and can run a configured trigger command under systemd. | None. |
-| `Turn completed` | Implemented as hook finalization | `Stop` handling in `loop_hook.py` sets `final_status` and writes runtime state. | None. |
-| `Next loop execution` | Implemented as scheduler handoff | The repo now preserves `next-turn.json` as a concrete machine-readable trigger and exposes a daemon that consumes it. | None. |
+| `Scheduler / external trigger` | Implemented as daemon + handoff artifact | `Stop` writes `next-turn.json`; `gatekeeper-prompt.json` preserves the deterministic continuation prompt; `.agent-loop/bin/next_turn_scheduler.py` reports or validates the handoff; `.agent-loop/bin/next_turn_scheduler_daemon.py` polls ready handoffs and can run configured trigger or notification commands under systemd. | None. |
+| `Turn completed` | Implemented as hook finalization | `Stop` handling in `loop_hook.py` sets `final_status`, records read-only completions, and writes runtime state. | None. |
+| `Next loop execution` | Implemented as scheduler handoff | The repo now preserves `next-turn.json` plus a deterministic prompt bundle and exposes a daemon that consumes them. | None. |
 
 ## Additional repository behavior not shown in the diagram
 
@@ -78,6 +79,6 @@ These are not missing features. They are extra implementation constraints that m
 
 The main loop is present and enforced, but it is implemented as a distributed set of hooks, role contracts, runtime files, and policy checks rather than as a single orchestrated DAG executor.
 
-The repository now contains a dedicated Integrator implementation, a concrete next-turn handoff path, and a persistent scheduler daemon suitable for systemd user service deployment.
+The repository now contains a dedicated Integrator implementation, a concrete next-turn handoff path, a deterministic continuation prompt bundle, support for read-only turn completion, and a persistent scheduler daemon suitable for systemd user service deployment.
 
-The remaining structural gaps are documentation-level only: the Mermaid diagram still abstracts the scheduler as an external trigger, and the extra loop branches are intentionally omitted from the main DAG to keep the visual boundary readable.
+The remaining structural gaps are documentation-level only: the Mermaid diagram still abstracts the scheduler as an external trigger, the extra loop branches are intentionally omitted from the main DAG to keep the visual boundary readable, and the diagram does not spell out the prompt artifact and cadence metadata now written at turn completion.

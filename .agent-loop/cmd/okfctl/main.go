@@ -41,6 +41,12 @@ var (
 		regexp.MustCompile(`(?i)\b(?:password|passwd|secret|token|api[_-]?key)\s*[:=]\s*[^\s]{8,}`),
 		regexp.MustCompile(`(?i)authorization:\s*bearer\s+[A-Za-z0-9._~+/-]+=*`),
 	}
+	instructionLikePatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)ignore (?:the )?(?:above|previous|prior) instructions`),
+		regexp.MustCompile(`(?i)system prompt`),
+		regexp.MustCompile(`(?i)developer message`),
+		regexp.MustCompile(`(?i)you are chatgpt`),
+	}
 )
 
 type Frontmatter map[string]any
@@ -903,6 +909,12 @@ func parseConcept(root, path string, data []byte) (Concept, []Finding) {
 	}
 	if containsSecret(data) {
 		findings = append(findings, Finding{"ERROR", display, "secret-like token detected"})
+	}
+	for _, pattern := range instructionLikePatterns {
+		if pattern.MatchString(body) {
+			findings = append(findings, Finding{"WARN", display, "instruction-like language detected; review provenance before reuse"})
+			break
+		}
 	}
 	return concept, findings
 }

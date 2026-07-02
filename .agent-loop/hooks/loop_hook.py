@@ -161,25 +161,128 @@ def next_turn_handoff_path(root: Path, state: dict[str, Any]) -> Path:
     return turn_dir(root, state) / "next-turn.json"
 
 
+def artifact_sha256(path: Path) -> str | None:
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return None
+    return hashlib.sha256(data).hexdigest()
+
+
+def turn_artifact_ref(root: Path, state: dict[str, Any], name: str) -> dict[str, Any] | None:
+    path = turn_dir(root, state) / name
+    if not path.exists():
+        return None
+    ref: dict[str, Any] = {
+        "path": str(path.relative_to(root)),
+        "sha256": artifact_sha256(path),
+    }
+    if path.is_file():
+        ref["bytes"] = path.stat().st_size
+    return ref
+
+
+def compose_gatekeeper_prompt(state: dict[str, Any], loop_brief: dict[str, Any], steward: dict[str, Any]) -> str:
+    lines = [
+        "Gatekeeper follow-up turn",
+        f"Source turn: {state.get('turn_id')}",
+        f"Session: {state.get('session_id')}",
+        f"Completed status: {state.get('final_status')}",
+        "",
+        "Use the normalized Loop Brief below as the active contract.",
+        json.dumps(loop_brief, indent=2, ensure_ascii=False, sort_keys=True) if loop_brief else "{}",
+    ]
+    if steward:
+        lines.extend([
+            "",
+            "State Steward follow-up summary:",
+            json.dumps(
+                {
+                    "decisions": steward.get("decisions", []),
+                    "open_questions": steward.get("open_questions", []),
+                    "next_state": steward.get("next_state"),
+                    "artifacts": steward.get("artifacts", []),
+                },
+                indent=2,
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+        ])
+    lines.extend([
+        "",
+        "Instruction:",
+        "Revalidate the contract, ask for missing information if needed, and continue through Gatekeeper.",
+    ])
+    return "\n".join(lines).strip() + "\n"
+
+
 def write_next_turn_handoff(root: Path, state: dict[str, Any]) -> dict[str, Any]:
+    target = turn_dir(root, state)
+    loop_brief = load(target / "loop-brief.json", {})
+    steward = load(target / "state-steward.json", {})
+    prompt = compose_gatekeeper_prompt(state, loop_brief if isinstance(loop_brief, dict) else {}, steward if isinstance(steward, dict) else {})
+    prompt_path = target / "gatekeeper-prompt.json"
+    atomic(prompt_path, {"prompt": prompt})
     handoff = {
         "source_turn_id": state.get("turn_id"),
         "session_id": state.get("session_id"),
         "routing_mode": state.get("routing_mode"),
         "final_status": state.get("final_status"),
         "ready_for_next_turn": state.get("routing_mode") == LOOP_ROUTING_MODE and state.get("final_status") == "PASS",
-        "next_entry_role": "gatekeeper",
+        "next_entry_role": "gatekeeper" if state.get("routing_mode") == LOOP_ROUTING_MODE and state.get("final_status") == "PASS" else "human",
         "trigger_kind": "external-user-prompt",
         "started_at": state.get("started_at"),
         "completed_at": state.get("completed_at"),
-        "resume_hint": "Submit the next ordinary user message to enter Gatekeeper.",
+        "trigger_cadence": loop_brief.get("trigger_cadence") if isinstance(loop_brief, dict) else None,
+        "resume_hint": "Submit the next ordinary user message to enter Gatekeeper." if state.get("routing_mode") == LOOP_ROUTING_MODE and state.get("final_status") == "PASS" else "Resolve the terminal condition before resuming.",
+        "loop_brief_ref": turn_artifact_ref(root, state, "loop-brief.json"),
+        "state_steward_ref": turn_artifact_ref(root, state, "state-steward.json"),
+        "gatekeeper_prompt_ref": turn_artifact_ref(root, state, "gatekeeper-prompt.json"),
     }
+    if handoff["ready_for_next_turn"]:
+        handoff["gatekeeper_prompt_preview"] = prompt[:2000]
     atomic(next_turn_handoff_path(root, state), handoff)
     return handoff
 
 
 def turn_dir(root: Path, state: dict[str, Any]) -> Path:
     return root / ".agent-loop/runtime/turns" / safe(state.get("turn_id"))
+
+
+def protected_path_snapshot(root: Path, policy: dict[str, Any]) -> dict[str, str]:
+    snapshot: dict[str, str] = {}
+    protected = [str(value) for value in policy.get("protected_path_fragments", []) if str(value).strip()]
+    for fragment in protected:
+        base = root / fragment
+        if not base.exists():
+            continue
+        if base.is_file():
+            try:
+                snapshot[str(base.relative_to(root))] = artifact_sha256(base) or ""
+            except ValueError:
+                continue
+            continue
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(root).as_posix()
+            if rel.startswith(".agent-loop/runtime/") or rel.startswith(".agent-loop/state/"):
+                continue
+            digest = artifact_sha256(path)
+            if digest:
+                snapshot[rel] = digest
+    return snapshot
+
+
+def protected_path_drift(root: Path, state: dict[str, Any], policy: dict[str, Any]) -> list[str]:
+    baseline = state.get("protected_snapshot")
+    if not isinstance(baseline, dict) or not baseline:
+        return []
+    current = protected_path_snapshot(root, policy)
+    drifted = sorted(path for path, digest in baseline.items() if current.get(path) != digest)
+    return drifted
 
 
 def matches(patterns: list[str], text: str) -> bool:
@@ -704,6 +807,38 @@ def apply_memory_report(root: Path, target: Path, report_path: Path, result_file
     return completed.returncode == 0 and bool(result.get("ok")), result
 
 
+def run_validation_commands(root: Path, target: Path, commands: list[Any]) -> tuple[bool, dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    ok = True
+    for item in commands:
+        if isinstance(item, str):
+            try:
+                argv = shlex.split(item)
+            except ValueError:
+                argv = []
+        elif isinstance(item, list) and all(isinstance(part, str) for part in item):
+            argv = [str(part) for part in item]
+        else:
+            argv = []
+        if not argv:
+            ok = False
+            results.append({"command": item, "returncode": None, "error": "invalid command"})
+            continue
+        completed = subprocess.run(argv, cwd=root, text=True, capture_output=True, timeout=120, check=False)
+        item_result = {
+            "command": argv,
+            "returncode": completed.returncode,
+            "stdout_digest": hashlib.sha256(completed.stdout.encode("utf-8", errors="replace")).hexdigest(),
+            "stderr_digest": hashlib.sha256(completed.stderr.encode("utf-8", errors="replace")).hexdigest(),
+        }
+        results.append(item_result)
+        if completed.returncode != 0:
+            ok = False
+    payload = {"ok": ok, "commands": results}
+    atomic(target / "validation.json", payload)
+    return ok, payload
+
+
 def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTING_MODE) -> dict[str, Any]:
     turn_id = event.get("turn_id") or hashlib.sha256(f"{event.get('session_id')}|{event.get('prompt')}|{time.time_ns()}".encode()).hexdigest()[:16]
     state = {
@@ -722,6 +857,7 @@ def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTI
         state["entry_role"] = LOOP_BRIEF_ASSISTANT_ROLE
     else:
         state["entry_role"] = "gatekeeper"
+    state["protected_snapshot"] = protected_path_snapshot(root, load(root / ".agent-loop/policy.json", {}))
     save_runtime(root, event, state)
     target = turn_dir(root, state)
     target.mkdir(parents=True, exist_ok=True)
@@ -1414,10 +1550,22 @@ def continuation(root: Path, event: dict[str, Any], state: dict[str, Any], polic
         reason = CONTINUATION_MARKER + " " + reason
     count = int(state.get("stop_continuations", 0)) + 1
     state["stop_continuations"] = count
+    if count > int(policy.get("max_stop_continuations", 4)):
+        state["final_status"] = "GATE_EXHAUSTED"
+        state["completed_at"] = now()
+        save_runtime(root, event, state)
+        target = turn_dir(root, state)
+        atomic(target / "turn.json", state)
+        write_next_turn_handoff(root, state)
+        append_jsonl(target / "journal.jsonl", {
+            "time": now(),
+            "event": "loop-control-gate-exhausted",
+            "routing_mode": state.get("routing_mode"),
+            "content_logged": False,
+        })
+        return emit({"continue": False, "stopReason": "Loop control gate could not be satisfied; human intervention is required.", "systemMessage": reason})
     save_runtime(root, event, state)
     atomic(turn_dir(root, state) / "turn.json", state)
-    if count > int(policy.get("max_stop_continuations", 4)):
-        return emit({"continue": False, "stopReason": "Loop control gate could not be satisfied; human intervention is required.", "systemMessage": reason})
     return emit(block(reason))
 
 
@@ -1804,6 +1952,24 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
     if not state:
         state = start_turn(root, event)
     target = turn_dir(root, state)
+
+    drift = protected_path_drift(root, state, policy)
+    if drift and name in {"Stop", "SubagentStop"}:
+        reasons = state.setdefault("watchdog", {}).get("reasons", [])
+        if isinstance(reasons, list):
+            reasons.extend([f"protected path drift: {item}" for item in drift])
+        state["watchdog"] = {"tripped": True, "reasons": reasons, "tripped_at": now()}
+        save_runtime(root, event, state)
+        append_jsonl(target / "journal.jsonl", {
+            "time": now(),
+            "event": "protected-path-drift",
+            "paths": drift,
+            "content_logged": False,
+        })
+        message = "Protected path drift detected: " + ", ".join(drift)
+        if name == "Stop":
+            return emit({"continue": False, "stopReason": "Protected path drift detected; human intervention is required.", "systemMessage": message})
+        return emit(add_context(name, message))
 
     if name == "SubagentStart":
         agent_type = safe_identity(event.get("agent_type"))
@@ -2319,33 +2485,75 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             recovery = load(target / "watchdog-recovery.json", {})
             if not recovery.get("_trusted_subagent"):
                 return continuation(root, event, state, policy, "Watchdog is tripped. Invoke watchdog-recovery, then ask a human to reset the watchdog.")
+            state["final_status"] = "WATCHDOG_TRIPPED"
+            state["completed_at"] = now()
+            save_runtime(root, event, state)
+            write_next_turn_handoff(root, state)
+            append_jsonl(target / "journal.jsonl", {
+                "time": now(),
+                "event": "watchdog-tripped",
+                "routing_mode": state.get("routing_mode"),
+                "content_logged": False,
+            })
             return emit({"continue": False, "stopReason": "Watchdog remains tripped; human reset is required.", "systemMessage": "A trusted recovery report exists, but only a human may reset the Watchdog."})
-        if int(state.get("mutations", 0)) <= 0:
-            return 0
-        epoch = int(state.get("mutation_epoch", 0))
-        if policy.get("require_state_steward_after_mutation", True):
-            steward = load(target / "state-steward.json", {})
-            if not steward.get("_trusted_subagent") or int(steward.get("_mutation_epoch", -1)) != epoch:
-                return continuation(root, event, state, policy, "Invoke state-steward for the current mutation epoch and wait for its trusted JSON report.")
-        if policy.get("require_meta_evaluator_after_mutation", True):
-            evaluator = load(target / "meta-evaluator.json", {})
-            if not evaluator.get("_trusted_subagent") or int(evaluator.get("_mutation_epoch", -1)) != epoch:
-                return continuation(root, event, state, policy, "Invoke meta-evaluator for the current mutation epoch, using the frame, actual diff, validation evidence, and State Steward report.")
-            if evaluator.get("verdict") == "REVISE":
-                return continuation(root, event, state, policy, "Meta-Evaluator verdict is REVISE. Address required actions, then rerun State Steward and Meta-Evaluator. Required actions: " + json.dumps(evaluator.get("required_actions", []), ensure_ascii=False))
-            if evaluator.get("verdict") == "ESCALATE":
-                return emit({"continue": False, "stopReason": "Meta-Evaluator escalated the turn for human judgment.", "systemMessage": "Meta-Evaluator verdict: ESCALATE."})
-            memory_assessment = evaluator.get("memory_assessment") if isinstance(evaluator.get("memory_assessment"), dict) else {}
-            accepted_memory = [str(value) for value in (memory_assessment.get("accepted_proposal_ids") or [])]
-            if accepted_memory:
-                curator = load(target / "memory-curator.json", {})
-                if not curator.get("_trusted_subagent") or int(curator.get("_mutation_epoch", -1)) != epoch:
-                    return continuation(root, event, state, policy, "Meta-Evaluator accepted durable-memory proposals. Invoke memory-curator for the current mutation epoch and wait for the deterministic OKF commit.")
-                if curator.get("status") == "BLOCKED":
-                    return emit({"continue": False, "stopReason": "Memory Curator blocked durable-memory promotion.", "systemMessage": "Resolve the recorded memory conflicts or request human judgment before declaring the loop complete."})
-                commit = load(target / "memory-commit.json", {})
-                if not commit.get("ok"):
-                    return continuation(root, event, state, policy, "Memory Curator report exists but the deterministic OKF commit did not succeed. Correct and rerun memory-curator.")
+        mutations = int(state.get("mutations", 0))
+        if mutations <= 0:
+            if policy.get("require_state_steward_on_completion", False):
+                steward = load(target / "state-steward.json", {})
+                if not steward.get("_trusted_subagent"):
+                    return continuation(root, event, state, policy, "Invoke state-steward for the completed read-only turn and wait for its trusted JSON report.")
+            if policy.get("require_meta_evaluator_on_completion", False):
+                evaluator = load(target / "meta-evaluator.json", {})
+                if not evaluator.get("_trusted_subagent"):
+                    return continuation(root, event, state, policy, "Invoke meta-evaluator for the completed read-only turn and wait for its trusted JSON report.")
+        if mutations > 0:
+            epoch = int(state.get("mutation_epoch", 0))
+            if policy.get("require_state_steward_after_mutation", True):
+                steward = load(target / "state-steward.json", {})
+                if not steward.get("_trusted_subagent") or int(steward.get("_mutation_epoch", -1)) != epoch:
+                    return continuation(root, event, state, policy, "Invoke state-steward for the current mutation epoch and wait for its trusted JSON report.")
+            if policy.get("require_meta_evaluator_after_mutation", True):
+                evaluator = load(target / "meta-evaluator.json", {})
+                if not evaluator.get("_trusted_subagent") or int(evaluator.get("_mutation_epoch", -1)) != epoch:
+                    return continuation(root, event, state, policy, "Invoke meta-evaluator for the current mutation epoch, using the frame, actual diff, validation evidence, and State Steward report.")
+                if evaluator.get("verdict") == "REVISE":
+                    return continuation(root, event, state, policy, "Meta-Evaluator verdict is REVISE. Address required actions, then rerun State Steward and Meta-Evaluator. Required actions: " + json.dumps(evaluator.get("required_actions", []), ensure_ascii=False))
+                if evaluator.get("verdict") == "ESCALATE":
+                    state["final_status"] = "ESCALATE"
+                    state["completed_at"] = now()
+                    save_runtime(root, event, state)
+                    write_next_turn_handoff(root, state)
+                    append_jsonl(target / "journal.jsonl", {
+                        "time": now(),
+                        "event": "meta-evaluator-escalated",
+                        "routing_mode": state.get("routing_mode"),
+                        "content_logged": False,
+                    })
+                    return emit({"continue": False, "stopReason": "Meta-Evaluator escalated the turn for human judgment.", "systemMessage": "Meta-Evaluator verdict: ESCALATE."})
+                memory_assessment = evaluator.get("memory_assessment") if isinstance(evaluator.get("memory_assessment"), dict) else {}
+                accepted_memory = [str(value) for value in (memory_assessment.get("accepted_proposal_ids") or [])]
+                if accepted_memory:
+                    curator = load(target / "memory-curator.json", {})
+                    if not curator.get("_trusted_subagent") or int(curator.get("_mutation_epoch", -1)) != epoch:
+                        return continuation(root, event, state, policy, "Meta-Evaluator accepted durable-memory proposals. Invoke memory-curator for the current mutation epoch and wait for the deterministic OKF commit.")
+                    if curator.get("status") == "BLOCKED":
+                        return emit({"continue": False, "stopReason": "Memory Curator blocked durable-memory promotion.", "systemMessage": "Resolve the recorded memory conflicts or request human judgment before declaring the loop complete."})
+                    commit = load(target / "memory-commit.json", {})
+                    if not commit.get("ok"):
+                        return continuation(root, event, state, policy, "Memory Curator report exists but the deterministic OKF commit did not succeed. Correct and rerun memory-curator.")
+        validation_commands = gate.get("validation_commands") if isinstance(gate.get("validation_commands"), list) else []
+        validation_ok = True
+        if validation_commands:
+            validation_ok, validation_result = run_validation_commands(root, target, validation_commands)
+            state["validation"] = validation_result
+            save_runtime(root, event, state)
+            atomic(target / "turn.json", state)
+            if not validation_ok:
+                state["final_status"] = "REVISE"
+                state["completed_at"] = now()
+                save_runtime(root, event, state)
+                write_next_turn_handoff(root, state)
+                return emit({"continue": False, "stopReason": "Deterministic validation commands failed.", "systemMessage": "Inspect validation.json, correct the evaluated turn, and retry."})
         state["final_status"] = "PASS"
         state["completed_at"] = now()
         save_runtime(root, event, state)
@@ -2355,7 +2563,10 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         try:
             observation, health = observe_learning_health(root, target)
             state["learning_observation"] = {"status": "RECORDED", "observation_complete": bool(observation.get("observation_complete")), "health": health.get("health")}
+            save_runtime(root, event, state)
+            atomic(target / "turn.json", state)
             metrics = health.get("metrics", {}) if isinstance(health.get("metrics"), dict) else {}
+            epoch = int(state.get("mutation_epoch", 0))
             send_otel(root, "agent.loop.learning.turn_observed", telemetry_attributes(event, platform, {
                 "learning.observation_complete": bool(observation.get("observation_complete")),
                 "learning.lessons_recorded": len(observation.get("learning_records", [])),

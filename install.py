@@ -1211,6 +1211,15 @@ class Installer:
         # sources/layout here and leave the explicit full check to `okfctl validate`.
         okf_binary = self.repo / '.agent-loop/bin/okfctl.bin'
         if okf_binary.is_file() and os.access(okf_binary, os.X_OK) and (self.repo / 'llmwiki').is_dir():
+            sha_file = self.repo / '.agent-loop/bin/okfctl.bin.sha256'
+            if sha_file.is_file():
+                try:
+                    expected = sha_file.read_text(encoding='utf-8').split()[0]
+                    actual = self.sha256_file(okf_binary)
+                    if expected != actual:
+                        errors.append('OKF okfctl binary checksum does not match .agent-loop/bin/okfctl.bin.sha256')
+                except (OSError, IndexError) as exc:
+                    errors.append(f'cannot verify okfctl checksum file: {type(exc).__name__}: {exc}')
             try:
                 completed = subprocess.run(
                     [str(okf_binary), 'validate', '--root', 'llmwiki', '--json'],

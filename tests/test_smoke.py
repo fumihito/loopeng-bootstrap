@@ -318,11 +318,65 @@ class IntegrationTest(unittest.TestCase):
         handoff = json.loads((self.repo / ".agent-loop/runtime/turns/turn-main/next-turn.json").read_text())
         self.assertTrue(handoff["ready_for_next_turn"])
         self.assertEqual(handoff["next_entry_role"], "gatekeeper")
+        self.assertTrue((self.repo / ".agent-loop/runtime/turns/turn-main/gatekeeper-prompt.json").exists())
+        self.assertIn("trigger_cadence", handoff)
         scheduler = subprocess.run(
             [sys.executable, str(self.repo / ".agent-loop/bin/next_turn_scheduler.py"), "validate", "--repo", str(self.repo), "--turn-id", "turn-main"],
             text=True, capture_output=True, check=True,
         )
         self.assertEqual(scheduler.returncode, 0)
+
+        readonly_session, readonly_turn = "integration-readonly", "turn-readonly"
+        self.start(readonly_session, readonly_turn)
+        self.report(readonly_session, readonly_turn, "gatekeeper", self.gatekeeper("READY"))
+        self.report(readonly_session, readonly_turn, "sensemaker", self.sensemaker())
+        self.report(readonly_session, readonly_turn, "state-steward", {
+            "role": "state-steward",
+            "facts": [],
+            "inferences": [],
+            "decisions": [],
+            "open_questions": [],
+            "artifacts": [],
+            "next_state": "observed only",
+            "learning_records": [],
+            "question_updates": [],
+            "memory_proposals": [],
+        })
+        self.report(readonly_session, readonly_turn, "meta-evaluator", {
+            "role": "meta-evaluator",
+            "verdict": "PASS",
+            "evaluation_basis": [],
+            "evidence": [],
+            "assumption_failures": [],
+            "metric_gaming_risk": [],
+            "unverified": [],
+            "required_actions": [],
+            "learning_assessment": {
+                "accepted_lesson_ids": [],
+                "rejected_lesson_ids": [],
+                "challenged_lesson_ids": [],
+                "superseded_lesson_ids": [],
+                "reuse_assessment": [],
+                "evaluation_changes": [],
+                "knowledge_gaps": [],
+            },
+            "memory_assessment": {
+                "accepted_proposal_ids": [],
+                "rejected_proposal_ids": [],
+                "challenged_proposal_ids": [],
+                "duplicate_concept_ids": [],
+                "citation_findings": [],
+                "sensitivity_findings": [],
+                "required_corrections": [],
+                "memory_gaps": [],
+            },
+        })
+        self.assertEqual(self.call(self.event("Stop", readonly_session, readonly_turn)), {})
+        readonly_state = json.loads((self.repo / f".agent-loop/runtime/sessions/{readonly_session}.json").read_text())
+        self.assertEqual(readonly_state["final_status"], "PASS")
+        readonly_handoff = json.loads((self.repo / f".agent-loop/runtime/turns/{readonly_turn}/next-turn.json").read_text())
+        self.assertTrue(readonly_handoff["ready_for_next_turn"])
+        self.assertEqual(readonly_handoff["trigger_cadence"], "one controlled turn")
 
         fsession, fturn = "integration-failure", "turn-failure"
         self.start(fsession, fturn)
@@ -339,9 +393,10 @@ class IntegrationTest(unittest.TestCase):
     def test_scheduler_daemon_triggers_ready_handoff_once(self):
         policy_path = self.repo / ".agent-loop/scheduler-policy.json"
         policy = json.loads(policy_path.read_text())
-        old_handoff = self.repo / ".agent-loop/runtime/turns/turn-main/next-turn.json"
-        if old_handoff.exists():
-            old_handoff.unlink()
+        turns_root = self.repo / ".agent-loop/runtime/turns"
+        if turns_root.exists():
+            for handoff in turns_root.glob("*/next-turn.json"):
+                handoff.unlink()
         scheduler_runtime = self.repo / ".agent-loop/runtime/scheduler"
         if scheduler_runtime.exists():
             shutil.rmtree(scheduler_runtime)
@@ -386,6 +441,55 @@ class IntegrationTest(unittest.TestCase):
         last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text())
         self.assertEqual(last_trigger["turn_id"], "turn-scheduler")
         self.assertEqual(last_trigger["scheduler_action"], "triggered")
+
+    def test_scheduler_respects_manual_cadence(self):
+        policy_path = self.repo / ".agent-loop/scheduler-policy.json"
+        policy = json.loads(policy_path.read_text())
+        turns_root = self.repo / ".agent-loop/runtime/turns"
+        if turns_root.exists():
+            for handoff in turns_root.glob("*/next-turn.json"):
+                handoff.unlink()
+        scheduler_runtime = self.repo / ".agent-loop/runtime/scheduler"
+        if scheduler_runtime.exists():
+            shutil.rmtree(scheduler_runtime)
+        scheduler_runtime.mkdir(parents=True, exist_ok=True)
+        policy["trigger_command"] = [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('triggered\\n', encoding='utf-8')",
+            "{runtime_dir}/manual-trigger.txt",
+        ]
+        policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
+
+        turn_dir = self.repo / ".agent-loop/runtime/turns/turn-manual"
+        turn_dir.mkdir(parents=True, exist_ok=True)
+        handoff = {
+            "source_turn_id": "turn-manual",
+            "session_id": "manual-session",
+            "routing_mode": "LOOP",
+            "final_status": "PASS",
+            "ready_for_next_turn": True,
+            "next_entry_role": "gatekeeper",
+            "trigger_kind": "external-user-prompt",
+            "trigger_cadence": "manual",
+            "started_at": "2026-07-01T00:00:00+00:00",
+            "completed_at": "2026-07-01T00:01:00+00:00",
+            "resume_hint": "Submit the next ordinary user message to enter Gatekeeper.",
+        }
+        (turn_dir / "next-turn.json").write_text(json.dumps(handoff, indent=2) + "\n", encoding="utf-8")
+
+        proc = subprocess.run(
+            [sys.executable, str(self.repo / ".agent-loop/bin/next_turn_scheduler_daemon.py"), "--repo", str(self.repo), "--once"],
+            cwd=self.repo,
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=20,
+        )
+        self.assertIn("turn-manual", proc.stdout)
+        self.assertFalse((self.repo / ".agent-loop/runtime/scheduler/manual-trigger.txt").exists())
+        last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text())
+        self.assertEqual(last_trigger["scheduler_action"], "skipped_manual_cadence")
 
     def test_frame_prefix_routes_to_frame_mode(self):
         session, turn = "integration-frame", "turn-frame"

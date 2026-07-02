@@ -6,6 +6,8 @@
   "require_integrator_before_mutation": false,
   "require_state_steward_after_mutation": true,
   "require_meta_evaluator_after_mutation": true,
+  "require_state_steward_on_completion": false,
+  "require_meta_evaluator_on_completion": false,
   "max_stop_continuations": 4,
   "max_tool_calls_per_turn": 80,
   "max_mutations_per_turn": 30,
@@ -50,15 +52,6 @@
     "(^|\\s)git\\s+(add|commit|merge|rebase|cherry-pick|revert)\\b",
     "(^|\\s)(tee|cat)\\b.*(?:>|>>)",
     "(?:^|[^<])(?:>|>>)\\s*[^\\s]"
-  ],
-  "failure_markers": [
-    "error",
-    "failed",
-    "failure",
-    "traceback",
-    "exception",
-    "permission denied",
-    "not found"
   ],
   "sop_header_routing": true,
   "require_learning_contract": true,

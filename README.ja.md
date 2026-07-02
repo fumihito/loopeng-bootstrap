@@ -14,7 +14,7 @@ Loop engineering 向けの Codex と Claude Code の基礎的な設定です。
 
 この SVG により、ループの境界が明示されます。状態、メモリ、人間のポリシー更新が、次のターンを立ち上げる入力になります。
 
-systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bin/next_turn_scheduler_daemon.py` と `.agent-loop/systemd/agent-loop-scheduler.service` があり、`next-turn.json` を監視して scheduler state を記録し、次のターンが準備できたときは設定済みの trigger command を実行できます。
+systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bin/next_turn_scheduler_daemon.py` と `.agent-loop/systemd/agent-loop-scheduler.service` があり、`next-turn.json` を監視して scheduler state を記録し、次のターンが準備できたときは設定済みの trigger command を実行できます。各ターンは `gatekeeper-prompt.json` と `trigger_cadence` も保存するため、次ターンの開始文を機械可読な形で再現できます。
 
 ## 入口モード
 
@@ -105,7 +105,7 @@ Sensemaker retrieval
 
 ## 学習の可観測性
 
-完了したすべての `PASS` loop turn は、内容を最小化した learning observation に変換され、observer はサニタイズ済みの OTEL 学習シグナルを出力しながら、安定した問題シグネチャ、Sensemaker による明示的な過去学習の検索と考慮、State Steward からの構造化された lesson と question の更新、そして lesson の妥当性と再利用結果に関する Meta-Evaluator の判断を追跡します。そのうえで次を構築します。
+完了したすべての `PASS` loop turn は、内容を最小化した learning observation に変換され、observer はサニタイズ済みの OTEL 学習シグナルを出力しながら、安定した問題シグネチャ、Sensemaker による明示的な過去学習の検索と考慮、State Steward からの構造化された lesson と question の更新、そして lesson の妥当性と再利用結果に関する Meta-Evaluator の判断を追跡します。read-only の loop turn でも contract が許す場合は同じ完了経路に入り、次を構築します。
 
 ```text
 .agent-loop/state/learning/learning-health.json

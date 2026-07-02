@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -38,8 +39,9 @@ DEFAULT_POLICY: dict[str, Any] = {
         "missing_memory_retrieval": 1,
         "memory_commit_failure": 4,
         "accepted_memory_not_committed": 3,
-    },
-}
+        "unverified_learning_retrieval": 2,
+        },
+    }
 
 
 def utc_now() -> str:
@@ -236,6 +238,33 @@ def normalize_memory_commit(value: Any) -> dict[str, Any]:
         "deprecated_count": int(body.get("deprecated_count", 0) or 0),
     }
 
+
+def load_journal_events(turn_path: Path) -> list[dict[str, Any]]:
+    path = turn_path / "journal.jsonl"
+    events: list[dict[str, Any]] = []
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return events
+    for line in content.splitlines():
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(item, dict):
+            events.append(item)
+    return events
+
+
+def retrieval_verified(turn_path: Path) -> bool:
+    for event in load_journal_events(turn_path):
+        names = event.get("command_names")
+        if isinstance(names, list) and any(str(name) == "okfctl" for name in names):
+            return True
+    return False
+
 def build_turn_observation(turn_path: Path) -> dict[str, Any]:
     state = safe_dict(load_json(turn_path / "turn.json", {}))
     sense = safe_dict(load_json(turn_path / "sensemaker.json", {}))
@@ -250,6 +279,7 @@ def build_turn_observation(turn_path: Path) -> dict[str, Any]:
     memory_proposals = normalize_memory_proposals(steward.get("memory_proposals"))
     memory_assessment = normalize_memory_assessment(meta.get("memory_assessment"))
     memory_commit = normalize_memory_commit(load_json(turn_path / "memory-commit.json", {}))
+    learning_retrieval_verified = retrieval_verified(turn_path) if retrieval.get("performed") else False
     expected = [
         bool(sense.get("problem_signature")),
         isinstance(sense.get("prior_learning_considered"), list),
@@ -280,6 +310,7 @@ def build_turn_observation(turn_path: Path) -> dict[str, Any]:
         "memory_proposals": memory_proposals,
         "memory_assessment": memory_assessment,
         "memory_commit": memory_commit,
+        "learning_retrieval_verified": learning_retrieval_verified,
         "meta_verdict": meta.get("verdict"),
         "tool_calls": int(state.get("tool_calls", 0) or 0),
         "mutations": int(state.get("mutations", 0) or 0),
@@ -370,6 +401,7 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
     committed_memory_concept_count = 0
     accepted_memory_not_committed = 0
     memory_commit_failures = 0
+    unverified_learning_retrieval = 0
 
     for index, record in enumerate(records):
         in_window = index >= window_start_index
@@ -381,6 +413,8 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
         considered_ids = {str(item.get("lesson_id") or "") for item in considered if isinstance(item, dict)}
         if in_window and retrieval.get("performed"):
             retrieval_turns += 1
+            if not bool(record.get("learning_retrieval_verified")):
+                unverified_learning_retrieval += 1
         elif in_window:
             missing_learning_retrieval += 1
         if in_window and relevant_ids:
@@ -596,6 +630,7 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
         "missing_memory_retrieval": missing_memory_retrieval,
         "memory_commit_failure": memory_commit_failures,
         "accepted_memory_not_committed": accepted_memory_not_committed,
+        "unverified_learning_retrieval": unverified_learning_retrieval,
     }
     debt_score = sum(int(weights.get(key, 1)) * count for key, count in debt_components.items())
 
@@ -634,6 +669,9 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
     if retrieval_coverage is not None and retrieval_coverage < float(policy.get("minimum_retrieval_coverage", 0.9)):
         degraded = True
         reasons.append("prior-learning retrieval was not performed consistently")
+    if unverified_learning_retrieval > 0:
+        degraded = True
+        reasons.append("claimed learning retrieval was not backed by journal evidence")
     if memory_retrieval_coverage is not None and memory_retrieval_coverage < float(policy.get("minimum_memory_retrieval_coverage", 0.9)):
         degraded = True
         reasons.append("OKF LLMWiki retrieval was not performed consistently")
@@ -693,6 +731,7 @@ def compute_health(records: list[dict[str, Any]], policy: dict[str, Any], window
             "considered_learning_events": considered_events,
             "unknown_lesson_reference_count": unknown_lesson_references,
             "missing_learning_retrieval_count": missing_learning_retrieval,
+            "unverified_learning_retrieval_count": unverified_learning_retrieval,
             "unconsidered_relevant_lesson_count": unconsidered_relevant_lessons,
             "unassessed_reuse_count": unassessed_reuse_events,
             "learning_chain_completion_rate": learning_chain_completion_rate,
@@ -778,6 +817,7 @@ def rebuild(root: Path, window: int | None = None) -> dict[str, Any]:
         observation = persist_turn_observation(root, path)
         records.append(observation)
     summary = compute_health(records, policy, window=window)
+    prune_completed_turns(root, policy)
     state_root = root / ".agent-loop/state/learning"
     atomic_json(state_root / "learning-health.json", summary)
     atomic_json(state_root / "learning-index.json", {
@@ -787,6 +827,26 @@ def rebuild(root: Path, window: int | None = None) -> dict[str, Any]:
         "observation_digests": {str(r.get("turn_id")): digest(r) for r in records},
     })
     return summary
+
+
+def prune_completed_turns(root: Path, policy: dict[str, Any]) -> list[str]:
+    keep_turns = max(int(policy.get("window_turns", 50)) * 2, int(policy.get("minimum_turns_for_health", 5)))
+    turns = completed_loop_turns(root)
+    if len(turns) <= keep_turns:
+        return []
+    archive_root = root / ".agent-loop/runtime/turn-archive"
+    moved: list[str] = []
+    for path in turns[:-keep_turns]:
+        destination = archive_root / path.name
+        if destination.exists():
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.move(str(path), str(destination))
+            moved.append(path.name)
+        except OSError:
+            continue
+    return moved
 
 
 def observe_completed_turn(root: Path, turn_path: Path) -> tuple[dict[str, Any], dict[str, Any]]:

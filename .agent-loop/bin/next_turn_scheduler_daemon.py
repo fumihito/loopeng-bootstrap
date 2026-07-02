@@ -78,6 +78,7 @@ def scheduler_policy(root: Path) -> dict[str, Any]:
         "enabled": bool(data.get("enabled", True)),
         "poll_interval_seconds": max(1, int(data.get("poll_interval_seconds", 5))),
         "trigger_command": list(data.get("trigger_command", [])) if isinstance(data.get("trigger_command"), list) else [],
+        "notification_command": list(data.get("notification_command", [])) if isinstance(data.get("notification_command"), list) else [],
         "trigger_command_timeout_seconds": max(1, int(data.get("trigger_command_timeout_seconds", 30))),
         "record_events": bool(data.get("record_events", True)),
     }
@@ -107,7 +108,22 @@ def handoff_signature(handoff: dict[str, Any]) -> dict[str, Any]:
         "ready_for_next_turn": bool(handoff.get("ready_for_next_turn")),
         "next_entry_role": handoff.get("next_entry_role"),
         "trigger_kind": handoff.get("trigger_kind"),
+        "trigger_cadence": handoff.get("trigger_cadence"),
     }
+
+
+def cadence_allows_auto_trigger(cadence: Any) -> bool:
+    value = str(cadence or "").strip().lower()
+    if not value or value in {"immediate", "external-user-prompt"}:
+        return True
+    if value.startswith("manual"):
+        return False
+    return not value.startswith("on-event:")
+
+
+def cadence_needs_notification(cadence: Any) -> bool:
+    value = str(cadence or "").strip().lower()
+    return bool(value) and value not in {"immediate", "external-user-prompt"} and not value.startswith("manual")
 
 
 def discover_handoffs(root: Path) -> list[tuple[Path, dict[str, Any]]]:
@@ -186,25 +202,6 @@ def process_once(root: Path) -> dict[str, Any]:
         current = processed.get(turn_id)
         if current == signature:
             continue
-        event = {
-            "observed_at": now(),
-            "turn_id": turn_id,
-            "handoff_path": str(handoff_path),
-            "session_id": handoff.get("session_id"),
-            "final_status": handoff.get("final_status"),
-            "ready_for_next_turn": bool(handoff.get("ready_for_next_turn")),
-            "next_entry_role": handoff.get("next_entry_role"),
-            "trigger_kind": handoff.get("trigger_kind"),
-        }
-        if not handoff.get("ready_for_next_turn"):
-            event["scheduler_action"] = "skipped_unready"
-            summary["skipped_count"] += 1
-            processed[turn_id] = signature
-            emit_event(root, event, policy["record_events"])
-            summary["processed_turns"].append(turn_id)
-            continue
-        summary["ready_count"] += 1
-        trigger_info: dict[str, Any] = {"scheduler_action": "recorded"}
         context = {
             "repo": str(root),
             "turn_id": turn_id,
@@ -217,9 +214,58 @@ def process_once(root: Path) -> dict[str, Any]:
             "last_trigger_path": str(last_trigger_path(root)),
             "next_entry_role": str(handoff.get("next_entry_role") or ""),
             "trigger_kind": str(handoff.get("trigger_kind") or ""),
+            "trigger_cadence": str(handoff.get("trigger_cadence") or ""),
+            "gatekeeper_prompt_path": str(handoff_path.parent / "gatekeeper-prompt.json"),
+            "loop_brief_path": str(handoff_path.parent / "loop-brief.json"),
+            "state_steward_path": str(handoff_path.parent / "state-steward.json"),
         }
+        event = {
+            "observed_at": now(),
+            "turn_id": turn_id,
+            "handoff_path": str(handoff_path),
+            "session_id": handoff.get("session_id"),
+            "final_status": handoff.get("final_status"),
+            "ready_for_next_turn": bool(handoff.get("ready_for_next_turn")),
+            "next_entry_role": handoff.get("next_entry_role"),
+            "trigger_kind": handoff.get("trigger_kind"),
+            "trigger_cadence": handoff.get("trigger_cadence"),
+        }
+        if not handoff.get("ready_for_next_turn"):
+            trigger_info: dict[str, Any] = {"scheduler_action": "skipped_unready"}
+            command = policy["notification_command"]
+            if command:
+                try:
+                    notification_context = {**context, "scheduler_action": "notification"}
+                    trigger_info = run_trigger(command, notification_context, policy["trigger_command_timeout_seconds"])
+                    trigger_info["scheduler_action"] = "notified" if trigger_info["scheduler_action"] == "triggered" else trigger_info["scheduler_action"]
+                except subprocess.TimeoutExpired as exc:
+                    notification_context = {**context, "scheduler_action": "notification"}
+                    trigger_info = {
+                        "scheduler_action": "notification_failed",
+                        "error": "timeout",
+                        "timeout_seconds": policy["trigger_command_timeout_seconds"],
+                        "command": format_args(command, notification_context),
+                        "command_error": str(exc),
+                    }
+                except OSError as exc:
+                    notification_context = {**context, "scheduler_action": "notification"}
+                    trigger_info = {
+                        "scheduler_action": "notification_failed",
+                        "error": type(exc).__name__,
+                        "command": format_args(command, notification_context),
+                        "command_error": str(exc),
+                    }
+            else:
+                summary["skipped_count"] += 1
+            event.update(trigger_info)
+            processed[turn_id] = signature
+            emit_event(root, event, policy["record_events"])
+            summary["processed_turns"].append(turn_id)
+            continue
+        summary["ready_count"] += 1
+        trigger_info: dict[str, Any] = {"scheduler_action": "recorded"}
         command = policy["trigger_command"]
-        if command:
+        if command and cadence_allows_auto_trigger(handoff.get("trigger_cadence")):
             try:
                 trigger_info = run_trigger(command, context, policy["trigger_command_timeout_seconds"])
                 if trigger_info["scheduler_action"] == "triggered":
@@ -243,10 +289,17 @@ def process_once(root: Path) -> dict[str, Any]:
                     "command_error": str(exc),
                 }
                 summary["failed_count"] += 1
+        elif command:
+            trigger_info = {"scheduler_action": "skipped_manual_cadence"}
+            summary["skipped_count"] += 1
         event.update(trigger_info)
         processed[turn_id] = signature
         emit_event(root, event, policy["record_events"])
         summary["processed_turns"].append(turn_id)
+    active_turn_ids = {str(handoff.get("source_turn_id") or path.parent.name) for path, handoff in discover_handoffs(root)}
+    for turn_id in list(processed):
+        if turn_id not in active_turn_ids:
+            processed.pop(turn_id, None)
     state["processed_turns"] = processed
     state["last_summary"] = summary
     save_state(root, state)

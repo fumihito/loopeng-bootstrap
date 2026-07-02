@@ -15,6 +15,7 @@ Main roles are: Gatekeeper, Loop Brief Assistant, Sensemaker, Governor, State St
 The SVG above makes the loop boundary explicit: state, memory, and human policy changes are the outputs that seed the next turn.
 
 The repository also ships a systemd-backed scheduler daemon at `.agent-loop/bin/next_turn_scheduler_daemon.py` with a matching unit file at `.agent-loop/systemd/agent-loop-scheduler.service`. It polls `next-turn.json` handoffs, records scheduler state, and can run a configured trigger command when the next turn is ready.
+Each completed loop turn also writes a deterministic `gatekeeper-prompt.json` artifact and records `trigger_cadence` so the next turn can start from a machine-readable prompt bundle without manual reconstruction.
 
 ## Entry Modes
 
@@ -106,6 +107,7 @@ The installer creates only missing LLMWiki skeleton files and never overwrites e
 ## Learning observability
 
 Every completed `PASS` loop turn is converted into a content-minimizing learning observation, and the observer emits sanitized OTEL learning signals while tracking stable problem signatures, explicit prior-learning retrieval and consideration by Sensemaker, structured lessons and question updates from State Steward, and Meta-Evaluator judgments about lesson validity and reuse outcomes. It then builds:
+Read-only loop turns can also complete when the contract permits it; they still produce the same deterministic completion artifacts and learning observation pipeline.
 
 ```text
 .agent-loop/state/learning/learning-health.json
