@@ -41,9 +41,13 @@ Material conditions are missing or ambiguous. Gatekeeper identifies the missing 
 
 Gatekeeper does not itself continue the user dialogue and must not invent placeholder authority, acceptance criteria, learning rules, or memory policy.
 
+Gatekeeper may also include an optional `mode_recommendation` object in `NEEDS_INPUT` when the request looks like a one-shot, read-only, or otherwise non-autonomous task. The object has the shape `{mode, reason}` and is written in user vocabulary. It may point to `direct:`, `route:`, or a matching `frame-<name>:` prefix so the user can rerun the request in a more appropriate mode. This is a hint only; the hook does not auto-route from it.
+
 ### REJECT
 
 The requested autonomous loop is structurally unsafe, prohibited, lacks a legitimate decision owner, or requires authority the user cannot delegate. Gatekeeper explains what would need to change; neither Loop Brief Assistant nor Sensemaker is used to circumvent the rejection.
+
+When useful, `REJECT` may also carry `mode_recommendation` to point the user toward a safer explicit mode for rerunning the request. The hint is informational only and does not trigger a routing change.
 
 ## Loop Brief Assistant handoff
 

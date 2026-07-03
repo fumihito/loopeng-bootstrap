@@ -18,14 +18,15 @@ systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bi
 
 ## 入口モード
 
-このリポジトリが現在認識するユーザー入力の系統は次のとおりです。
+このリポジトリが現在認識する主要なユーザー入力の系統は次の 4 つです。
 
-- `direct:` は、Gatekeeper を経由しない bounded な非自律入力です。
 - `list:` は、現在の入口モード群と正規ソースを一覧する mode index です。
+- `direct:` は、Gatekeeper を経由しない bounded な非自律入力です。
 - `route:` は、Gatekeeper の前に `frame-*` 候補を提案する pre-loop モードです。
-- `sop-<header>:` は、先頭 `<header>:` で始まる必須 SOP です。`diag:` や `learning-audit:` が該当します。
-- `frame-<name>:` は、人間向けの計画・レビュー・トラブルシュート用 frame です。
 - 無接頭辞は、Gatekeeper を起点にする自律ループの入口です。
+
+これら 4 種が通常の入口モードです。`frame-<name>:` や `sop-<header>:` を含むその他の厳密先頭ヘッダは、通常利用よりも特殊用途の手動操作として扱います。
+迷ったら、接頭辞を付けずに普通に話しかけてください。ループは Gatekeeper から始まり、必要ならそこから案内します。
 
 詳細は `docs/DIRECT_MODE.md`、`docs/SOP_ROUTING.md`、`docs/HUMAN_SKILL_NAMESPACE.md` を参照してください。
 フックは先頭が `direct:`、`list:`、`frame-<name>:`、およびその他の `<header>:` のプロンプトを、それぞれ専用モードへ自動ルーティングします。
@@ -247,6 +248,7 @@ hooks と 10 個の名前付き role は、1 回の execution とそのターン
 - 編集可能な Loop Brief: `templates/LOOP_BRIEF.md`
 
 インストーラは `docs/SOP_ROUTING.md` と `templates/SOP_SKILL_TEMPLATE.md` も `.agent-loop/` にコピーします。
+開発者はリポジトリルートで `utils/install-dev-hooks.sh` を実行すると、pre-push の監査ガードを任意導入できます。
 
 ## LLM 支援の意味論的インストール
 

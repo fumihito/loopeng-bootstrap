@@ -1,5 +1,7 @@
 # Audit Log
 
+- 2026-07-03 | commit 206b4b7b6a258e705907daa6037cc1b3c0e39b62 | fix broken image の監査記録を補追: この audit-log に当時の記録は見当たらず、親ハッシュ 717e2981681633d1370d0835404eda27eec47ced を記す。
+- 2026-07-03 | commit 717e2981681633d1370d0835404eda27eec47ced | update structure and audit mech の監査記録を補追: この audit-log に当時の記録は見当たらず、親ハッシュ 5393806a61bfdccc0dda0b0982d288d5bfc6d118 を記す。
 - 2026-07-03 | commit 03b7a56080ccbf7cf37ef345c65d44614cb5a146 | 追補: audit-log 上に当時の監査記録は見当たらず、実施有無は記録から不明。
 - 2026-07-03 | commit 03b7a56080ccbf7cf37ef345c65d44614cb5a146 | R-1/R-2 normalization completed in the current worktree: gatekeeper prompt body moved to gatekeeper-prompt.txt, JSON kept as metadata/ref only, trigger-example.sh now consumes the text path, and the E2E test now follows the same text-read path; `python3 -m unittest discover -s tests -v` passed. (hash corrected)
 - 2026-07-03 | commit 2e0dfd7f1d6f80a8270d3ca6921345c149021f96 | G-1-G-4 and V-1 completed: shared Go skip guard added for install-driven tests; RELEASE_AUDIT checklist updated; scheduler trigger example and dry-run helpers shipped; two-turn loop E2E and loop status renderer added; docs updated with scheduler and observability guidance; `pytest` was unavailable here, so the audit used `python3 -m unittest tests.test_installed_repo_self_sufficiency -v` plus `python3 -m unittest discover -s tests -v` in Go-present and Go-hidden PATHs.

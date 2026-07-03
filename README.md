@@ -19,14 +19,15 @@ Each completed loop turn also writes a deterministic `gatekeeper-prompt.json` ar
 
 ## Entry Modes
 
-The repository currently recognizes these user-entry families:
+The repository currently recognizes these common user-entry families:
 
-- `direct:` for bounded non-autonomous questions and inspection.
 - `list:` for a mode index that reports the current entry families and their canonical sources.
+- `direct:` for bounded non-autonomous questions and inspection.
 - `route:` for a pre-loop proposal mode that suggests `frame-*` candidates before Gatekeeper.
-- `sop-<header>:` via a strict leading `<header>:` prompt for mandatory SOPs such as `diag:` and `learning-audit:`.
-- `frame-<name>:` via a strict leading `frame-<name>:` prompt for human-facing planning, review, and troubleshooting frames.
 - no prefix for the autonomous loop and Gatekeeper intake path.
+
+These four are the normal entry modes. Other strict leading headers, including `frame-<name>:` and `sop-<header>:`, are specialized manual operations for exceptional workflows rather than everyday entry points.
+If you are unsure, just ask normally with no prefix; the loop will start from Gatekeeper and can guide you from there.
 
 See `docs/DIRECT_MODE.md`, `docs/SOP_ROUTING.md`, and `docs/HUMAN_SKILL_NAMESPACE.md`.
 The hook auto-routes strict leading `direct:`, `list:`, `frame-<name>:`, and other `<header>:` prompts into their dedicated modes before the model processes the request.
@@ -249,6 +250,7 @@ Before use, define a stable operating contract and provide a Loop Brief covering
 - Ready-to-edit Loop Brief: `templates/LOOP_BRIEF.md`
 
 The installer also copies `docs/SOP_ROUTING.md` and `templates/SOP_SKILL_TEMPLATE.md` to `.agent-loop/`.
+Developers can opt into the pre-push audit guard with `utils/install-dev-hooks.sh` from the repository root.
 
 
 ## LLM-assisted semantic installation

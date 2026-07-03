@@ -9,10 +9,10 @@ flowchart TD
         direction TD
         UP[UserPromptSubmit]:::human
         ROUTER{strict leading prefix precedence<br/>direct: → frame-* → route: → &lt;header&gt; → Gatekeeper}:::det
-        DIRECT[DIRECT<br/>bounded / Gatekeeper-free<br/>read-only by default]:::det
-        FRAME[FRAME<br/>isolated frame skill]:::det
-        COMMAND_ROUTE[COMMAND_ROUTE<br/>frame shortlist proposal<br/>stays outside loop]:::det
-        SOP[SOP<br/>isolated sop-&lt;header&gt; skill]:::det
+        DIRECT[DIRECT<br/>bounded / Gatekeeper-free<br/>read-only by default]:::llm
+        FRAME[FRAME<br/>isolated frame skill]:::llm
+        COMMAND_ROUTE[COMMAND_ROUTE<br/>frame shortlist proposal<br/>stays outside loop]:::llm
+        SOP[SOP<br/>isolated sop-&lt;header&gt; skill]:::llm
     end
 
     subgraph LOOP["ループ本体 (1ターン内部)"]
@@ -52,7 +52,7 @@ flowchart TD
         PDR[PROTECTED_DRIFT]:::det
         NEXT[next-turn.json<br/>gatekeeper-prompt.txt<br/>gatekeeper-prompt.json]:::det
         CAD{daemon cadence gate<br/>immediate / manual / on-event / unknown}:::det
-        LEGEND[Legend<br/>det = hook / daemon / okfctl<br/>llm = ROLES-derived role<br/>human = human<br/>loop = autonomous loop]:::det
+        LEGEND[Legend<br/>det = hook / daemon / okfctl<br/>llm = ROLES-derived role<br/>human = human<br/>edge rules: control / [info] info / budgeted backedge]:::det
     end
 
     UP --> ROUTER
@@ -80,26 +80,26 @@ flowchart TD
     LBA -->|questions_to_user| HUMAN
     BP -.->|"continuation ≤ max_stop_continuations"| GK
 
-    SM -.->|selected prior knowledge| WIKI
-    WIKI -.->|selected prior knowledge| SM
+    SM -->|[info] selected prior knowledge| WIKI
+    WIKI -->|[info] selected prior knowledge| SM
     SM --> GOV
     GOV --> MUTATE_GATE
     GOV -->|denied| ESC
     MUTATE_GATE --> INT
-    MUTATE_GATE -.->|protected-path drift| DRIFT_GUARD
+    MUTATE_GATE -->|[hook] protected-path drift| DRIFT_GUARD
     DRIFT_GUARD --> PDR
 
     INT --> VALIDATE
-    INT -.->|tool events / failure budget| WATCHDOG_GATE
+    INT -->|[hook] tool events / failure budget| WATCHDOG_GATE
     VALIDATE --> ST
-    VALIDATE -.->|tool events / failure budget| WATCHDOG_GATE
+    VALIDATE -->|[hook] tool events / failure budget| WATCHDOG_GATE
     WATCHDOG_GATE --> RECOVERY
 
-    ST -.->|sanitized journal / telemetry| SANITIZE
-    ME -.->|sanitized journal / telemetry| SANITIZE
-    MC -.->|sanitized journal / telemetry| SANITIZE
-    LA -.->|sanitized journal / telemetry| SANITIZE
-    GK -.->|sanitized journal / telemetry| SANITIZE
+    ST -->|[hook] sanitized journal / telemetry| SANITIZE
+    ME -->|[hook] sanitized journal / telemetry| SANITIZE
+    MC -->|[hook] sanitized journal / telemetry| SANITIZE
+    LA -->|[hook] sanitized journal / telemetry| SANITIZE
+    GK -->|[hook] sanitized journal / telemetry| SANITIZE
 
     ST --> ME
     ME -->|PASS| PASS
@@ -119,7 +119,7 @@ flowchart TD
 
     REVISE -.->|"continuation ≤ max_stop_continuations"| INT
 
-    OBS -.->|learning-audit:| LA
+    OBS -->|[info] learning-audit:| LA
     LA --> NEXT
     OBS --> NEXT
 
@@ -134,7 +134,3 @@ flowchart TD
     NEXT -->|ready_for_next_turn = false<br/>notification_command| HUMAN
     CAD -->|immediate| UP
     CAD -->|manual / on-event / unknown<br/>skip| HUMAN
-
-    LEGEND -.->|legend sample| DIRECT
-    LEGEND -.->|legend sample| GK
-    LEGEND -.->|legend sample| HUMAN

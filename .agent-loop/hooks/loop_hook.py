@@ -33,7 +33,7 @@ except ModuleNotFoundError:
 
 ROLES = {
     "gatekeeper": ({"role","verdict","mode","condition_checklist","normalized_loop_brief","missing_conditions","ambiguities","questions_to_user","risk_class","rejection_reasons","handoff_to_loop_brief_assistant","assistant_handoff_reason","handoff_to_sensemaker","brief_pattern_directive","brief_pattern_assessment","validation_commands"}, "gatekeeper.json"),
-    "loop-brief-assistant": ({"role","status","interaction_mode","draft_loop_brief","resolved_conditions","remaining_conditions","assumptions","questions_to_user","conflicts","handoff_to_gatekeeper","pattern_retrieval","pattern_application","pattern_proposals"}, "loop-brief-assistant.json"),
+    "loop-brief-assistant": ({"role","status","interaction_mode","problem_restatement","draft_loop_brief","resolved_conditions","remaining_conditions","assumptions","questions_to_user","conflicts","handoff_to_gatekeeper","pattern_retrieval","pattern_application","pattern_proposals"}, "loop-brief-assistant.json"),
     "sensemaker": ({"role","problem_frame","problem_signature","observations","inferences","alternative_frames","acceptance_criteria","non_goals","risks","recommended_action","prior_learning_considered","learning_retrieval","memory_retrieval","hypothesis_updates"}, "sensemaker.json"),
     "integrator": ({"role","status","inputs","merged_result","conflicts","resolution_strategy","handoff_to_evaluator"}, "integrator.json"),
     "governor": ({"role","classification","reasons","constraints","approval_scope"}, "governor.json"),
@@ -63,6 +63,7 @@ FRAME_ROUTING_MODE = "FRAME"
 COMMAND_ROUTE_ROUTING_MODE = "COMMAND_ROUTE"
 DIRECT_ROUTING_MODE = "DIRECT"
 LOOP_ROUTING_MODE = "LOOP"
+MODE_RECOMMENDATION_MODE_PATTERN = re.compile(r"^(?:direct:|route:|frame-[a-z][a-z0-9-]{0,31}:)$")
 LEARNING_AUDIT_SKILL = "sop-learning-audit"
 COMMAND_ROUTE_SKILL = "command-route"
 MEMORY_CURATOR_ROLE = "memory-curator"
@@ -1306,6 +1307,21 @@ def validate(role: str, body: dict[str, Any], root: Path | None = None) -> list[
         handoff_reason = body.get("assistant_handoff_reason")
         if handoff_reason not in BRIEF_PATTERN_HANDOFF_REASONS:
             errors.append("assistant_handoff_reason must be MISSING_INPUT, PATTERN_CAPTURE, or NONE")
+        mode_recommendation = body.get("mode_recommendation")
+        if mode_recommendation is not None:
+            if not isinstance(mode_recommendation, dict):
+                errors.append("mode_recommendation must be an object")
+            else:
+                if set(mode_recommendation) - {"mode", "reason"}:
+                    errors.append("mode_recommendation may only contain mode and reason")
+                mode = mode_recommendation.get("mode")
+                if not isinstance(mode, str) or not MODE_RECOMMENDATION_MODE_PATTERN.fullmatch(mode):
+                    errors.append("mode_recommendation.mode must be direct:, route:, or frame-<name>:")
+                reason = mode_recommendation.get("reason")
+                if not isinstance(reason, str) or not reason.strip():
+                    errors.append("mode_recommendation.reason must be a non-empty string")
+            if verdict not in {"NEEDS_INPUT", "REJECT"}:
+                errors.append("mode_recommendation is only allowed on NEEDS_INPUT or REJECT")
         if verdict == "NEEDS_INPUT":
             if handoff is not True or handoff_reason != "MISSING_INPUT":
                 errors.append("NEEDS_INPUT requires Assistant handoff reason MISSING_INPUT")
@@ -1335,6 +1351,9 @@ def validate(role: str, body: dict[str, Any], root: Path | None = None) -> list[
             errors.append("loop-brief-assistant status must be ASK_USER, READY_FOR_REVIEW, or BLOCKED")
         if body.get("interaction_mode") not in LOOP_BRIEF_ASSISTANT_MODES:
             errors.append("interaction_mode must be CLARIFY or PATTERN_CAPTURE")
+        problem_restatement = body.get("problem_restatement")
+        if not isinstance(problem_restatement, str) or not problem_restatement.strip():
+            errors.append("problem_restatement must be a non-empty string")
         draft = body.get("draft_loop_brief")
         if not isinstance(draft, dict):
             errors.append("draft_loop_brief must be an object")

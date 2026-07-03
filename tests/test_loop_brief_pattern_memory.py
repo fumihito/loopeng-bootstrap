@@ -93,6 +93,7 @@ class LoopBriefPatternMemoryTests(unittest.TestCase):
     def assistant_report(self):
         return {
             "role": "loop-brief-assistant", "status": "READY_FOR_REVIEW", "interaction_mode": "PATTERN_CAPTURE",
+            "problem_restatement": "You have a complete CI repair brief and want to keep a reusable pattern for future local-only fixes.",
             "draft_loop_brief": self.brief(), "resolved_conditions": sorted(FIELDS), "remaining_conditions": [],
             "assumptions": [], "questions_to_user": [], "conflicts": [], "handoff_to_gatekeeper": True,
             "pattern_retrieval": {"performed": True, "candidate_pattern_ids": [], "relevant_pattern_ids": [], "deprecated_pattern_ids": [], "unavailable_reason": None},
@@ -225,6 +226,7 @@ No external citation is required for this internal operating-contract pattern.
         self.assertEqual(self.report(session, turn, "gatekeeper", gate), {})
         assistant = {
             "role": "loop-brief-assistant", "status": "ASK_USER", "interaction_mode": "CLARIFY",
+            "problem_restatement": "You want to set up another CI repair loop, but the authority boundary still needs confirmation.",
             "draft_loop_brief": partial,
             "resolved_conditions": sorted(FIELDS - {"authority_envelope"}), "remaining_conditions": ["authority_envelope"],
             "assumptions": [], "questions_to_user": ["A matching pattern exists. Confirm or replace its local-only authority boundary."],

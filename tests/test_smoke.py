@@ -211,6 +211,7 @@ class IntegrationTest(unittest.TestCase):
             "role": "loop-brief-assistant",
             "status": "ASK_USER",
             "interaction_mode": "CLARIFY",
+            "problem_restatement": "You are trying to start the loop, but the allowed operations still need to be made explicit.",
             "draft_loop_brief": needs["normalized_loop_brief"],
             "resolved_conditions": [field for field, ready in needs["condition_checklist"].items() if ready],
             "remaining_conditions": ["authority_envelope"],

@@ -1,5 +1,7 @@
 # 自走ループに必要な人間入力
 
+このガイドは、ループを開始するために読まなくてもよい参考文書です。接頭辞なしで普通に話しかければ、ループは Gatekeeper から始まり、必要なら Loop Brief Assistant が支援します。ここに書かれているのは、支援対話を短くしたい利用者や、入力パターンを整備する管理者のための補助情報です。
+
 ## Entry modes
 
 Choose the interaction mode explicitly when the distinction matters:

@@ -21,3 +21,5 @@ It is read-only except for the explicit audit log entry described below.
 - When recording the audit hash, use the parent commit of the audited snapshot, which is the current `HEAD` at record time. Do not write the not-yet-created audit commit hash.
 - If `pytest` is unavailable, `python3 -m unittest discover -s tests` is an acceptable substitute. If you use the substitute, state that explicitly in `docs/audit-log.md`.
 - If Go is unavailable, the audit is partial and must say so explicitly; do not report it as a full audit.
+
+The repository also ships `utils/audit_guard.py` and `utils/install-dev-hooks.sh` as an opt-in developer pre-push guard for audit-tracked changes. Run the installer from the repository root to write `.git/hooks/pre-push`, which blocks pushes that touch `.agent-loop/`, `tests/`, `install.py`, `utils/`, or `docs/loop-structure*` unless `docs/audit-log.md` already contains the parent hash of the earliest pushed commit.

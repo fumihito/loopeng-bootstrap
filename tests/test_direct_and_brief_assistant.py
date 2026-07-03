@@ -56,12 +56,12 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         event.update({"agent_type": role, "agent_id": f"agent-{role}", "last_assistant_message": json.dumps(body)})
         return self.call(event)
 
-    def gatekeeper(self, verdict, brief=None):
+    def gatekeeper(self, verdict, brief=None, mode_recommendation=None):
         brief = brief or {field: None for field in FIELDS}
         if not isinstance(brief.get("trigger_cadence"), str):
             brief = {**brief, "trigger_cadence": "external-user-prompt"}
         checklist = {field: bool(brief.get(field)) for field in FIELDS}
-        return {
+        body = {
             "role": "gatekeeper",
             "verdict": verdict,
             "mode": "AUTONOMOUS_LOOP",
@@ -79,6 +79,9 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
             "brief_pattern_assessment": {"accepted_proposal_ids": [], "rejected_proposal_ids": [], "challenged_proposal_ids": [], "duplicate_pattern_ids": [], "required_corrections": []},
             "validation_commands": [],
         }
+        if mode_recommendation is not None:
+            body["mode_recommendation"] = mode_recommendation
+        return body
 
     def test_direct_mode_bypasses_gatekeeper_and_is_read_only(self):
         session, turn = "direct-session", "direct-turn"
@@ -132,6 +135,7 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
             "role": "loop-brief-assistant",
             "status": "ASK_USER",
             "interaction_mode": "CLARIFY",
+            "problem_restatement": "You want a repair loop that can fix CI failures, and you are still deciding what it may change.",
             "draft_loop_brief": partial,
             "resolved_conditions": ["outcome", "discovery_scope"],
             "remaining_conditions": sorted(FIELDS - {"outcome", "discovery_scope"}),
@@ -174,6 +178,7 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
             "role": "loop-brief-assistant",
             "status": "READY_FOR_REVIEW",
             "interaction_mode": "CLARIFY",
+            "problem_restatement": "You want a repair loop for CI failures with local edits and tests allowed, while push and production changes stay forbidden.",
             "draft_loop_brief": complete,
             "resolved_conditions": sorted(FIELDS),
             "remaining_conditions": [],
@@ -197,6 +202,18 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         self.assertEqual(handoff["decision"], "block")
         self.assertIn("sensemaker", handoff["reason"])
 
+    def test_gatekeeper_mode_recommendation_is_accepted(self):
+        session, turn = "recommend-session", "recommend-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "build an autonomous repair loop"
+        self.call(start)
+        gate = self.gatekeeper(
+            "NEEDS_INPUT",
+            {field: None for field in FIELDS},
+            mode_recommendation={"mode": "direct:", "reason": "This is a one-shot read-only request."},
+        )
+        self.assertEqual(self.report(session, turn, "gatekeeper", gate), {})
+
     def test_invalid_ready_assistant_with_assumptions_is_rejected(self):
         session, turn = "invalid-assistant", "invalid-turn"
         start = self.event("UserPromptSubmit", session, turn)
@@ -208,6 +225,7 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
             "role": "loop-brief-assistant",
             "status": "READY_FOR_REVIEW",
             "interaction_mode": "CLARIFY",
+            "problem_restatement": "You want the loop brief to be ready, but authority was still guessed instead of confirmed.",
             "draft_loop_brief": partial,
             "resolved_conditions": sorted(FIELDS),
             "remaining_conditions": [],
