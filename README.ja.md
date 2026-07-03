@@ -160,6 +160,8 @@ Codex は project-local な `.codex/config.toml` にある `[otel]` を無視し
 
 ## インストール
 
+前提条件: Go toolchain は `go1.21` 以上が必要です。
+
 ```bash
 python3 install.py --repo /path/to/repository
 ```

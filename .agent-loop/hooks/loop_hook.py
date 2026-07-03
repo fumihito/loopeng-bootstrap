@@ -13,6 +13,7 @@ import shlex
 import subprocess
 import sys
 import time
+import tempfile
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -440,7 +441,8 @@ def protected_path_snapshot(root: Path, policy: dict[str, Any]) -> dict[str, str
             rel = path.relative_to(root).as_posix()
             if rel.startswith(".agent-loop/runtime/") or rel.startswith(".agent-loop/state/"):
                 continue
-            if rel in {".agent-loop/bin/okfctl.bin", ".agent-loop/bin/okfctl.bin.sha256"}:
+            # The rebuilt okfctl binary is expected to change during install and refresh flows.
+            if rel == ".agent-loop/bin/okfctl.bin":
                 continue
             digest = artifact_sha256(path)
             if digest:
@@ -2859,9 +2861,9 @@ def status() -> int:
 
 
 def telemetry_test(platform: str) -> int:
-    root = root_for()
     event = {"hook_event_name": "PreToolUse", "session_id": "self-test", "turn_id": "self-test", "tool_name": "Bash", "tool_input": {"command": "SECRET=not-logged git status --porcelain"}}
-    send_otel(root, "agent.loop.telemetry.self_test", telemetry_attributes(event, platform, {"self_test": True}))
+    with tempfile.TemporaryDirectory() as td:
+        send_otel(Path(td), "agent.loop.telemetry.self_test", telemetry_attributes(event, platform, {"self_test": True}))
     print("Sanitized telemetry self-test emitted or spooled.")
     return 0
 

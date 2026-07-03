@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import hashlib
+import re
 import tomllib
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -24,6 +25,27 @@ SRC = Path(__file__).resolve().parent
 BEGIN = '<!-- LOOP-ENGINEERING:BEGIN -->'
 END = '<!-- LOOP-ENGINEERING:END -->'
 MANAGED_HOOK_MARKER = '.agent-loop/hooks/loop_hook.py'
+GO_MINIMUM_VERSION = '1.21'
+RUNTIME_MANIFEST = [
+    '.agent-loop/hooks/loop_hook.py',
+    '.agent-loop/policy.json',
+    '.agent-loop/scheduler-policy.json',
+    '.agent-loop/learning-policy.json',
+    '.agent-loop/memory-policy.json',
+    '.agent-loop/brief-pattern-policy.json',
+    '.agent-loop/sop-policy.json',
+    '.agent-loop/direct-policy.json',
+    '.agent-loop/bin/learning_health.py',
+    '.agent-loop/bin/next_turn_scheduler.py',
+    '.agent-loop/bin/next_turn_scheduler_daemon.py',
+    '.agent-loop/bin/okfctl',
+    '.agent-loop/bin/build-okfctl.sh',
+    '.agent-loop/cmd/okfctl/main.go',
+    '.agent-loop/lib/learning_observer.py',
+    '.agent-loop/otel.json',
+    '.agent-loop/otel-collector.yaml',
+    'routing_hints.py',
+]
 
 
 def stamp() -> str:
@@ -374,26 +396,9 @@ class Installer:
 
     def destination_paths(self) -> list[Path]:
         paths: list[Path] = []
-        direct = [
-            '.agent-loop/hooks/loop_hook.py',
-            '.agent-loop/policy.json',
-            '.agent-loop/scheduler-policy.json',
-            '.agent-loop/learning-policy.json',
-            '.agent-loop/memory-policy.json',
-            '.agent-loop/brief-pattern-policy.json',
-            '.agent-loop/sop-policy.json',
-            '.agent-loop/direct-policy.json',
-            '.agent-loop/bin/learning_health.py',
-            '.agent-loop/bin/next_turn_scheduler.py',
-            '.agent-loop/bin/next_turn_scheduler_daemon.py',
-            '.agent-loop/bin/okfctl',
-            '.agent-loop/bin/build-okfctl.sh',
-            '.agent-loop/cmd/okfctl/main.go',
-            '.agent-loop/lib/learning_observer.py',
-            '.agent-loop/otel.json',
-            '.agent-loop/otel-collector.yaml',
-            'routing_hints.py',
-            '.agent-loop/systemd/agent-loop-scheduler.service',
+        paths.extend(self.repo / rel for rel in RUNTIME_MANIFEST)
+        paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
+        paths.extend(self.repo / rel for rel in [
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
@@ -419,12 +424,10 @@ class Installer:
             'AGENTS.md',
             'CLAUDE.md',
             '.gitignore',
-        ]
-        paths.extend(self.repo / rel for rel in direct)
+        ])
         for source in (SRC / "llmwiki").rglob("*"):
             if source.is_file():
                 paths.append(self.repo / "llmwiki" / source.relative_to(SRC / "llmwiki"))
-        paths.append(self.repo / 'routing_hints.py')
         skill_mappings, _ = self.skill_install_layout()
         mappings = [
             *skill_mappings,
@@ -847,6 +850,64 @@ class Installer:
         self.backup_existing(path)
         self.atomic_write_text(path, text)
 
+    def ensure_go_toolchain(self) -> str:
+        if shutil.which('go') is None:
+            raise InstallerError(
+                f'Go {GO_MINIMUM_VERSION}+ is required; install.py must fail closed rather than defer this to runtime.'
+            )
+        try:
+            completed = subprocess.run(
+                ['go', 'version'], cwd=self.repo, text=True, capture_output=True, check=False,
+            )
+        except OSError as exc:
+            raise InstallerError(f'cannot execute Go toolchain: {type(exc).__name__}: {exc}') from exc
+        output = (completed.stdout or completed.stderr or '').strip()
+        if completed.returncode != 0:
+            raise InstallerError(f'Go toolchain check failed: {output or "go version returned a non-zero exit status"}')
+        match = re.search(r'go1\.(\d+)', output)
+        if not match:
+            raise InstallerError(f'Go toolchain version is unclear from `{output or "go version"}`; {GO_MINIMUM_VERSION}+ is required')
+        if int(match.group(1)) < 21:
+            raise InstallerError(f'{output} is too old; {GO_MINIMUM_VERSION}+ is required')
+        return output
+
+    def build_okfctl(self) -> None:
+        source = self.repo / '.agent-loop/cmd/okfctl/main.go'
+        binary = self.repo / '.agent-loop/bin/okfctl.bin'
+        if not source.is_file():
+            raise InstallerError(f'missing Go source for okfctl: {source}')
+        self.ensure_go_toolchain()
+        fd, tmp_name = tempfile.mkstemp(prefix='.okfctl.bin.', dir=str(binary.parent))
+        os.close(fd)
+        tmp = Path(tmp_name)
+        try:
+            env = os.environ.copy()
+            env['GOWORK'] = 'off'
+            env['GOCACHE'] = env.get('GOCACHE', '/tmp/loopeng-gocache')
+            Path(env['GOCACHE']).mkdir(parents=True, exist_ok=True)
+            completed = subprocess.run(
+                ['go', 'build', '-trimpath', '-ldflags', '-s -w', '-o', str(tmp), str(source)],
+                cwd=self.repo, text=True, capture_output=True, env=env, check=False,
+            )
+            if completed.returncode != 0:
+                stderr = completed.stderr.strip() or completed.stdout.strip() or 'go build failed'
+                raise InstallerError(f'okfctl build failed: {stderr}')
+            tmp.chmod(0o755)
+            os.replace(tmp, binary)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def run_okfctl(self, *args: str) -> subprocess.CompletedProcess[str]:
+        binary = self.repo / '.agent-loop/bin/okfctl'
+        if not binary.is_file():
+            raise InstallerError(f'missing okfctl wrapper: {binary}')
+        try:
+            return subprocess.run(
+                [str(binary), *args], cwd=self.repo, text=True, capture_output=True, check=False,
+            )
+        except OSError as exc:
+            raise InstallerError(f'cannot execute okfctl: {type(exc).__name__}: {exc}') from exc
+
     @staticmethod
     def sha256_file(path: Path) -> str:
         digest = hashlib.sha256()
@@ -1032,23 +1093,7 @@ class Installer:
             except Exception as exc:
                 errors.append(f'invalid TOML .codex/config.toml: {type(exc).__name__}: {exc}')
         required_files = [
-            '.agent-loop/hooks/loop_hook.py',
-            '.agent-loop/policy.json',
-            '.agent-loop/scheduler-policy.json',
-            '.agent-loop/learning-policy.json',
-            '.agent-loop/memory-policy.json',
-            '.agent-loop/brief-pattern-policy.json',
-            '.agent-loop/sop-policy.json',
-            '.agent-loop/direct-policy.json',
-            '.agent-loop/bin/learning_health.py',
-            '.agent-loop/bin/next_turn_scheduler.py',
-            '.agent-loop/bin/next_turn_scheduler_daemon.py',
-            '.agent-loop/bin/okfctl',
-            '.agent-loop/bin/build-okfctl.sh',
-            '.agent-loop/cmd/okfctl/main.go',
-            '.agent-loop/lib/learning_observer.py',
-            '.agent-loop/otel.json',
-            'routing_hints.py',
+            *RUNTIME_MANIFEST,
             '.agent-loop/systemd/agent-loop-scheduler.service',
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
@@ -1206,20 +1251,12 @@ class Installer:
                 if body.count(BEGIN) != 1 or body.count(END) != 1:
                     errors.append(f'invalid managed instruction markers: {rel}')
 
-        # Avoid compiling Go during every installer validation. If the local binary
-        # has already been built, validate the bundle; otherwise validate the command
-        # sources/layout here and leave the explicit full check to `okfctl validate`.
         okf_binary = self.repo / '.agent-loop/bin/okfctl.bin'
-        if okf_binary.is_file() and os.access(okf_binary, os.X_OK) and (self.repo / 'llmwiki').is_dir():
-            sha_file = self.repo / '.agent-loop/bin/okfctl.bin.sha256'
-            if sha_file.is_file():
-                try:
-                    expected = sha_file.read_text(encoding='utf-8').split()[0]
-                    actual = self.sha256_file(okf_binary)
-                    if expected != actual:
-                        errors.append('OKF okfctl binary checksum does not match .agent-loop/bin/okfctl.bin.sha256')
-                except (OSError, IndexError) as exc:
-                    errors.append(f'cannot verify okfctl checksum file: {type(exc).__name__}: {exc}')
+        if not okf_binary.exists():
+            errors.append('missing built okfctl binary: .agent-loop/bin/okfctl.bin')
+        elif not os.access(okf_binary, os.X_OK):
+            errors.append('built okfctl binary is not executable: .agent-loop/bin/okfctl.bin')
+        else:
             try:
                 completed = subprocess.run(
                     [str(okf_binary), 'validate', '--root', 'llmwiki', '--json'],
@@ -1263,6 +1300,8 @@ class Installer:
         if remaining and not self.dry_run:
             self.print_conflicts(remaining)
             raise SystemExit(2)
+        if not self.dry_run:
+            self.ensure_go_toolchain()
         for migration in migrations:
             self.apply_layout_migration(migration)
         if not self.dry_run:
@@ -1271,26 +1310,7 @@ class Installer:
                 self.print_conflicts(after_migration)
                 raise SystemExit(2)
 
-        for rel in [
-            '.agent-loop/hooks/loop_hook.py',
-            '.agent-loop/policy.json',
-            '.agent-loop/scheduler-policy.json',
-            '.agent-loop/learning-policy.json',
-            '.agent-loop/memory-policy.json',
-            '.agent-loop/brief-pattern-policy.json',
-            '.agent-loop/sop-policy.json',
-            '.agent-loop/direct-policy.json',
-            '.agent-loop/bin/learning_health.py',
-            '.agent-loop/bin/next_turn_scheduler.py',
-            '.agent-loop/bin/next_turn_scheduler_daemon.py',
-            '.agent-loop/bin/okfctl',
-            '.agent-loop/bin/build-okfctl.sh',
-            '.agent-loop/cmd/okfctl/main.go',
-            '.agent-loop/lib/learning_observer.py',
-            '.agent-loop/otel.json',
-            '.agent-loop/otel-collector.yaml',
-            'routing_hints.py',
-        ]:
+        for rel in RUNTIME_MANIFEST:
             self.copy_file(SRC / rel, self.repo / rel)
         self.copy_rendered_file(
             SRC / 'systemd/agent-loop-scheduler.service',
@@ -1354,6 +1374,15 @@ class Installer:
         self.patch_marked_file(self.repo / 'AGENTS.md', snippet)
         self.patch_marked_file(self.repo / 'CLAUDE.md', snippet)
         self.patch_gitignore()
+
+        if not self.dry_run:
+            self.build_okfctl()
+            version = self.run_okfctl('version')
+            if version.returncode != 0:
+                raise InstallerError(f'okfctl version check failed: {version.stderr.strip() or version.stdout.strip() or "unknown error"}')
+            validation = self.run_okfctl('validate', '--root', 'llmwiki')
+            if validation.returncode != 0:
+                raise InstallerError(f'okfctl validate failed: {validation.stderr.strip() or validation.stdout.strip() or "unknown error"}')
 
         if not self.dry_run:
             (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o755)

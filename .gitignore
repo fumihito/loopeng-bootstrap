@@ -1,2 +1,4 @@
 __pycache__
 /_*
+.agent-loop/runtime/
+.agent-loop/bin/okfctl.bin

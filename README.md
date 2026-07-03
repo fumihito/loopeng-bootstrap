@@ -162,6 +162,8 @@ Codex ignores `[otel]` in project-local `.codex/config.toml`. This archive there
 
 ## Install
 
+Prerequisite: Go toolchain `go1.21` or newer.
+
 ```bash
 python3 install.py --repo /path/to/repository
 ```

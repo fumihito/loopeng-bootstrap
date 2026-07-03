@@ -856,23 +856,20 @@ class IntegrationTest(unittest.TestCase):
         self.assertIn("too large to inline safely", compact)
         self.assertIn("loop_brief_ref", compact)
 
-    def test_okfctl_rebuild_updates_checksum(self):
+    def test_okfctl_rebuild_updates_binary(self):
         if shutil.which("go") is None:
             self.skipTest("Go is required for okfctl rebuild coverage")
         source = self.repo / ".agent-loop/cmd/okfctl/main.go"
         binary = self.repo / ".agent-loop/bin/okfctl.bin"
-        sha_file = self.repo / ".agent-loop/bin/okfctl.bin.sha256"
-        subprocess.run([str(self.repo / ".agent-loop/bin/okfctl"), "version"], cwd=self.repo, text=True, capture_output=True, check=True, timeout=120)
+        wrapper = self.repo / ".agent-loop/bin/okfctl"
+        subprocess.run([str(wrapper), "version"], cwd=self.repo, text=True, capture_output=True, check=True, timeout=120)
+        initial = binary.stat().st_mtime
         future = binary.stat().st_mtime + 10
         os.utime(source, (future, future))
-        proc = subprocess.run([str(self.repo / ".agent-loop/bin/okfctl"), "version"], cwd=self.repo, text=True, capture_output=True, check=True, timeout=120)
+        proc = subprocess.run([str(wrapper), "version"], cwd=self.repo, text=True, capture_output=True, check=True, timeout=120)
         self.assertIn("0.3.0", proc.stdout)
         self.assertTrue(binary.exists())
-        self.assertTrue(sha_file.exists())
-        expected = sha_file.read_text().strip().split()[0]
-        actual = subprocess.run(["sha256sum", str(binary)], text=True, capture_output=True, check=True).stdout.split()[0]
-        self.assertEqual(expected, actual)
-        self.assertIn("okfctl.bin", sha_file.read_text())
+        self.assertGreater(binary.stat().st_mtime, initial)
 
     def test_validation_command_timeout_is_recorded(self):
         policy_path = self.repo / ".agent-loop/policy.json"
