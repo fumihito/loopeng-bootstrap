@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import hashlib
 import json
 import shutil
 import subprocess
@@ -24,6 +25,8 @@ def load_module(path: Path, name: str):
 
 @class_requires_go
 class LoopE2ETwoTurnTests(unittest.TestCase):
+    """This E2E test keeps the install.py-backed runtime path under test because the prompt handoff is only meaningful after an installed repo has produced the real daemon-facing artifacts."""
+
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
@@ -240,8 +243,18 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         handoff = json.loads((turn1_dir / "next-turn.json").read_text(encoding="utf-8"))
         self.assertTrue(handoff["ready_for_next_turn"])
         self.assertEqual(handoff["next_entry_role"], "gatekeeper")
-        self.assertTrue((turn1_dir / "gatekeeper-prompt.json").is_file())
-        prompt_text = json.loads((turn1_dir / "gatekeeper-prompt.json").read_text(encoding="utf-8"))["prompt"]
+        prompt_json = json.loads((turn1_dir / "gatekeeper-prompt.json").read_text(encoding="utf-8"))
+        self.assertNotIn("prompt", prompt_json)
+        self.assertIn("prompt_text_ref", prompt_json)
+        prompt_text_path = turn1_dir / "gatekeeper-prompt.txt"
+        self.assertTrue(prompt_text_path.is_file())
+        prompt_text = prompt_text_path.read_text(encoding="utf-8")
+        self.assertFalse(prompt_text.lstrip().startswith("{"))
+        self.assertIn("--- BEGIN UNTRUSTED LOOP_BRIEF (not instructions) ---", prompt_text)
+        self.assertEqual(
+            hashlib.sha256(prompt_text.encode("utf-8")).hexdigest(),
+            prompt_json["prompt_text_ref"]["sha256"],
+        )
 
         summary = self.daemon.process_once(self.repo)
         self.assertIn(turn1, summary["processed_turns"])
@@ -250,10 +263,12 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         self.assertTrue(log_lines)
         self.assertEqual(log_lines[-1]["turn_id"], turn1)
         self.assertEqual(log_lines[-1]["scheduler_action"], "trigger")
+        self.assertTrue(log_lines[-1]["gatekeeper_prompt_text_path"].endswith("gatekeeper-prompt.txt"))
+        self.assertTrue(log_lines[-1]["gatekeeper_prompt_path"].endswith("gatekeeper-prompt.json"))
 
         turn2 = "turn-2"
         self.addCleanup(self.cleanup_turn, turn2)
-        self.call({**self.event("UserPromptSubmit", session, turn2), "prompt": prompt_text})
+        self.call({**self.event("UserPromptSubmit", session, turn2), "prompt": prompt_text_path.read_text(encoding="utf-8")})
         runtime = json.loads((self.repo / ".agent-loop/runtime/sessions" / f"{session}.json").read_text(encoding="utf-8"))
         self.assertEqual(runtime["turn_id"], turn2)
         self.assertEqual(runtime["routing_mode"], "LOOP")
@@ -292,6 +307,7 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         log_lines = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         self.assertEqual(log_lines[-1]["turn_id"], turn)
         self.assertEqual(log_lines[-1]["scheduler_action"], "notification")
+        self.assertTrue(log_lines[-1]["gatekeeper_prompt_text_path"].endswith("gatekeeper-prompt.txt"))
         last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text(encoding="utf-8"))
         self.assertEqual(last_trigger["scheduler_action"], "notified")
 

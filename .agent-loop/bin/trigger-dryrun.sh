@@ -19,6 +19,7 @@ record = {
     "session_id": os.environ.get("session_id"),
     "handoff_path": os.environ.get("handoff_path"),
     "gatekeeper_prompt_path": os.environ.get("gatekeeper_prompt_path"),
+    "gatekeeper_prompt_text_path": os.environ.get("gatekeeper_prompt_text_path"),
     "trigger_kind": os.environ.get("trigger_kind"),
     "trigger_cadence": os.environ.get("trigger_cadence"),
 }

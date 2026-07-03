@@ -254,6 +254,7 @@ def process_once(root: Path) -> dict[str, Any]:
             "trigger_kind": str(handoff.get("trigger_kind") or ""),
             "trigger_cadence": str(handoff.get("trigger_cadence") or ""),
             "gatekeeper_prompt_path": str(handoff_path.parent / "gatekeeper-prompt.json"),
+            "gatekeeper_prompt_text_path": str(handoff_path.parent / "gatekeeper-prompt.txt"),
             "loop_brief_path": str(handoff_path.parent / "loop-brief.json"),
             "state_steward_path": str(handoff_path.parent / "state-steward.json"),
         }

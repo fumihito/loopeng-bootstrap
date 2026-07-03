@@ -30,10 +30,12 @@ The daemon already re-checks the handoff state before it invokes a command. Trig
 
 The repository ships the two example helpers above so a clean install can demonstrate the scheduler boundary end to end:
 
-- `trigger-example.sh` reads the synthesized `gatekeeper-prompt.json` and launches the next headless Claude turn from the repository root.
+- `trigger-example.sh` reads `gatekeeper-prompt.txt`, which is the sole prompt-text source of truth, and launches the next headless Claude turn from the repository root.
 - `trigger-dryrun.sh` appends one JSON record to `.agent-loop/runtime/scheduler/trigger-dryrun.log` and exits.
 
 Verified by `tests/test_loop_e2e_two_turns.py::LoopE2ETwoTurnTests` and `tests/test_smoke.py::IntegrationTest.test_scheduler_daemon_triggers_ready_handoff_once`.
+
+The daemon still exposes `gatekeeper_prompt_path` for metadata JSON and `gatekeeper_prompt_text_path` for the plain-text prompt body.
 
 ## Timeout and failure behavior
 
