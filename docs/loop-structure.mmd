@@ -1,118 +1,140 @@
 flowchart TD
-    USER[Human input]
+    classDef det fill:#eef4ff,stroke:#345c9c,stroke-width:1.4px,color:#10233e;
+    classDef llm fill:#fff7df,stroke:#b57a00,stroke-width:1.4px,color:#3d2600;
+    classDef human fill:#fdeef4,stroke:#b04f74,stroke-width:1.4px,color:#4a1028;
 
-    ROUTER{Entry router}
+    HUMAN[Human]:::human
 
-    DIRECT[Direct mode<br/>single controlled inquiry]
-    SOP[SOP router<br/>load sop-header skill]
+    subgraph ENTRY["入口ルーティング (ターン開始)"]
+        direction TD
+        UP[UserPromptSubmit]:::human
+        ROUTER{strict leading prefix precedence<br/>direct: → frame-* → route: → &lt;header&gt; → Gatekeeper}:::det
+        DIRECT[DIRECT<br/>bounded / Gatekeeper-free<br/>read-only by default]:::det
+        FRAME[FRAME<br/>isolated frame skill]:::det
+        COMMAND_ROUTE[COMMAND_ROUTE<br/>frame shortlist proposal<br/>stays outside loop]:::det
+        SOP[SOP<br/>isolated sop-&lt;header&gt; skill]:::det
+    end
 
-    GK[Gatekeeper<br/>validate operating contract]
-    GK_RESULT{Gatekeeper verdict}
+    subgraph LOOP["ループ本体 (1ターン内部)"]
+        direction TD
+        GK{gatekeeper<br/>READY / NEEDS_INPUT / REJECT}:::llm
+        LBA[loop-brief-assistant<br/>clarify missing conditions]:::llm
+        BP[brief-pattern-curator<br/>commit accepted patterns]:::llm
+        SM[sensemaker<br/>progressive OKF LLMWiki retrieval]:::llm
+        GOV[governor<br/>policy / authority enforcement]:::llm
+        INT[integrator<br/>compose parallel outputs]:::llm
+        VALIDATE[deterministic validation<br/>allowlist]:::det
+        ST[state-steward<br/>record state + memory proposals]:::llm
+        ME{meta-evaluator<br/>PASS / REVISE / ESCALATE}:::llm
+        MC[memory-curator<br/>okfctl transaction]:::llm
+        WIKI[(LLMWiki)]:::det
+        OBS[Learning Observer]:::det
+        LA[learning-auditor<br/>sop-learning-audit]:::llm
+        RECOVERY[watchdog-recovery<br/>continue / rollback / escalate]:::llm
+    end
 
-    LBA[Loop Brief Assistant<br/>identify missing conditions]
-    HUMAN_FILL[Human supplies<br/>missing conditions]
-    GK_RECHECK[Gatekeeper re-evaluation]
+    subgraph HOOK["決定論的境界 (hook)"]
+        direction TD
+        SANITIZE[hook sanitize<br/>journal / telemetry]:::det
+        MUTATE_GATE[mutation gate<br/>protected-path / permission]:::det
+        DRIFT_GUARD[protected-path drift]:::det
+        WATCHDOG_GATE[watchdog gate<br/>tool / failure budget]:::det
+        OKFCTL[okfctl transaction]:::det
+    end
 
-    REJECT[Reject / stop]
-    BRIEF[Trusted Loop Brief]
+    subgraph SCHED["スケジューラ (ターン間)"]
+        direction TD
+        PASS[PASS]:::det
+        REVISE[REVISE]:::det
+        ESC[ESCALATE]:::det
+        GEX[GATE_EXHAUSTED]:::det
+        WTR[WATCHDOG_TRIPPED]:::det
+        PDR[PROTECTED_DRIFT]:::det
+        NEXT[next-turn.json<br/>gatekeeper-prompt.txt<br/>gatekeeper-prompt.json]:::det
+        CAD{daemon cadence gate<br/>immediate / manual / on-event / unknown}:::det
+        LEGEND[Legend<br/>det = hook / daemon / okfctl<br/>llm = ROLES-derived role<br/>human = human<br/>loop = autonomous loop]:::det
+    end
 
-    SM[Sensemaker<br/>frame problem and retrieve memory]
-    PLAN[Normalized task frame<br/>criteria, risks, non-goals]
-
-    GOV[Governor<br/>policy and authority enforcement]
-
-    GEN[Generator / Actor<br/>produce changes or candidate result]
-    INT[Integrator<br/>compose parallel outputs]
-    EVAL[Evaluator<br/>verify explicit criteria]
-
-    RESULT{Evaluation result}
-
-    STATE[State Steward<br/>record state transition<br/>and memory proposals]
-    META[Meta-Evaluator<br/>challenge frame, evidence,<br/>metrics and completion claim]
-
-    META_RESULT{Meta verdict}
-
-    MEM_DECISION{Accepted durable<br/>knowledge exists?}
-    MC[Memory Curator<br/>produce OKF documents]
-    OKF[okfctl transaction<br/>validate, index, commit]
-    WIKI[(LLMWiki<br/>OKF knowledge bundle)]
-
-    COMPLETE[Turn completed]
-    REVISE[Revision required<br/>start next iteration]
-    ESCALATE[Escalate to human]
-
-    WD[Watchdog<br/>deterministic runtime monitoring]
-    RECOVERY[Watchdog / Recovery<br/>continue, rollback or escalate]
-
-    LEARN[Learning Observer<br/>cross-turn deterministic metrics]
-    AUDIT[Learning Auditor<br/>interpret long-term learning health]
-
-    TRIGGER[Scheduler / external trigger]
-    NEXT[Next loop execution]
-
-    USER --> ROUTER
-
+    UP --> ROUTER
     ROUTER -->|direct:| DIRECT
-    ROUTER -->|header:| SOP
-    ROUTER -->|normal input| GK
+    ROUTER -->|frame-<name>:| FRAME
+    ROUTER -->|route:| COMMAND_ROUTE
+    ROUTER -->|other strict leading &lt;header&gt;:| SOP
+    ROUTER -->|no prefix| GK
 
-    GK --> GK_RESULT
-    GK_RESULT -->|READY| BRIEF
-    GK_RESULT -->|NEEDS_INPUT| LBA
-    GK_RESULT -->|REJECT| REJECT
+    DIRECT --> HUMAN
+    FRAME --> HUMAN
+    COMMAND_ROUTE -->|selected frame| FRAME
+    COMMAND_ROUTE -->|needs_user_turn| HUMAN
+    SOP -->|learning-audit:| LA
+    SOP -->|other sop-&lt;header&gt;| HUMAN
 
-    LBA --> HUMAN_FILL
-    HUMAN_FILL --> GK_RECHECK
-    GK_RECHECK -->|READY| BRIEF
-    GK_RECHECK -->|NEEDS_INPUT| REJECT
-    GK_RECHECK -->|REJECT| REJECT
+    HUMAN -.->|"continuation ≤ max_stop_continuations"| GK
+    HUMAN -->|"continuation > max_stop_continuations"| GEX
 
-    BRIEF --> SM
-    WIKI -. selected prior knowledge .-> SM
-    SM --> PLAN
+    GK -->|NEEDS_INPUT| LBA
+    GK -->|READY + PATTERN_CAPTURE| BP
+    GK -->|READY| SM
+    GK -->|REJECT| ESC
 
-    PLAN --> GOV
-    GOV -->|allowed| GEN
-    GOV -->|denied| ESCALATE
-    GOV -->|human approval required| ESCALATE
+    LBA -->|questions_to_user| HUMAN
+    BP -.->|"continuation ≤ max_stop_continuations"| GK
 
-    GEN --> INT
-    INT --> EVAL
-    EVAL --> RESULT
+    SM -.->|selected prior knowledge| WIKI
+    WIKI -.->|selected prior knowledge| SM
+    SM --> GOV
+    GOV --> MUTATE_GATE
+    GOV -->|denied| ESC
+    MUTATE_GATE --> INT
+    MUTATE_GATE -.->|protected-path drift| DRIFT_GUARD
+    DRIFT_GUARD --> PDR
 
-    RESULT -->|PASS candidate| STATE
-    RESULT -->|FAIL| REVISE
+    INT --> VALIDATE
+    INT -.->|tool events / failure budget| WATCHDOG_GATE
+    VALIDATE --> ST
+    VALIDATE -.->|tool events / failure budget| WATCHDOG_GATE
+    WATCHDOG_GATE --> RECOVERY
 
-    STATE --> META
-    META --> META_RESULT
+    ST -.->|sanitized journal / telemetry| SANITIZE
+    ME -.->|sanitized journal / telemetry| SANITIZE
+    MC -.->|sanitized journal / telemetry| SANITIZE
+    LA -.->|sanitized journal / telemetry| SANITIZE
+    GK -.->|sanitized journal / telemetry| SANITIZE
 
-    META_RESULT -->|PASS| MEM_DECISION
-    META_RESULT -->|REVISE| REVISE
-    META_RESULT -->|ESCALATE| ESCALATE
+    ST --> ME
+    ME -->|PASS| PASS
+    ME -->|REVISE| REVISE
+    ME -->|ESCALATE| ESC
 
-    MEM_DECISION -->|yes| MC
-    MEM_DECISION -->|no| COMPLETE
-    MC --> OKF
-    OKF --> WIKI
-    OKF --> COMPLETE
-
-    GEN -. tool events .-> WD
-    INT -. tool events .-> WD
-    EVAL -. tool events .-> WD
-    STATE -. tool events .-> WD
-    META -. tool events .-> WD
-
-    WD -->|healthy| COMPLETE
-    WD -->|tripped| RECOVERY
+    PASS -->|accepted memory proposals| MC
+    PASS -->|no durable memory| OBS
+    MC --> OKFCTL
+    OKFCTL --> WIKI
+    OKFCTL --> OBS
 
     RECOVERY -->|continue with changed approach| REVISE
-    RECOVERY -->|rollback| ESCALATE
-    RECOVERY -->|escalate| ESCALATE
+    RECOVERY -->|rollback| ESC
+    RECOVERY -->|escalate| ESC
+    RECOVERY --> WTR
 
-    COMPLETE --> LEARN
-    LEARN --> AUDIT
+    REVISE -.->|"continuation ≤ max_stop_continuations"| INT
 
-    TRIGGER --> NEXT
-    COMPLETE -. persisted state .-> NEXT
-    WIKI -. reusable knowledge .-> NEXT
-    AUDIT -. policy and process recommendations .-> NEXT
+    OBS -.->|learning-audit:| LA
+    LA --> NEXT
+    OBS --> NEXT
+
+    PASS --> NEXT
+    REVISE --> NEXT
+    ESC --> NEXT
+    GEX --> NEXT
+    WTR --> NEXT
+    PDR --> NEXT
+
+    NEXT -->|ready_for_next_turn = true| CAD
+    NEXT -->|ready_for_next_turn = false<br/>notification_command| HUMAN
+    CAD -->|immediate| UP
+    CAD -->|manual / on-event / unknown<br/>skip| HUMAN
+
+    LEGEND -.->|legend sample| DIRECT
+    LEGEND -.->|legend sample| GK
+    LEGEND -.->|legend sample| HUMAN

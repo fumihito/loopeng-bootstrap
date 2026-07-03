@@ -16,7 +16,7 @@ The main structural additions are now:
 
 - the repository contains a long-running scheduler daemon and a matching systemd unit that consume the deterministic next-turn handoff artifact;
 - each completed loop turn writes a machine-readable `gatekeeper-prompt.json` bundle and carries `trigger_cadence` forward;
-- the repository has extra loop branches that the diagram does not show, especially `brief-pattern-curator` and `PATTERN_CAPTURE`.
+- the diagram now shows the scheduler boundary explicitly, while still compressing the route/direct/FRAME/SOP exits into a compact entry routing block and leaving the `brief-pattern-curator` / `PATTERN_CAPTURE` branch as a secondary loop detail.
 
 ## Mapping
 
@@ -50,7 +50,7 @@ The repository already has some control planes that are not explicit in `docs/lo
 - turn persistence under `.agent-loop/runtime/` and `.agent-loop/state/learning/`;
 - explicit trust checks on subagent reports before curator and auditor roles are allowed to run.
 
-These are not missing features. They are extra implementation constraints that make the current system stricter than the diagram suggests.
+These are not missing features. They are extra implementation constraints that make the current system stricter than the diagram suggests. The current diagram intentionally abstracts the scheduler's skip/notification distinction into a single cadence gate and keeps the isolated FRAME and SOP exits shallow so the main loop and its deterministic boundaries remain readable.
 
 ## Concrete evidence
 
@@ -79,6 +79,6 @@ These are not missing features. They are extra implementation constraints that m
 
 The main loop is present and enforced, but it is implemented as a distributed set of hooks, role contracts, runtime files, and policy checks rather than as a single orchestrated DAG executor.
 
-The repository now contains a dedicated Integrator implementation, a concrete next-turn handoff path, a deterministic continuation prompt bundle, support for read-only turn completion, and a persistent scheduler daemon suitable for systemd user service deployment.
+The repository now contains a dedicated Integrator implementation, a concrete next-turn handoff path, a deterministic continuation prompt bundle, support for read-only turn completion, and a persistent scheduler daemon suitable for systemd user service deployment. The Mermaid view now mirrors that boundary more closely: the terminal states feed the next-turn bundle, the daemon's cadence gate is explicit, and the only remaining abstraction is the compressed treatment of isolated entry modes and secondary pattern governance.
 
 The follow-up defects from the companion review are now implemented and covered by targeted tests. What remains is deliberate diagram abstraction: the Mermaid view still compresses the scheduler into an external trigger, omits the extra loop branches to keep the boundary readable, and does not spell out the prompt artifact, cadence metadata, validation allowlist, or evidence distinctions enforced at turn completion.
