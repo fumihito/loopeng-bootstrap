@@ -221,6 +221,16 @@ def process_once(root: Path) -> dict[str, Any]:
             "loop_brief_path": str(handoff_path.parent / "loop-brief.json"),
             "state_steward_path": str(handoff_path.parent / "state-steward.json"),
         }
+        cadence = handoff.get("trigger_cadence")
+        cadence_kind = "unknown"
+        if isinstance(cadence, str):
+            normalized = cadence.strip().lower()
+            if normalized in {"", "immediate", "external-user-prompt"}:
+                cadence_kind = "immediate"
+            elif normalized == "manual":
+                cadence_kind = "manual"
+            elif normalized.startswith("on-event:"):
+                cadence_kind = "on-event"
         event = {
             "observed_at": now(),
             "turn_id": turn_id,
@@ -231,6 +241,7 @@ def process_once(root: Path) -> dict[str, Any]:
             "next_entry_role": handoff.get("next_entry_role"),
             "trigger_kind": handoff.get("trigger_kind"),
             "trigger_cadence": handoff.get("trigger_cadence"),
+            "cadence_kind": cadence_kind,
         }
         if not handoff.get("ready_for_next_turn"):
             trigger_info: dict[str, Any] = {"scheduler_action": "skipped_unready"}
@@ -267,16 +278,6 @@ def process_once(root: Path) -> dict[str, Any]:
         summary["ready_count"] += 1
         trigger_info: dict[str, Any] = {"scheduler_action": "recorded"}
         command = policy["trigger_command"]
-        cadence = handoff.get("trigger_cadence")
-        cadence_kind = "unknown"
-        if isinstance(cadence, str):
-            normalized = cadence.strip().lower()
-            if normalized in {"", "immediate", "external-user-prompt"}:
-                cadence_kind = "immediate"
-            elif normalized == "manual":
-                cadence_kind = "manual"
-            elif normalized.startswith("on-event:"):
-                cadence_kind = "on-event"
         if command and cadence_allows_auto_trigger(cadence):
             try:
                 trigger_info = run_trigger(command, context, policy["trigger_command_timeout_seconds"])
@@ -301,33 +302,37 @@ def process_once(root: Path) -> dict[str, Any]:
                     "command_error": str(exc),
                 }
                 summary["failed_count"] += 1
-        elif command and cadence_needs_notification(cadence):
-            trigger_info = {"scheduler_action": "skipped_unknown_cadence"}
-            summary["skipped_count"] += 1
-            command = policy["notification_command"]
-            if command:
-                try:
-                    notification_context = {**context, "scheduler_action": "notification"}
-                    trigger_info = run_trigger(command, notification_context, policy["trigger_command_timeout_seconds"])
-                    trigger_info["scheduler_action"] = "notified" if trigger_info["scheduler_action"] == "triggered" else trigger_info["scheduler_action"]
-                except subprocess.TimeoutExpired as exc:
-                    trigger_info = {
-                        "scheduler_action": "notification_failed",
-                        "error": "timeout",
-                        "timeout_seconds": policy["trigger_command_timeout_seconds"],
-                        "command": format_args(command, context),
-                        "command_error": str(exc),
-                    }
-                except OSError as exc:
-                    trigger_info = {
-                        "scheduler_action": "notification_failed",
-                        "error": type(exc).__name__,
-                        "command": format_args(command, context),
-                        "command_error": str(exc),
-                    }
-        elif command:
+        elif command and cadence_kind == "manual":
             trigger_info = {"scheduler_action": "skipped_manual_cadence"}
             summary["skipped_count"] += 1
+        elif command and cadence_kind == "on-event":
+            trigger_info = {"scheduler_action": "skipped_on_event_cadence"}
+            summary["skipped_count"] += 1
+        elif command:
+            trigger_info = {"scheduler_action": "skipped_unknown_cadence"}
+            summary["skipped_count"] += 1
+            if cadence_needs_notification(cadence):
+                command = policy["notification_command"]
+                if command:
+                    try:
+                        notification_context = {**context, "scheduler_action": "notification"}
+                        trigger_info = run_trigger(command, notification_context, policy["trigger_command_timeout_seconds"])
+                        trigger_info["scheduler_action"] = "notified" if trigger_info["scheduler_action"] == "triggered" else trigger_info["scheduler_action"]
+                    except subprocess.TimeoutExpired as exc:
+                        trigger_info = {
+                            "scheduler_action": "notification_failed",
+                            "error": "timeout",
+                            "timeout_seconds": policy["trigger_command_timeout_seconds"],
+                            "command": format_args(command, context),
+                            "command_error": str(exc),
+                        }
+                    except OSError as exc:
+                        trigger_info = {
+                            "scheduler_action": "notification_failed",
+                            "error": type(exc).__name__,
+                            "command": format_args(command, context),
+                            "command_error": str(exc),
+                        }
         event.update(trigger_info)
         processed[turn_id] = signature
         emit_event(root, event, policy["record_events"])

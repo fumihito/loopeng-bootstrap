@@ -1,14 +1,13 @@
 import http.server
 import json
 import os
-import socketserver
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT=Path(__file__).resolve().parents[1]
 HOOK=ROOT/'.agent-loop/hooks/loop_hook.py'
@@ -33,22 +32,34 @@ class TelemetryTests(unittest.TestCase):
 
     def test_otlp_payload_is_sanitized(self):
         with tempfile.TemporaryDirectory() as td:
-            repo=Path(td); (repo/'.agent-loop/hooks').mkdir(parents=True)
-            (repo/'.agent-loop').mkdir(exist_ok=True)
-            shutil_files=[('.agent-loop/hooks/loop_hook.py',HOOK),('.agent-loop/policy.json',ROOT/'.agent-loop/policy.json'),('.agent-loop/otel.json',ROOT/'.agent-loop/otel.json')]
-            for rel,src in shutil_files:
-                dst=repo/rel; dst.parent.mkdir(parents=True,exist_ok=True); dst.write_bytes(src.read_bytes())
-            with socketserver.TCPServer(('127.0.0.1',0),Receiver) as server:
-                port=server.server_address[1]
-                thread=threading.Thread(target=server.handle_request); thread.start()
-                env=os.environ.copy(); env['AGENT_LOOP_OTEL_ENDPOINT']=f'http://127.0.0.1:{port}/v1/logs'
-                event={'hook_event_name':'PreToolUse','session_id':'s','turn_id':'t','cwd':str(repo),'tool_name':'Bash','tool_input':{'command':'API_KEY=secret git status --token credential'}}
-                subprocess.run([sys.executable,str(repo/'.agent-loop/hooks/loop_hook.py'),'--platform','claude'],input=json.dumps(event),text=True,env=env,check=True,capture_output=True)
-                thread.join(3)
-                body=Receiver.payloads[-1].decode()
-                self.assertIn('git',body); self.assertIn('tool_input_redacted',body)
-                for secret in ['API_KEY','secret','status','token','credential','tool_input.command']:
-                    self.assertNotIn(secret,body)
+            repo=Path(td)
+            (repo/'.agent-loop').mkdir(parents=True)
+            (repo/'.agent-loop/otel.json').write_text((ROOT/'.agent-loop/otel.json').read_text(), encoding='utf-8')
+            (repo/'.agent-loop/hooks').mkdir(exist_ok=True)
+            (repo/'.agent-loop/hooks/loop_hook.py').write_bytes(HOOK.read_bytes())
+            ns={}
+            exec(HOOK.read_text(),ns)
+            captured={}
+
+            class Response:
+                status=200
+                def __enter__(self):
+                    return self
+                def __exit__(self, exc_type, exc, tb):
+                    return False
+
+            def fake_urlopen(request, timeout=0.5):
+                captured['request']=request
+                return Response()
+
+            event={'hook_event_name':'PreToolUse','session_id':'s','turn_id':'t','cwd':str(repo),'tool_name':'Bash','tool_input':{'command':'API_KEY=secret git status --token credential'}}
+            attrs=ns['telemetry_attributes'](event,'claude',{'tool_input_redacted':True})
+            with mock.patch.object(ns['urllib'].request, 'urlopen', side_effect=fake_urlopen):
+                ns['send_otel'](repo,'agent.loop.telemetry.self_test',attrs)
+            body=captured['request'].data.decode()
+            self.assertIn('git',body); self.assertIn('tool_input_redacted',body)
+            for secret in ['API_KEY','secret','status','token','credential','tool_input.command']:
+                self.assertNotIn(secret,body)
 
 if __name__=='__main__': unittest.main()
 

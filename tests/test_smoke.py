@@ -500,6 +500,63 @@ class IntegrationTest(unittest.TestCase):
         last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text())
         self.assertEqual(last_trigger["scheduler_action"], "skipped_manual_cadence")
 
+    def test_scheduler_skips_on_event_cadence_without_notification(self):
+        policy_path = self.repo / ".agent-loop/scheduler-policy.json"
+        policy = json.loads(policy_path.read_text())
+        turns_root = self.repo / ".agent-loop/runtime/turns"
+        if turns_root.exists():
+            for handoff in turns_root.glob("*/next-turn.json"):
+                handoff.unlink()
+        scheduler_runtime = self.repo / ".agent-loop/runtime/scheduler"
+        if scheduler_runtime.exists():
+            shutil.rmtree(scheduler_runtime)
+        scheduler_runtime.mkdir(parents=True, exist_ok=True)
+        policy["trigger_command"] = [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('triggered\\n', encoding='utf-8')",
+            "{runtime_dir}/on-event-trigger.txt",
+        ]
+        policy["notification_command"] = [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('notified\\n', encoding='utf-8')",
+            "{runtime_dir}/on-event-notify.txt",
+        ]
+        policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
+
+        turn_dir = self.repo / ".agent-loop/runtime/turns/turn-on-event"
+        turn_dir.mkdir(parents=True, exist_ok=True)
+        handoff = {
+            "source_turn_id": "turn-on-event",
+            "session_id": "on-event-session",
+            "routing_mode": "LOOP",
+            "final_status": "PASS",
+            "ready_for_next_turn": True,
+            "next_entry_role": "gatekeeper",
+            "trigger_kind": "external-user-prompt",
+            "trigger_cadence": "on-event:ci-failure",
+            "started_at": "2026-07-01T00:00:00+00:00",
+            "completed_at": "2026-07-01T00:01:00+00:00",
+            "resume_hint": "Submit the next ordinary user message to enter Gatekeeper.",
+        }
+        (turn_dir / "next-turn.json").write_text(json.dumps(handoff, indent=2) + "\n", encoding="utf-8")
+
+        proc = subprocess.run(
+            [sys.executable, str(self.repo / ".agent-loop/bin/next_turn_scheduler_daemon.py"), "--repo", str(self.repo), "--once"],
+            cwd=self.repo,
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=20,
+        )
+        self.assertIn("turn-on-event", proc.stdout)
+        self.assertFalse((self.repo / ".agent-loop/runtime/scheduler/on-event-trigger.txt").exists())
+        self.assertFalse((self.repo / ".agent-loop/runtime/scheduler/on-event-notify.txt").exists())
+        last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text())
+        self.assertEqual(last_trigger["scheduler_action"], "skipped_on_event_cadence")
+        self.assertEqual(last_trigger["cadence_kind"], "on-event")
+
     def test_scheduler_skips_unknown_cadence_and_notifies(self):
         policy_path = self.repo / ".agent-loop/scheduler-policy.json"
         policy = json.loads(policy_path.read_text())

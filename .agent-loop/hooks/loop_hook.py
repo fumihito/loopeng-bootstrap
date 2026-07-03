@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -73,6 +74,53 @@ LOOP_BRIEF_ASSISTANT_MODES = {"CLARIFY", "PATTERN_CAPTURE"}
 BRIEF_PATTERN_ACTIONS = {"NONE", "CAPTURE"}
 BRIEF_PATTERN_HANDOFF_REASONS = {"MISSING_INPUT", "PATTERN_CAPTURE", "NONE"}
 TRIGGER_CADENCE_VALUES = {"immediate", "manual", "external-user-prompt"}
+JOURNAL_ALLOWED_KEYS = {
+    "agent_id",
+    "agent_type",
+    "allow_mutations",
+    "arguments_logged",
+    "attempted_mutation",
+    "command_names",
+    "command_route_header",
+    "confidence",
+    "content_logged",
+    "event",
+    "error_type",
+    "event_note",
+    "failure_category",
+    "frame_header",
+    "gatekeeper_verdict",
+    "invocation_trigger",
+    "learning_state_read",
+    "mutation",
+    "mutation_epoch",
+    "needs_user_turn",
+    "paths",
+    "report_content_logged",
+    "role",
+    "routing_mode",
+    "selected_frame",
+    "skill_name",
+    "skill_sha256",
+    "sop_header",
+    "time",
+    "tool_input_redacted",
+    "tool_name",
+    "tool_success",
+    "trigger",
+    "watchdog",
+}
+JOURNAL_FORBIDDEN_KEYS = {
+    "arguments",
+    "body",
+    "content",
+    "message",
+    "prompt",
+    "stderr",
+    "stdout",
+    "text",
+    "tool_input",
+}
 
 
 def now() -> str:
@@ -123,6 +171,62 @@ def append_jsonl(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(value, ensure_ascii=False) + "\n")
+
+
+def journal(target: Path, event_name: str, **fields: Any) -> None:
+    forbidden = set(fields) & JOURNAL_FORBIDDEN_KEYS
+    unknown = set(fields) - JOURNAL_ALLOWED_KEYS
+    if forbidden or unknown:
+        fields = {key: value for key, value in fields.items() if key in JOURNAL_ALLOWED_KEYS}
+        fields["event_note"] = "journal-key-rejected"
+    record = {
+        "time": now(),
+        "event": event_name,
+        **fields,
+        "content_logged": False,
+        "arguments_logged": False,
+    }
+    append_jsonl(target / "journal.jsonl", record)
+
+
+def journal_sanitization_findings(hook_path: Path | None = None) -> list[str]:
+    path = hook_path or Path(__file__).resolve()
+    source = path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    journal_node = next((node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "journal"), None)
+    if journal_node is None:
+        return [f"ERROR: {path.name}: journal() helper is missing"]
+    findings: list[str] = []
+    journal_span = range(journal_node.lineno, getattr(journal_node, "end_lineno", journal_node.lineno) + 1)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if isinstance(node.func, ast.Name) and node.func.id == "append_jsonl":
+            if not node.args:
+                continue
+            segment = ast.get_source_segment(source, node.args[0]) or ""
+            if "journal.jsonl" in segment and node.lineno not in journal_span:
+                findings.append(f"ERROR: {path.name}:{node.lineno}: raw journal.jsonl write outside journal()")
+        if isinstance(node.func, ast.Name) and node.func.id == "journal":
+            for keyword in node.keywords:
+                if keyword.arg is None:
+                    continue
+                if keyword.arg in JOURNAL_FORBIDDEN_KEYS:
+                    findings.append(f"ERROR: {path.name}:{node.lineno}: forbidden journal key {keyword.arg}")
+                elif keyword.arg not in JOURNAL_ALLOWED_KEYS:
+                    findings.append(f"ERROR: {path.name}:{node.lineno}: unknown journal key {keyword.arg}")
+    return findings
+
+
+def journal_sanitization_lint(hook_path: Path | None = None) -> int:
+    findings = journal_sanitization_findings(hook_path)
+    if findings:
+        print(f"Found {len(findings)} journal sanitization issue(s):")
+        for finding in findings:
+            print(finding)
+        return 1
+    print(f"OK: journal sanitization lint passed for {hook_path or Path(__file__).resolve()}")
+    return 0
 
 
 def safe(value: Any) -> str:
@@ -1664,12 +1768,7 @@ def continuation(root: Path, event: dict[str, Any], state: dict[str, Any], polic
         target = turn_dir(root, state)
         atomic(target / "turn.json", state)
         write_next_turn_handoff(root, state)
-        append_jsonl(target / "journal.jsonl", {
-            "time": now(),
-            "event": "loop-control-gate-exhausted",
-            "routing_mode": state.get("routing_mode"),
-            "content_logged": False,
-        })
+        journal(target, "loop-control-gate-exhausted", routing_mode=state.get("routing_mode"))
         return emit({"continue": False, "stopReason": "Loop control gate could not be satisfied; human intervention is required.", "systemMessage": reason})
     save_runtime(root, event, state)
     atomic(turn_dir(root, state) / "turn.json", state)
@@ -1898,17 +1997,15 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                     "content_logged": False,
                     "route_origin": "command-route",
                 })
-                append_jsonl(target / "journal.jsonl", {
-                    "time": now(),
-                    "event": "command-route-frame-loaded",
-                    "routing_mode": FRAME_ROUTING_MODE,
-                    "frame_header": frame_state["header"],
-                    "skill_name": frame_state["required_skill"],
-                    "skill_sha256": frame_state["skill_sha256"],
-                    "allow_mutations": frame_state["allow_mutations"],
-                    "content_logged": False,
-                    "arguments_logged": False,
-                })
+                journal(
+                    target,
+                    "command-route-frame-loaded",
+                    routing_mode=FRAME_ROUTING_MODE,
+                    frame_header=frame_state["header"],
+                    skill_name=frame_state["required_skill"],
+                    skill_sha256=frame_state["skill_sha256"],
+                    allow_mutations=frame_state["allow_mutations"],
+                )
                 send_otel(root, "agent.loop.command_route.frame_loaded", telemetry_attributes(event, platform, {
                     "routing.mode": FRAME_ROUTING_MODE,
                     "command_route.selected_frame": frame_state["required_skill"],
@@ -1949,17 +2046,15 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 "loaded_at": now(),
                 "content_logged": False,
             })
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(),
-                "event": "command-route-loaded",
-                "routing_mode": COMMAND_ROUTE_ROUTING_MODE,
-                "command_route_header": "route",
-                "skill_name": COMMAND_ROUTE_SKILL,
-                "skill_sha256": skill["sha256"],
-                "allow_mutations": False,
-                "content_logged": False,
-                "arguments_logged": False,
-            })
+            journal(
+                target,
+                "command-route-loaded",
+                routing_mode=COMMAND_ROUTE_ROUTING_MODE,
+                command_route_header="route",
+                skill_name=COMMAND_ROUTE_SKILL,
+                skill_sha256=skill["sha256"],
+                allow_mutations=False,
+            )
             send_otel(root, "agent.loop.command_route.loaded", telemetry_attributes(event, platform, {
                 "routing.mode": COMMAND_ROUTE_ROUTING_MODE,
                 "command_route.header": "route",
@@ -1980,7 +2075,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             target = turn_dir(root, state)
             atomic(target / "turn.json", state)
             atomic(target / "direct-route.json", {"loaded_at": now(), "allow_mutations": bool(config.get("allow_mutations")), "content_logged": False})
-            append_jsonl(target / "journal.jsonl", {"time": now(), "event": "direct-started", "routing_mode": DIRECT_ROUTING_MODE, "allow_mutations": bool(config.get("allow_mutations")), "content_logged": False, "arguments_logged": False})
+            journal(target, "direct-started", routing_mode=DIRECT_ROUTING_MODE, allow_mutations=bool(config.get("allow_mutations")))
             send_otel(root, "agent.loop.direct.started", telemetry_attributes(event, platform, {"routing.mode": DIRECT_ROUTING_MODE, "direct.allow_mutations": bool(config.get("allow_mutations")), "prompt.content_logged": False}))
             return emit(add_context(name, "[DIRECT_MODE] The leading direct: prefix selected a bounded Gatekeeper-free turn. Answer the task after the prefix directly. Do not invoke Gatekeeper, Loop Brief Assistant, Sensemaker, State Steward, Meta-Evaluator, Memory Curator, or the autonomous-loop workflow. Direct mode is read-only unless .agent-loop/direct-policy.json explicitly allows mutations. Destructive-command, protected-path, LLMWiki, permission, Watchdog, and telemetry controls remain active. [/DIRECT_MODE]"))
         frame = frame_route(prompt)
@@ -2006,11 +2101,15 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 "header": header, "skill_name": required_skill, "skill_sha256": skill["sha256"],
                 "allow_mutations": skill["allow_mutations"], "loaded_at": now(), "content_logged": False,
             })
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(), "event": "frame-loaded", "routing_mode": FRAME_ROUTING_MODE,
-                "frame_header": header, "skill_name": required_skill, "skill_sha256": skill["sha256"],
-                "allow_mutations": skill["allow_mutations"], "content_logged": False, "arguments_logged": False,
-            })
+            journal(
+                target,
+                "frame-loaded",
+                routing_mode=FRAME_ROUTING_MODE,
+                frame_header=header,
+                skill_name=required_skill,
+                skill_sha256=skill["sha256"],
+                allow_mutations=skill["allow_mutations"],
+            )
             send_otel(root, "agent.loop.frame.loaded", telemetry_attributes(event, platform, {
                 "routing.mode": FRAME_ROUTING_MODE, "frame.header": header, "skill.name": required_skill,
                 "frame.loaded": True, "frame.allow_mutations": skill["allow_mutations"],
@@ -2039,11 +2138,15 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 "header": header, "skill_name": required_skill, "skill_sha256": skill["sha256"],
                 "allow_mutations": skill["allow_mutations"], "loaded_at": now(), "content_logged": False,
             })
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(), "event": "sop-loaded", "routing_mode": SOP_ROUTING_MODE,
-                "sop_header": header, "skill_name": required_skill, "skill_sha256": skill["sha256"],
-                "allow_mutations": skill["allow_mutations"], "content_logged": False, "arguments_logged": False,
-            })
+            journal(
+                target,
+                "sop-loaded",
+                routing_mode=SOP_ROUTING_MODE,
+                sop_header=header,
+                skill_name=required_skill,
+                skill_sha256=skill["sha256"],
+                allow_mutations=skill["allow_mutations"],
+            )
             send_otel(root, "agent.loop.sop.loaded", telemetry_attributes(event, platform, {
                 "routing.mode": SOP_ROUTING_MODE, "sop.header": header, "skill.name": required_skill,
                 "sop.loaded": True, "sop.allow_mutations": skill["allow_mutations"],
@@ -2071,12 +2174,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         save_runtime(root, event, state)
         atomic(target / "turn.json", state)
         write_next_turn_handoff(root, state)
-        append_jsonl(target / "journal.jsonl", {
-            "time": now(),
-            "event": "protected-path-drift",
-            "paths": drift,
-            "content_logged": False,
-        })
+        journal(target, "protected-path-drift", paths=drift)
         message = "Protected path drift detected: " + ", ".join(drift)
         if name == "Stop":
             return emit({"continue": False, "stopReason": "Protected path drift detected; human intervention is required.", "systemMessage": message})
@@ -2085,11 +2183,14 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
     if name == "SubagentStart":
         agent_type = safe_identity(event.get("agent_type"))
         gate = load(target / "gatekeeper.json", {})
-        append_jsonl(target / "journal.jsonl", {
-            "time": now(), "event": name, "agent_type": agent_type,
-            "agent_id": safe(event.get("agent_id")), "arguments_logged": False,
-            "routing_mode": state.get("routing_mode"), "gatekeeper_verdict": gate.get("verdict"),
-        })
+        journal(
+            target,
+            name,
+            agent_type=agent_type,
+            agent_id=safe(event.get("agent_id")),
+            routing_mode=state.get("routing_mode"),
+            gatekeeper_verdict=gate.get("verdict"),
+        )
         if state.get("routing_mode") == DIRECT_ROUTING_MODE and agent_type in ROLES:
             config = direct_config(root)
             if not config.get("allow_loop_control_roles", False):
@@ -2118,10 +2219,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         return 0
 
     if name == "UserPromptExpansion":
-        append_jsonl(target / "journal.jsonl", {
-            "time": now(), "event": name, "skill_name": skill_name(event),
-            "invocation_trigger": "user-slash", "arguments_logged": False,
-        })
+        journal(target, name, skill_name=skill_name(event), invocation_trigger="user-slash")
         return 0
 
     if name == "PreToolUse":
@@ -2195,14 +2293,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             if report.get("status") != "MERGED":
                 return emit(deny(name, "Integrator must report MERGED before mutation can proceed."))
         if learning_state_read:
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(),
-                "event": "learning-state-read",
-                "learning_state_read": True,
-                "tool_name": tool_name,
-                "tool_input": event.get("tool_input"),
-                "content_logged": False,
-            })
+            journal(target, "learning-state-read", learning_state_read=True, tool_name=tool_name)
         return 0
 
     if name == "PermissionRequest":
@@ -2230,13 +2321,20 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             send_otel(root, "agent.loop.watchdog.tripped", telemetry_attributes(event, platform, {"watchdog.reasons": reasons}), "WARN")
         save_runtime(root, event, state)
         atomic(target / "turn.json", state)
-        append_jsonl(target / "journal.jsonl", {
-            "time": now(), "event": name, "agent_type": safe_identity(event.get("agent_type")),
-            "tool_name": safe_identity(event.get("tool_name")), "command_names": command_names(tool_text(event)) if event.get("tool_name") == "Bash" else [],
-            "skill_name": skill_name(event), "attempted_mutation": attempted_mutation, "mutation": mutation,
-            "mutation_epoch": state.get("mutation_epoch"), "tool_success": name == "PostToolUse",
-            "tool_input_redacted": True, "arguments_logged": False, "watchdog": state.get("watchdog"),
-        })
+        journal(
+            target,
+            name,
+            agent_type=safe_identity(event.get("agent_type")),
+            tool_name=safe_identity(event.get("tool_name")),
+            command_names=command_names(tool_text(event)) if event.get("tool_name") == "Bash" else [],
+            skill_name=skill_name(event),
+            attempted_mutation=attempted_mutation,
+            mutation=mutation,
+            mutation_epoch=state.get("mutation_epoch"),
+            tool_success=name == "PostToolUse",
+            tool_input_redacted=True,
+            watchdog=state.get("watchdog"),
+        )
         if reasons:
             return emit(add_context(name, "Watchdog tripped: " + "; ".join(reasons) + ". Further product mutations are blocked. Invoke watchdog-recovery and request a human reset."))
         return 0
@@ -2248,7 +2346,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             state["watchdog"] = {"tripped": True, "reasons": reasons, "tripped_at": now()}
         save_runtime(root, event, state)
         atomic(target / "turn.json", state)
-        append_jsonl(target / "journal.jsonl", {"time": now(), "event": name, "failure_category": safe_identity(event.get("error")), "watchdog": state.get("watchdog"), "content_logged": False})
+        journal(target, name, failure_category=safe_identity(event.get("error")), watchdog=state.get("watchdog"))
         return 0
 
     if name in {"PreCompact", "PostCompact"}:
@@ -2260,15 +2358,15 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         if role not in ROLES:
             return 0
         if state.get("routing_mode") == DIRECT_ROUTING_MODE:
-            append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report-ignored", "role": role, "routing_mode": DIRECT_ROUTING_MODE, "content_logged": False})
+            journal(target, "role-report-ignored", role=role, routing_mode=DIRECT_ROUTING_MODE)
             return 0
         if state.get("routing_mode") == FRAME_ROUTING_MODE:
-            append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report-ignored", "role": role, "routing_mode": FRAME_ROUTING_MODE, "content_logged": False})
+            journal(target, "role-report-ignored", role=role, routing_mode=FRAME_ROUTING_MODE)
             return 0
         if state.get("routing_mode") == SOP_ROUTING_MODE:
             sop = state.get("sop", {}) if isinstance(state.get("sop"), dict) else {}
             if not (role == "learning-auditor" and sop.get("required_skill") == LEARNING_AUDIT_SKILL):
-                append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report-ignored", "role": role, "routing_mode": SOP_ROUTING_MODE, "content_logged": False})
+                journal(target, "role-report-ignored", role=role, routing_mode=SOP_ROUTING_MODE)
                 return 0
             body = parse_json_message(str(event.get("last_assistant_message") or ""))
             if body is None:
@@ -2278,7 +2376,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 return emit(block("Invalid learning-auditor report: " + "; ".join(errors) + ". Return a corrected JSON object."))
             body.update({"_trusted_subagent": True, "_recorded_at": now(), "_agent_id": event.get("agent_id"), "_agent_type": role})
             atomic(target / ROLES[role][1], body)
-            append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report", "role": role, "skill_name": role, "report_content_logged": False})
+            journal(target, "role-report", role=role, skill_name=role, report_content_logged=False)
             send_otel(root, "agent.loop.learning.audit_reported", telemetry_attributes(event, platform, {"role.report.valid": True, "skill.name": role, "learning.health": body.get("verdict"), "human_review_required": bool(body.get("human_review_required"))}))
             return 0
         gate = load(target / "gatekeeper.json", {})
@@ -2374,7 +2472,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         state["stop_continuations"] = 0
         save_runtime(root, event, state)
         atomic(target / "turn.json", state)
-        append_jsonl(target / "journal.jsonl", {"time": now(), "event": "role-report", "role": role, "skill_name": role, "mutation_epoch": state.get("mutation_epoch", 0), "report_content_logged": False})
+        journal(target, "role-report", role=role, skill_name=role, mutation_epoch=state.get("mutation_epoch", 0), report_content_logged=False)
         send_otel(root, "agent.loop.role.reported", telemetry_attributes(event, platform, {"role.report.valid": True, "skill.name": role}))
         if role == MEMORY_CURATOR_ROLE:
             if body.get("status") == "BLOCKED":
@@ -2436,14 +2534,13 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 save_runtime(root, event, state)
                 atomic(target / "turn.json", state)
                 atomic(target / "command-route.json", {**command_route_state, "loaded_at": command_route_state.get("_recorded_at")})
-                append_jsonl(target / "journal.jsonl", {
-                    "time": now(),
-                    "event": "command-route-completed",
-                    "routing_mode": COMMAND_ROUTE_ROUTING_MODE,
-                    "needs_user_turn": True,
-                    "selected_frame": None,
-                    "content_logged": False,
-                })
+                journal(
+                    target,
+                    "command-route-completed",
+                    routing_mode=COMMAND_ROUTE_ROUTING_MODE,
+                    needs_user_turn=True,
+                    selected_frame=None,
+                )
                 send_otel(root, "agent.loop.command_route.completed", telemetry_attributes(event, platform, {
                     "routing.mode": COMMAND_ROUTE_ROUTING_MODE,
                     "command_route.needs_user_turn": True,
@@ -2487,22 +2584,20 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 "content_logged": False,
                 "route_origin": "command-route",
             })
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(),
-                "event": "command-route-frame-loaded",
-                "routing_mode": FRAME_ROUTING_MODE,
-                "selected_frame": selected,
-                "confidence": route_body.get("confidence"),
-                "content_logged": False,
-            })
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(),
-                "event": "command-route-selected",
-                "routing_mode": COMMAND_ROUTE_ROUTING_MODE,
-                "selected_frame": selected,
-                "confidence": route_body.get("confidence"),
-                "content_logged": False,
-            })
+            journal(
+                target,
+                "command-route-frame-loaded",
+                routing_mode=FRAME_ROUTING_MODE,
+                selected_frame=selected,
+                confidence=route_body.get("confidence"),
+            )
+            journal(
+                target,
+                "command-route-selected",
+                routing_mode=COMMAND_ROUTE_ROUTING_MODE,
+                selected_frame=selected,
+                confidence=route_body.get("confidence"),
+            )
             send_otel(root, "agent.loop.command_route.selected", telemetry_attributes(event, platform, {
                 "routing.mode": COMMAND_ROUTE_ROUTING_MODE,
                 "command_route.selected_frame": selected,
@@ -2624,12 +2719,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             state["completed_at"] = now()
             save_runtime(root, event, state)
             write_next_turn_handoff(root, state)
-            append_jsonl(target / "journal.jsonl", {
-                "time": now(),
-                "event": "watchdog-tripped",
-                "routing_mode": state.get("routing_mode"),
-                "content_logged": False,
-            })
+            journal(target, "watchdog-tripped", routing_mode=state.get("routing_mode"))
             return emit({"continue": False, "stopReason": "Watchdog remains tripped; human reset is required.", "systemMessage": "A trusted recovery report exists, but only a human may reset the Watchdog."})
         mutations = int(state.get("mutations", 0))
         if mutations <= 0:
@@ -2658,12 +2748,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                     state["completed_at"] = now()
                     save_runtime(root, event, state)
                     write_next_turn_handoff(root, state)
-                    append_jsonl(target / "journal.jsonl", {
-                        "time": now(),
-                        "event": "meta-evaluator-escalated",
-                        "routing_mode": state.get("routing_mode"),
-                        "content_logged": False,
-                    })
+                    journal(target, "meta-evaluator-escalated", routing_mode=state.get("routing_mode"))
                     return emit({"continue": False, "stopReason": "Meta-Evaluator escalated the turn for human judgment.", "systemMessage": "Meta-Evaluator verdict: ESCALATE."})
                 memory_assessment = evaluator.get("memory_assessment") if isinstance(evaluator.get("memory_assessment"), dict) else {}
                 accepted_memory = [str(value) for value in (memory_assessment.get("accepted_proposal_ids") or [])]
@@ -2728,7 +2813,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             }))
         except Exception as exc:
             state["learning_observation"] = {"status": "FAILED", "error_type": type(exc).__name__}
-            append_jsonl(target / "journal.jsonl", {"time": now(), "event": "learning-observer-failed", "error_type": type(exc).__name__, "error_content_logged": False})
+            journal(target, "learning-observer-failed", error_type=type(exc).__name__)
             send_otel(root, "agent.loop.learning.observation_failed", telemetry_attributes(event, platform, {"learning.observation_success": False, "error.type": type(exc).__name__}), "ERROR")
         save_runtime(root, event, state)
         atomic(target / "turn.json", state)
@@ -2781,12 +2866,22 @@ def telemetry_test(platform: str) -> int:
     return 0
 
 
+def self_test(platform: str) -> int:
+    lint_rc = journal_sanitization_lint(Path(__file__).resolve())
+    if lint_rc != 0:
+        return lint_rc
+    return telemetry_test(platform)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("command", nargs="?", default="hook")
     parser.add_argument("--reason", default="")
     parser.add_argument("--platform", choices=["claude", "codex", "unknown"], default="unknown")
+    parser.add_argument("--self-test", action="store_true")
     args, _ = parser.parse_known_args()
+    if args.self_test:
+        return self_test(args.platform)
     if args.command == "reset-watchdog":
         return reset(args.reason)
     if args.command == "status":

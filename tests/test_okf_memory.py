@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import shutil
 import unittest
 from pathlib import Path
 
@@ -60,6 +61,7 @@ No external citation is required for this repository-local observation.
 '''
 
 
+@unittest.skipUnless(shutil.which("go"), "requires Go toolchain")
 class OKFCommandTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
