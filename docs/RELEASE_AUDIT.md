@@ -13,6 +13,8 @@ It is read-only except for the explicit audit log entry described below.
 6. Run `git status --porcelain` and confirm the only remaining diff is `docs/audit-log.md`.
 7. Record the audit outcome in `docs/audit-log.md` with the date, commit, and concise result summary.
 
+The audit log uses two line types: `- <date> | audit <parent-full-hash> | <summary>` for canonical release audits, and `- <date> | note <target-full-hash> | <summary>` for supplementary notes and corrections. The parent hash must be the full 40-character hash of the audited snapshot's parent commit, and the pre-push guard only recognizes `audit` lines when it checks whether a push is covered.
+
 ## Notes
 
 - The checklist is intentionally deterministic.

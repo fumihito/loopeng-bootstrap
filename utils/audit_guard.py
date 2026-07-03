@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,7 @@ MONITORED_PREFIXES = (
 )
 MONITORED_FILES = {"install.py"}
 DOCS_PREFIX = "docs/"
+AUDIT_LINE_PATTERN = r"(?m)^- \d{{4}}-\d{{2}}-\d{{2}} \| audit ({hash}) \|"
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,21 @@ def changed_paths(root: Path, commit: str) -> list[str]:
     return [line.strip() for line in output.splitlines() if line.strip()]
 
 
+def range_changed_paths(root: Path, remote_sha: str, local_sha: str) -> list[str]:
+    if is_zero_sha(remote_sha):
+        commits = commit_range(root, remote_sha, local_sha)
+        paths: list[str] = []
+        seen: set[str] = set()
+        for commit in commits:
+            for path in changed_paths(root, commit):
+                if path not in seen:
+                    seen.add(path)
+                    paths.append(path)
+        return paths
+    output = run_git(root, "diff", "--name-only", f"{remote_sha}..{local_sha}")
+    return [line.strip() for line in output.splitlines() if line.strip()]
+
+
 def commit_range(root: Path, remote_sha: str, local_sha: str) -> list[str]:
     if is_zero_sha(local_sha):
         return []
@@ -99,28 +116,34 @@ def audit_log_has_parent(root: Path, parent_hash: str) -> bool:
     audit_log = root / "docs/audit-log.md"
     if not audit_log.is_file():
         return False
-    return parent_hash in audit_log.read_text(encoding="utf-8")
+    pattern = AUDIT_LINE_PATTERN.format(hash=re.escape(parent_hash))
+    return bool(re.search(pattern, audit_log.read_text(encoding="utf-8")))
 
 
 def evaluate_update(root: Path, update: RefUpdate) -> tuple[bool, str]:
     commits = commit_range(root, update.remote_sha, update.local_sha)
     if not commits:
         return True, ""
-    first_commit = commits[0]
-    first_paths = changed_paths(root, first_commit)
-    if not should_guard_commit(first_paths):
+    touched_paths = range_changed_paths(root, update.remote_sha, update.local_sha)
+    if not should_guard_commit(touched_paths):
         return True, ""
-    parent_hash = commit_parent(root, first_commit)
-    if parent_hash is None:
-        return False, f"pre-push audit guard cannot evaluate root commit {first_commit[:12]}: no parent hash is available"
+    if is_zero_sha(update.remote_sha):
+        first_commit = next((commit for commit in commits if should_guard_commit(changed_paths(root, commit))), None)
+        if first_commit is None:
+            return True, ""
+        parent_hash = commit_parent(root, first_commit)
+        if parent_hash is None:
+            return False, f"pre-push audit guard cannot evaluate root commit {first_commit[:12]}: no parent hash is available"
+    else:
+        parent_hash = update.remote_sha
     if audit_log_has_parent(root, parent_hash):
         return True, ""
-    touched = ", ".join(first_paths[:6]) if first_paths else "<none>"
+    touched = ", ".join(touched_paths[:6]) if touched_paths else "<none>"
     return (
         False,
         "pre-push audit guard blocked the push: "
-        f"the earliest pushed commit {first_commit[:12]} touches audited paths ({touched}) "
-        f"but docs/audit-log.md does not contain its parent hash {parent_hash}.",
+        f"the pushed range touches audited paths ({touched}) "
+        f"but docs/audit-log.md does not contain an audit entry for parent hash {parent_hash}.",
     )
 
 
