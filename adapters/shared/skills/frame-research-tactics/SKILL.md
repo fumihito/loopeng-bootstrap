@@ -9,6 +9,12 @@ user-invocable: true
 Use this frame when research needs to turn into actionable tactics.
 It helps build a hypothesis set, choose what to verify, and decide how to falsify bad ideas quickly.
 
+## Adjacent frames
+
+- Use `frame-research` when the task is still source-backed comparison rather than a verification plan.
+- Use `frame-experiments` when the uncertainty has to be resolved by a bounded probe in the world.
+- Use `frame-research-arch` when the task is narrowing architecture choices instead of building a test plan.
+
 ## Workflow
 
 ### Phase 1: Survey frameworks

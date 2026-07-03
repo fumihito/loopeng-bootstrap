@@ -26,6 +26,13 @@ Keep codebase analysis, implementation planning, and local repository change wor
 - Call out contradictions between sources instead of smoothing them over
 - Surface open questions instead of forcing closure
 
+## Adjacent frames
+
+- Use `frame-research-tactics` when the source comparison has to become hypotheses, verification, and falsification actions.
+- Use `frame-research-arch` when the question is about architecture options and their tradeoffs rather than source comparison.
+- Use `frame-experiments` when the answer requires a real probe with a bounded blast radius.
+- Use `frame-first-principles` when the problem is still too underspecified to compare sources cleanly.
+
 ## Workflow
 
 1. Define the research question and the boundary of the topic.
@@ -65,4 +72,3 @@ Keep codebase analysis, implementation planning, and local repository change wor
 - Do not treat unsourced claims as conclusions
 - Do not collapse disagreement into a single answer
 - Do not hide unresolved uncertainty
-

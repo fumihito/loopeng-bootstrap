@@ -3,34 +3,34 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-critical-review"
-priority = 75
-summary = "Test claims, evidence, and counterarguments in a document or argument."
+priority = 85
+summary = "Choose this when there is a claim, source set, or argument that can be checked right now."
 
 [[prefer]]
 phrase = "claim testing"
-aliases = ["source checking", "argument review", "critical review"]
+aliases = ["主張は正しいか", "反論", "検証"]
 weight = 4
 
 [[avoid]]
-phrase = "brainstorming"
-aliases = ["no claim to test", "freeform ideation"]
+phrase = "initial decomposition"
+aliases = ["何から手を付ける", "分解"]
 weight = -4
 
 [[good_for]]
-phrase = "thesis map"
-aliases = ["counterargument", "revision hints"]
+phrase = "counterargument review"
+aliases = ["証拠", "反証"]
 weight = 2
 
 [[bad_for]]
-phrase = "operational task"
-aliases = ["task execution", "implementation"]
+phrase = "implicit assumption scan"
+aliases = ["見落とし", "無意識の前提"]
 weight = -2
 
 [[signals]]
-phrase = "evidence"
+phrase = "主張"
 weight = 1
 
 [[signals]]
-phrase = "rebuttal"
+phrase = "証拠"
 weight = 1
 ```

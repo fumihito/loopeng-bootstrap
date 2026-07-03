@@ -3,34 +3,34 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-inertia"
-priority = 70
-summary = "Check whether a judgment is inherited from convention or still justified."
+priority = 75
+summary = "Choose this when the question is whether a decision is being repeated by habit, authority, or metric fixation."
 
 [[prefer]]
-phrase = "inherited judgment"
-aliases = ["authority", "metric fixation", "habit"]
+phrase = "inherited judgment audit"
+aliases = ["今まで通りでいいのか", "前例", "惰性"]
 weight = 4
 
 [[avoid]]
-phrase = "explicit context"
-aliases = ["fresh choice", "new decision"]
+phrase = "implicit assumption scan"
+aliases = ["見落とし", "思い込み"]
 weight = -4
 
 [[good_for]]
-phrase = "conventional judgment"
-aliases = ["still justified", "norms"]
+phrase = "habit check"
+aliases = ["authority", "metric fixation"]
 weight = 2
 
 [[bad_for]]
-phrase = "implementation task"
-aliases = ["direct remediation", "code change"]
+phrase = "claim testing"
+aliases = ["主張は正しいか", "検証"]
 weight = -2
 
 [[signals]]
-phrase = "always"
+phrase = "前例"
 weight = 1
 
 [[signals]]
-phrase = "should"
+phrase = "惰性"
 weight = 1
 ```

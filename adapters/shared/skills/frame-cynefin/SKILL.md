@@ -61,6 +61,10 @@ Limit the number of hypotheses you keep active.
 - If a question should already have a best practice answer, treat it as Complicated
 - Do not force false certainty just to produce an answer
 
+## Adjacent frames
+
+Use this classifier as a front-end only, then hand off explicitly. `Complex` points to `frame-experiments` when the next move is a bounded probe. `Complicated` points to `frame-research` or `frame-research-tactics` when comparison and hypothesis narrowing are enough. `Chaotic` points to `frame-distributed-incident-analysis` and then `frame-diag` for stabilization. `Clear` can proceed to `frame-plandev` or `frame-plantask` when the task is already understood. `Disorder` should fall back to `frame-first-principles`. Do not auto-connect the next frame from `frame-cynefin`; keep the choice explicit.
+
 ## Interaction with other frames
 
 - Use `frame-first-principles` after `frame-cynefin` if the question can be decomposed safely
@@ -73,4 +77,3 @@ Limit the number of hypotheses you keep active.
 - Reasoning
 - Next step
 - Residual uncertainty
-

@@ -11,6 +11,12 @@ Use it when you need to turn a process into named tasks with dependencies, valid
 
 This is a human planning frame. It does not require a specific executor or workflow engine.
 
+## Adjacent frames
+
+- Use `frame-plandev` when the workflow graph needs phases, verification, and handoff decisions.
+- Use `frame-smeac` when the graph is already known and only needs compression into a brief.
+- Use `frame-first-principles` when the task graph is still unclear and needs decomposition first.
+
 ## When to use
 
 - You are designing a task pipeline
@@ -42,4 +48,3 @@ This is a human planning frame. It does not require a specific executor or workf
 - Prefer DAGs over implicit ordering
 - Keep task IDs stable
 - Do not mix source-of-truth spec with generated diagram
-

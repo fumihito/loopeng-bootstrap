@@ -9,6 +9,11 @@ user-invocable: true
 Use this frame when an incident may involve timing, scheduling, stale state, duplicate processing, or partial failure.
 The goal is triage first, root cause later.
 
+## Adjacent frames
+
+- Use `frame-diag` when the incident is live and the next step is symptom diagnosis or stabilization.
+- Use `frame-waiwad-grill` when the incident is already contained and the next step is redesigning the conditions from the WAI/WAD gap.
+
 ## Core rule
 
 Separate observations, inferences, and next checks.
@@ -57,4 +62,3 @@ Apply the anti-pattern list before finalizing a conclusion.
 - Axis classification
 - Discriminating checks
 - Risk level
-

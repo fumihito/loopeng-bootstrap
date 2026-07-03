@@ -9,6 +9,12 @@ user-invocable: true
 Use this frame when a system design needs architectural options, not a single answer.
 It helps compare candidate structures, make tradeoffs explicit, and narrow the choice to the contexts where each option fits.
 
+## Adjacent frames
+
+- Use `frame-research` when the design choice still needs source-backed comparison before narrowing.
+- Use `frame-research-tactics` when the architecture choice needs hypothesis and verification planning.
+- Use `frame-experiments` when the choice can only be separated by a bounded live probe.
+
 ## Workflow
 
 ### Phase 0: Clarify the problem

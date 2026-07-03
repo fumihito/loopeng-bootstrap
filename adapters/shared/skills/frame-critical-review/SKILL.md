@@ -9,6 +9,12 @@ user-invocable: true
 Use this frame when the question is not just whether a document is readable, but whether the argument holds.
 It maps claims, checks evidence, generates the strongest counterargument, and suggests how to strengthen the synthesis.
 
+## Adjacent frames
+
+- Use `frame-blind-spot` when the issue is hidden assumptions, avoided alternatives, or an inference chain that is not yet a testable claim.
+- Use `frame-proofread-ja` when the issue is sentence quality, notation, or readability rather than argument validity.
+- Use `frame-first-principles` when the claim set is still too underspecified and needs decomposition before it can be reviewed.
+
 ## Workflow
 
 1. Map the main claims.
@@ -46,6 +52,9 @@ Check for:
 - unhandled counterexamples
 - missing alternatives
 - missing operational costs or failure modes
+
+The boundary with `frame-blind-spot` is whether the issue is a testable claim.
+If there is no claim yet, surface the assumption or omission first.
 
 ## Synthesis hint
 

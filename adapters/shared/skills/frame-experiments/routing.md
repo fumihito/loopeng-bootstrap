@@ -3,34 +3,34 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-experiments"
-priority = 80
-summary = "Design small safe-to-fail experiments for uncertainty."
+priority = 75
+summary = "Choose this when only a bounded live probe can separate the options."
 
 [[prefer]]
-phrase = "small probe"
-aliases = ["safe-to-fail", "causal test", "experimentation"]
+phrase = "safe-to-fail probe"
+aliases = ["試してみる", "小さく実験", "プローブ"]
 weight = 4
 
 [[avoid]]
-phrase = "immediate deterministic action"
-aliases = ["just do it", "no learning needed"]
+phrase = "hypothesis planning"
+aliases = ["どう確かめる", "仮説を立てる"]
 weight = -4
 
 [[good_for]]
-phrase = "decision rule"
-aliases = ["blast radius", "reversibility", "timebox"]
+phrase = "blast-radius probe"
+aliases = ["timebox", "reversible"]
 weight = 2
 
 [[bad_for]]
-phrase = "pure explanation"
-aliases = ["summary only", "no action plan"]
+phrase = "external-source comparison"
+aliases = ["一次情報", "文書比較"]
 weight = -2
 
 [[signals]]
-phrase = "probe"
+phrase = "試す"
 weight = 1
 
 [[signals]]
-phrase = "falsify"
+phrase = "プローブ"
 weight = 1
 ```

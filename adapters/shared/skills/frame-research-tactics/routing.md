@@ -3,34 +3,34 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-research-tactics"
-priority = 80
-summary = "Turn research into hypotheses, verification, and falsification."
+priority = 85
+summary = "Choose this when sources or claims need hypotheses, verification, and falsification steps."
 
 [[prefer]]
-phrase = "research tactics"
-aliases = ["hypotheses", "verification", "falsification"]
+phrase = "hypothesis planning"
+aliases = ["どう確かめる", "仮説を立てる", "反証"]
 weight = 4
 
 [[avoid]]
-phrase = "generic summary"
-aliases = ["no testable step", "implementation task"]
+phrase = "external-source comparison"
+aliases = ["一次情報", "比較する"]
 weight = -4
 
 [[good_for]]
-phrase = "framework survey"
-aliases = ["top hypotheses", "define checks"]
+phrase = "verification design"
+aliases = ["検証計画", "反証計画"]
 weight = 2
 
 [[bad_for]]
-phrase = "code review"
-aliases = ["implementation", "task execution"]
+phrase = "safe-to-fail probe"
+aliases = ["実介入", "小さく実験"]
 weight = -2
 
 [[signals]]
-phrase = "hypothesis"
+phrase = "仮説"
 weight = 1
 
 [[signals]]
-phrase = "falsify"
+phrase = "反証"
 weight = 1
 ```

@@ -9,6 +9,12 @@ user-invocable: true
 Use this frame when a decision sounds inherited rather than reasoned.
 It checks whether a judgment is driven by convention, authority, metric fixation, or simple inertia.
 
+## Adjacent frames
+
+- Use `frame-critical-review` when there is a claim to test rather than an inherited judgment to audit.
+- Use `frame-first-principles` when the judgment needs to be rebuilt from scratch.
+- Use `frame-blind-spot` when the concern is the hidden commitment that keeps the inherited judgment in place.
+
 ## Trap classification
 
 - socialized-conformity
@@ -56,4 +62,3 @@ It checks whether a judgment is driven by convention, authority, metric fixation
 - Self-authoring probe
 - Why the probe matters
 - Next step
-

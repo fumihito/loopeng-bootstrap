@@ -115,7 +115,7 @@ class SopRoutingTests(unittest.TestCase):
         self.assertIn("Required skill: command-route", context)
         self.assertIn("Routing mode: COMMAND_ROUTE", context)
         self.assertIn("candidate_shortlist:", context)
-        self.assertIn("Multi-step delivery work with scope, phases, verification, and handoff.", context)
+        self.assertIn("Choose this when you need a phased delivery plan that includes decisions, verification, and the next handoff.", context)
         state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(state["routing_mode"], "COMMAND_ROUTE")
         self.assertTrue(state["command_route"]["loaded"])
@@ -289,6 +289,169 @@ weight = 4
             text=True,
         )
         self.assertIn("OK: all routing hint files passed lint", proc.stdout)
+
+    def test_routing_hints_lint_flags_asymmetric_avoid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "frame-plandev").mkdir(parents=True)
+            (root / "frame-plantask").mkdir(parents=True)
+            (root / "frame-plandev/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plandev"
+priority = 90
+summary = "phased planning"
+
+[[prefer]]
+phrase = "phased delivery plan"
+aliases = ["段取り"]
+weight = 4
+
+[[avoid]]
+phrase = "dependency DAG design"
+aliases = ["依存関係"]
+weight = -4
+
+[[signals]]
+phrase = "段取り"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            (root / "frame-plantask/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plantask"
+priority = 80
+summary = "task graph"
+
+[[prefer]]
+phrase = "dependency DAG design"
+aliases = ["依存関係"]
+weight = 4
+
+[[avoid]]
+phrase = "brief compression"
+aliases = ["引き継ぎ"]
+weight = -4
+
+[[signals]]
+phrase = "依存関係"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, str(KIT / "utils/routing_hints_lint.py"), "--root", str(root)],
+                capture_output=True,
+                text=True,
+            )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("must avoid one of", proc.stdout)
+
+    def test_routing_hints_lint_flags_missing_japanese_term(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "frame-plandev").mkdir(parents=True)
+            (root / "frame-plandev/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plandev"
+priority = 90
+summary = "phased planning"
+
+[[prefer]]
+phrase = "phased delivery plan"
+aliases = ["delivery"]
+weight = 4
+
+[[signals]]
+phrase = "scope"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, str(KIT / "utils/routing_hints_lint.py"), "--root", str(root)],
+                capture_output=True,
+                text=True,
+            )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("must include at least one Japanese term", proc.stdout)
+
+    def test_routing_hints_lint_warns_on_duplicate_priority(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "frame-plandev").mkdir(parents=True)
+            (root / "frame-plantask").mkdir(parents=True)
+            (root / "frame-plandev/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plandev"
+priority = 90
+summary = "phased planning"
+
+[[prefer]]
+phrase = "phased delivery plan"
+aliases = ["段取り"]
+weight = 4
+
+[[avoid]]
+phrase = "dependency DAG design"
+aliases = ["依存関係"]
+weight = -4
+
+[[signals]]
+phrase = "段取り"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            (root / "frame-plantask/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plantask"
+priority = 90
+summary = "task graph"
+
+[[prefer]]
+phrase = "dependency DAG design"
+aliases = ["依存関係"]
+weight = 4
+
+[[avoid]]
+phrase = "phased delivery plan"
+aliases = ["フェーズ"]
+weight = -4
+
+[[signals]]
+phrase = "依存関係"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, str(KIT / "utils/routing_hints_lint.py"), "--root", str(root)],
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(proc.returncode, 0)
+        self.assertIn("WARNING:", proc.stdout)
 
 
 if __name__ == "__main__":

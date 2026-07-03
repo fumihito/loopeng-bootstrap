@@ -18,6 +18,11 @@ switching between `Emergency Mode`, which prioritizes urgent stabilization, and 
 In `Emergency Mode`, it uses an ATLS/ABCDE-style approach that prioritizes minimal observation and immediate intervention.
 In `Standard Mode`, four personas analyze in parallel and generate a plan centered on red-flag avoidance and cost effectiveness.
 
+## Adjacent frames
+
+- Use `frame-distributed-incident-analysis` when timing, duplication, or partial failure across components still needs early triage.
+- Use `frame-waiwad-grill` when the incident is already contained and the task is redesigning the conditions rather than diagnosing the live failure.
+
 ## When to use
 
 - The symptom is unclear or intermittent

@@ -9,6 +9,12 @@ user-invocable: true
 Use this frame when the question cannot be settled confidently by reasoning alone.
 It helps choose the right experiment model, limit blast radius, and define what observation changes the next step.
 
+## Adjacent frames
+
+- Use `frame-research-tactics` when the uncertainty can still be turned into hypotheses and verification on paper.
+- Use `frame-research` when the answer may still be settled by comparing external sources or published evidence.
+- Use `frame-research-arch` when the uncertainty is about design options rather than intervention design.
+
 ## Core loop
 
 `intervention -> observation -> interpretation -> next intervention`
@@ -60,4 +66,3 @@ State what will:
 - Decision rule
 - Constraints
 - Next step
-

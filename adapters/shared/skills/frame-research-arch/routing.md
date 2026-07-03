@@ -3,34 +3,34 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-research-arch"
-priority = 85
-summary = "Compare architecture options and choose by context."
+priority = 80
+summary = "Choose this when the task is narrowing design options and their conditions."
 
 [[prefer]]
-phrase = "architecture questions"
-aliases = ["tradeoffs", "multiple patterns", "option narrowing"]
+phrase = "architecture option narrowing"
+aliases = ["構成の比較", "アーキテクチャ案", "採用条件"]
 weight = 4
 
 [[avoid]]
-phrase = "single obvious fix"
-aliases = ["purely local change", "tactical fix"]
+phrase = "external-source comparison"
+aliases = ["一次情報", "比較する"]
 weight = -4
 
 [[good_for]]
-phrase = "pattern comparison"
-aliases = ["conditional recommendations", "team fit"]
+phrase = "option tradeoff"
+aliases = ["team fit", "change tolerance"]
 weight = 2
 
 [[bad_for]]
-phrase = "tactical implementation"
-aliases = ["line-by-line code change"]
+phrase = "safe-to-fail probe"
+aliases = ["実介入", "小さく実験"]
 weight = -2
 
 [[signals]]
-phrase = "tradeoff"
+phrase = "構成"
 weight = 1
 
 [[signals]]
-phrase = "option"
+phrase = "採用"
 weight = 1
 ```

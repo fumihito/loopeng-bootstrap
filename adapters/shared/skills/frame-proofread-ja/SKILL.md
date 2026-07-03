@@ -10,6 +10,11 @@ argument-hint: <filepath>
 Use this frame to review Japanese Markdown or text.
 It is for human editing: spelling, grammar, structure, and AI-smell all get checked, but nothing is auto-written.
 
+## Adjacent frames
+
+- Use `frame-critical-review` when the issue is whether the claim or argument holds, not whether the Japanese reads cleanly.
+- Use `frame-smeac` when the text should be compressed into a handoffable brief rather than proofread.
+
 ## Activation
 
 - User calls `/frame-proofread-ja <filepath>` or `proofread-ja: <filepath>`

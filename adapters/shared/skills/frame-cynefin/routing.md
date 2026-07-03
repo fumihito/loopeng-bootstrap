@@ -3,12 +3,12 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-cynefin"
-priority = 80
-summary = "Classify the domain before choosing a response."
+priority = 88
+summary = "Choose this when you need to classify the domain before deciding which other frame should handle it."
 
 [[prefer]]
 phrase = "domain classification"
-aliases = ["clear", "complicated", "complex", "chaotic"]
+aliases = ["どう扱えばいい問題か", "分類", "複雑性"]
 weight = 4
 
 [[avoid]]
@@ -27,10 +27,10 @@ aliases = ["research report", "tactical execution"]
 weight = -2
 
 [[signals]]
-phrase = "complex"
+phrase = "複雑"
 weight = 1
 
 [[signals]]
-phrase = "chaotic"
+phrase = "混沌"
 weight = 1
 ```

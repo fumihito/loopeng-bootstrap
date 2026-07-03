@@ -4,16 +4,16 @@
 schema = "routing-hints/v1"
 frame = "frame-proofread-ja"
 priority = 70
-summary = "Review Japanese Markdown or text for editing quality."
+summary = "Choose this when the issue is sentence-level Japanese quality, not argument validity or planning."
 
 [[prefer]]
-phrase = "Japanese text"
-aliases = ["文章校正", "日本語", "proofreading"]
+phrase = "Japanese proofreading"
+aliases = ["文章校正", "日本語", "読みやすさ"]
 weight = 4
 
 [[avoid]]
-phrase = "code change"
-aliases = ["implementation", "non-textual task"]
+phrase = "claim testing"
+aliases = ["主張は正しいか", "検証"]
 weight = -4
 
 [[good_for]]

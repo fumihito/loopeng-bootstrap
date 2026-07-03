@@ -9,6 +9,11 @@ user-invocable: true
 Use this frame for incidents, errors, and retrospectives.
 It avoids blame-first analysis and instead looks at the gap between how work was imagined and how it was actually done.
 
+## Adjacent frames
+
+- Use `frame-diag` when the incident is still active and the next step is live diagnosis or stabilization.
+- Use `frame-distributed-incident-analysis` when the symptom pattern is still too distributed or too early for a redesign conversation.
+
 ## Workflow
 
 1. Accept the WAI/WAD gap.

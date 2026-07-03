@@ -4,33 +4,33 @@
 schema = "routing-hints/v1"
 frame = "frame-plandev"
 priority = 90
-summary = "Multi-step delivery work with scope, phases, verification, and handoff."
+summary = "Choose this when you need a phased delivery plan that includes decisions, verification, and the next handoff."
 
 [[prefer]]
-phrase = "multi-step delivery"
-aliases = ["phased implementation", "milestone planning", "planning work"]
+phrase = "phased delivery plan"
+aliases = ["段取り", "フェーズ", "リリースまで"]
 weight = 4
 
 [[avoid]]
-phrase = "one-off question"
-aliases = ["simple lookup", "single answer"]
+phrase = "dependency DAG design"
+aliases = ["依存関係", "順番", "フロー図"]
 weight = -4
 
 [[good_for]]
-phrase = "handoff"
-aliases = ["transition", "release planning", "phased implementation"]
+phrase = "delivery checkpoint"
+aliases = ["検証", "次の一手"]
 weight = 2
 
 [[bad_for]]
-phrase = "root cause analysis"
-aliases = ["diagnosis", "source-backed research"]
+phrase = "brief compression"
+aliases = ["まとめて渡したい", "引き継ぎ"]
 weight = -2
 
 [[signals]]
-phrase = "scope"
+phrase = "段取り"
 weight = 1
 
 [[signals]]
-phrase = "verification"
+phrase = "フェーズ"
 weight = 1
 ```

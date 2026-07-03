@@ -3,34 +3,34 @@
 ```route-hints-v1
 schema = "routing-hints/v1"
 frame = "frame-smeac"
-priority = 65
-summary = "Compress discussion, research, or incident notes into a handoffable brief."
+priority = 70
+summary = "Choose this when the input is already a plan, incident note, or discussion that needs to be compressed into a handoffable brief."
 
 [[prefer]]
-phrase = "handoffable brief"
-aliases = ["summary", "brief", "incident notes"]
+phrase = "brief compression"
+aliases = ["まとめて渡したい", "引き継ぎ", "要約ブリーフ"]
 weight = 4
 
 [[avoid]]
-phrase = "deep design work"
-aliases = ["needs decomposition", "architecture planning"]
+phrase = "phased delivery plan"
+aliases = ["段取り", "フェーズ", "リリースまで"]
 weight = -4
 
 [[good_for]]
-phrase = "command and signal"
-aliases = ["distortion report", "handoff"]
+phrase = "source reality summary"
+aliases = ["状況整理", "要点整理"]
 weight = 2
 
 [[bad_for]]
-phrase = "root cause analysis"
-aliases = ["planning graph", "raw workflow"]
+phrase = "dependency DAG design"
+aliases = ["依存関係", "順番", "フロー図"]
 weight = -2
 
 [[signals]]
-phrase = "situation"
+phrase = "引き継ぎ"
 weight = 1
 
 [[signals]]
-phrase = "mission"
+phrase = "要約"
 weight = 1
 ```

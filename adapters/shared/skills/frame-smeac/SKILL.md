@@ -9,6 +9,12 @@ user-invocable: true
 Use SMEAC when you need to compress discussion, research, or incident notes into a handoffable brief.
 It is useful for meetings, planning, and operational summaries.
 
+## Adjacent frames
+
+- Use `frame-plandev` when the task is to create a new phased plan rather than compress an existing one.
+- Use `frame-plantask` when the input needs explicit dependency structure before it can be compressed.
+- Use `frame-critical-review` when the brief needs argument validity checked instead of compression.
+
 ## Mapping
 
 - Situation: source reality and context

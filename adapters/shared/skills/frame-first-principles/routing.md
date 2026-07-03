@@ -4,30 +4,30 @@
 schema = "routing-hints/v1"
 frame = "frame-first-principles"
 priority = 90
-summary = "Decompose underspecified work before acting."
+summary = "Choose this when the work is still underspecified and needs decomposition before any response."
 
 [[prefer]]
-phrase = "underspecified work"
-aliases = ["shaky assumptions", "needs decomposition", "unknowns"]
+phrase = "initial decomposition"
+aliases = ["何から手を付ける", "分解", "前提整理"]
 weight = 4
 
 [[avoid]]
-phrase = "established checklist"
-aliases = ["already planned", "known process"]
+phrase = "claim testing"
+aliases = ["主張は正しいか", "検証"]
 weight = -4
 
 [[good_for]]
-phrase = "fact assumption separation"
-aliases = ["subproblem breakdown", "verification design"]
+phrase = "subproblem map"
+aliases = ["facts", "constraints"]
 weight = 2
 
 [[bad_for]]
-phrase = "architecture comparison"
-aliases = ["source-backed research", "pattern comparison"]
+phrase = "implicit assumption scan"
+aliases = ["見落とし", "思い込み"]
 weight = -2
 
 [[signals]]
-phrase = "assumptions"
+phrase = "前提"
 weight = 1
 
 [[signals]]

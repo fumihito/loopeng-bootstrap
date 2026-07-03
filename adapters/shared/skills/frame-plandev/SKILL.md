@@ -14,6 +14,12 @@ Use it to keep delivery work explicit about scope, phase boundaries, verificatio
 Use `goal` as the single source of truth for current checkpoint, completed phases, open decisions, and next safe action.
 If the work is already in flight, recover state from `goal` before re-planning.
 
+## Adjacent frames
+
+- Use `frame-plantask` when the main work is making dependencies and ordering explicit.
+- Use `frame-smeac` when the plan already exists and needs compression into a handoffable brief.
+- Use `frame-first-principles` when the plan still rests on shaky assumptions that need decomposition first.
+
 ## When to use
 
 - You need to plan a change across multiple steps
