@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 
 
@@ -13,6 +15,7 @@ def write_json(path: Path, value):
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
+@class_requires_go
 class LearningObserverTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

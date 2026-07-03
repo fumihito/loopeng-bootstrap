@@ -10,6 +10,8 @@ import shutil
 import unittest
 from pathlib import Path
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 
 
@@ -61,7 +63,7 @@ No external citation is required for this repository-local observation.
 '''
 
 
-@unittest.skipUnless(shutil.which("go"), "requires Go toolchain")
+@class_requires_go
 class OKFCommandTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -129,6 +131,7 @@ class OKFCommandTests(unittest.TestCase):
             self.assertTrue(any((base / "backups").iterdir()))
 
 
+@class_requires_go
 class MemoryHookIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -228,6 +231,7 @@ class MemoryHookIntegrationTests(unittest.TestCase):
         self.assertEqual(self.call(stop), {})
 
 
+@class_requires_go
 class InstallerMemoryPreservationTests(unittest.TestCase):
     def test_existing_wiki_concept_is_preserved(self):
         with tempfile.TemporaryDirectory() as td:

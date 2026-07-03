@@ -38,6 +38,9 @@ RUNTIME_MANIFEST = [
     '.agent-loop/bin/learning_health.py',
     '.agent-loop/bin/next_turn_scheduler.py',
     '.agent-loop/bin/next_turn_scheduler_daemon.py',
+    '.agent-loop/bin/loop_status.py',
+    '.agent-loop/bin/trigger-dryrun.sh',
+    '.agent-loop/bin/trigger-example.sh',
     '.agent-loop/bin/okfctl',
     '.agent-loop/bin/build-okfctl.sh',
     '.agent-loop/cmd/okfctl/main.go',
@@ -1324,6 +1327,8 @@ class Installer:
             ('docs/DIRECT_MODE.md', '.agent-loop/docs/DIRECT_MODE.md'),
             ('docs/COMMAND_ROUTING.md', '.agent-loop/docs/COMMAND_ROUTING.md'),
             ('docs/LOOP_INPUT_GUIDE.md', '.agent-loop/docs/LOOP_INPUT_GUIDE.md'),
+            ('docs/SCHEDULER.md', '.agent-loop/docs/SCHEDULER.md'),
+            ('docs/OBSERVABILITY.md', '.agent-loop/docs/OBSERVABILITY.md'),
             ('docs/HUMAN_SKILL_NAMESPACE.md', '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md'),
             ('docs/SOP_ROUTING.md', '.agent-loop/docs/SOP_ROUTING.md'),
             ('docs/LLM_ASSISTED_INSTALL.md', '.agent-loop/docs/LLM_ASSISTED_INSTALL.md'),
@@ -1389,6 +1394,9 @@ class Installer:
             (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o755)
             (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o755)
             (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o755)
+            (self.repo / '.agent-loop/bin/loop_status.py').chmod(0o755)
+            (self.repo / '.agent-loop/bin/trigger-dryrun.sh').chmod(0o755)
+            (self.repo / '.agent-loop/bin/trigger-example.sh').chmod(0o755)
             (self.repo / '.agent-loop/bin/okfctl').chmod(0o755)
             (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o755)
         self.write_install_manifest()

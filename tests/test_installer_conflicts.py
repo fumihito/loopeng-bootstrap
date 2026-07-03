@@ -5,9 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 
 
+@class_requires_go
 class InstallerConflictTests(unittest.TestCase):
     def new_repo(self):
         temp = tempfile.TemporaryDirectory()
@@ -102,6 +105,7 @@ class InstallerConflictTests(unittest.TestCase):
         self.assertFalse((repo / ".agent-loop").exists())
 
 
+@class_requires_go
 class SharedCodexClaudeLayoutTests(unittest.TestCase):
     def new_repo(self):
         temp = tempfile.TemporaryDirectory()

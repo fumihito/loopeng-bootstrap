@@ -1,4 +1,5 @@
 # Audit Log
 
+- 2026-07-03 | commit 2e0dfd7f1d6f80a8270d3ca6921345c149021f96 | G-1-G-4 and V-1 completed: shared Go skip guard added for install-driven tests; RELEASE_AUDIT checklist updated; scheduler trigger example and dry-run helpers shipped; two-turn loop E2E and loop status renderer added; docs updated with scheduler and observability guidance; `pytest` was unavailable here, so the audit used `python3 -m unittest tests.test_installed_repo_self_sufficiency -v` plus `python3 -m unittest discover -s tests -v` in Go-present and Go-hidden PATHs.
 - 2026-07-03 | commit a90e649 | release audit checklist defined; journal sanitization lint passed; loop hook self-test passed; test suite passed under current environment; manual evidence references were verified in the companion docs.
 - 2026-07-03 | commit 6181c8c | okfctl binary distribution removed in favor of install-time Go build; wrapper and build script no longer manage checksums; install self-sufficiency tests passed; journal self-test stays out of .agent-loop/runtime/; full test suite passed via `python3 -m unittest discover -s tests -q` because `pytest` was unavailable here.

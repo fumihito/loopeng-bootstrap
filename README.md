@@ -133,6 +133,18 @@ learning-audit: audit the last 50 completed loop turns for reuse, recurrence, co
 
 This loads `sop-learning-audit` and invokes the read-only `learning-auditor`. Existing pre-v11 history can be excluded from the health baseline with `history_start_at` in `.agent-loop/learning-policy.json`. See `docs/LEARNING_OBSERVABILITY.md`.
 
+## Loop status
+
+`loop_status.py` renders the current loop health from the deterministic runtime artifacts.
+
+```bash
+python3 .agent-loop/bin/loop_status.py --text
+python3 .agent-loop/bin/loop_status.py --html
+```
+
+The HTML page is written to `.agent-loop/runtime/status.html` by default and stays self-contained for offline inspection. The default view omits Loop Brief goal text; use `--include-brief` only when you want the local page to show it. See `docs/OBSERVABILITY.md`.
+Verified by `tests/test_loop_status.py::LoopStatusTests`.
+
 ## Telemetry contract
 
 The hook emits OTLP/HTTP JSON events named `agent.loop.*`. It records only:

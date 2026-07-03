@@ -12,6 +12,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 ROLES = ["gatekeeper", "loop-brief-assistant", "brief-pattern-curator", "sensemaker", "integrator", "governor", "state-steward", "watchdog-recovery", "meta-evaluator", "learning-auditor", "memory-curator"]
 FRAME_SKILLS = ["frame-diag", "frame-plandev", "frame-plantask", "frame-first-principles", "frame-experiments", "frame-cynefin", "frame-smeac", "frame-proofread-ja", "frame-blind-spot", "frame-inertia", "frame-waiwad-grill", "frame-distributed-incident-analysis", "frame-critical-review", "frame-research-arch", "frame-research-tactics"]
@@ -26,6 +28,7 @@ def load_hook_module(path: Path):
     return module
 
 
+@class_requires_go
 class IntegrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

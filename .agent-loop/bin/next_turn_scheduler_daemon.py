@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -81,6 +82,7 @@ def scheduler_policy(root: Path) -> dict[str, Any]:
         "notification_command": list(data.get("notification_command", [])) if isinstance(data.get("notification_command"), list) else [],
         "trigger_command_timeout_seconds": max(1, int(data.get("trigger_command_timeout_seconds", 30))),
         "record_events": bool(data.get("record_events", True)),
+        "render_status_page": bool(data.get("render_status_page", False)),
     }
 
 
@@ -156,9 +158,12 @@ def format_args(args: list[str], context: dict[str, str]) -> list[str]:
 
 def run_trigger(command: list[str], context: dict[str, str], timeout_seconds: int) -> dict[str, Any]:
     resolved = format_args(command, context)
+    env = os.environ.copy()
+    env.update(context)
     completed = subprocess.run(
         resolved,
         cwd=context["repo"],
+        env=env,
         text=True,
         capture_output=True,
         timeout=timeout_seconds,
@@ -178,6 +183,37 @@ def emit_event(root: Path, event: dict[str, Any], record_events: bool) -> None:
     if record_events:
         append_jsonl(event_log_path(root), event)
     atomic_write(last_trigger_path(root), event)
+
+
+def render_status_summary(root: Path) -> str:
+    import loop_status
+
+    return loop_status.render_text(loop_status.collect_model(root, root / ".agent-loop/runtime/status.html"))
+
+
+def render_status_page(root: Path) -> tuple[bool, str | None]:
+    policy = scheduler_policy(root)
+    if not policy["render_status_page"]:
+        return False, None
+    try:
+        import loop_status
+
+        output = loop_status.render_html(
+            loop_status.collect_model(root, root / ".agent-loop/runtime/status.html"),
+            root / ".agent-loop/runtime/status.html",
+        )
+        return True, str(output)
+    except Exception as exc:  # pragma: no cover - defensive logging path
+        append_jsonl(
+            event_log_path(root),
+            {
+                "observed_at": now(),
+                "scheduler_action": "status_render_failed",
+                "error": type(exc).__name__,
+                "message": str(exc),
+            },
+        )
+        return False, None
 
 
 def process_once(root: Path) -> dict[str, Any]:
@@ -280,7 +316,8 @@ def process_once(root: Path) -> dict[str, Any]:
         command = policy["trigger_command"]
         if command and cadence_allows_auto_trigger(cadence):
             try:
-                trigger_info = run_trigger(command, context, policy["trigger_command_timeout_seconds"])
+                trigger_context = {**context, "scheduler_action": "trigger"}
+                trigger_info = run_trigger(command, trigger_context, policy["trigger_command_timeout_seconds"])
                 if trigger_info["scheduler_action"] == "triggered":
                     summary["triggered_count"] += 1
                 else:
@@ -364,6 +401,30 @@ def main() -> int:
 
     while True:
         summary = process_once(root)
+        try:
+            print(render_status_summary(root), end="")
+        except Exception as exc:  # pragma: no cover - defensive logging path
+            append_jsonl(
+                event_log_path(root),
+                {
+                    "observed_at": now(),
+                    "scheduler_action": "status_summary_failed",
+                    "error": type(exc).__name__,
+                    "message": str(exc),
+                },
+            )
+        try:
+            render_status_page(root)
+        except Exception as exc:  # pragma: no cover - defensive logging path
+            append_jsonl(
+                event_log_path(root),
+                {
+                    "observed_at": now(),
+                    "scheduler_action": "status_render_failed",
+                    "error": type(exc).__name__,
+                    "message": str(exc),
+                },
+            )
         if args.once:
             print(json.dumps(summary, indent=2, ensure_ascii=False))
             return 0

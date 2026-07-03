@@ -5,5 +5,14 @@
   "trigger_command": [],
   "notification_command": [],
   "trigger_command_timeout_seconds": 30,
-  "record_events": true
+  "record_events": true,
+  "render_status_page": false,
+  "examples": {
+    "trigger_command": [
+      "./.agent-loop/bin/trigger-example.sh"
+    ],
+    "notification_command": [
+      "./.agent-loop/bin/trigger-dryrun.sh"
+    ]
+  }
 }

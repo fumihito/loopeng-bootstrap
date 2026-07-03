@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 HOOK = KIT / ".agent-loop/hooks/loop_hook.py"
 
@@ -79,6 +81,8 @@ class JournalSanitizationTests(unittest.TestCase):
             self.assertNotEqual(violated.returncode, 0)
             self.assertIn("forbidden journal key tool_input", violated.stdout)
 
+@class_requires_go
+class RuntimeJournalSanitizationTests(unittest.TestCase):
     def test_runtime_journal_is_subset_and_sanitized(self):
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td)

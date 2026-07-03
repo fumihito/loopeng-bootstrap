@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 FIELDS = {
     "outcome", "discovery_scope", "authority_envelope", "evaluation_contract",
@@ -24,6 +26,7 @@ def load_hook(path: Path):
     return module
 
 
+@class_requires_go
 class DirectAndBriefAssistantTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

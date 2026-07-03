@@ -63,5 +63,26 @@
   "direct_mode_enabled": true,
   "loop_brief_assistant_enabled": true,
   "loop_brief_pattern_memory_enabled": true,
-  "brief_pattern_curator_enabled": true
+  "brief_pattern_curator_enabled": true,
+  "status_thresholds": {
+    "recent_turn_count": 20,
+    "unconsumed_handoff_poll_cycles": 3,
+    "pass_statuses": [
+      "PASS"
+    ],
+    "amber_statuses": [
+      "REVISE",
+      "GATE_EXHAUSTED"
+    ],
+    "red_statuses": [
+      "ESCALATE",
+      "WATCHDOG_TRIPPED",
+      "PROTECTED_DRIFT"
+    ],
+    "in_progress_statuses": [
+      "IN_PROGRESS",
+      "RUNNING",
+      "ACTIVE"
+    ]
+  }
 }

@@ -5,9 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 
 
+@class_requires_go
 class LLMAssistedInstallTests(unittest.TestCase):
     def new_repo(self):
         temp = tempfile.TemporaryDirectory()
@@ -70,6 +73,7 @@ class LLMAssistedInstallTests(unittest.TestCase):
         self.assertEqual(validate.returncode, 4)
         self.assertIn('sop-install', validate.stderr)
 
+class InstallSopPolicyTests(unittest.TestCase):
     def test_install_sop_is_mutation_enabled(self):
         policy = json.loads((KIT / '.agent-loop/sop-policy.json').read_text(encoding='utf-8'))
         self.assertTrue(policy['skills']['sop-install']['allow_mutations'])

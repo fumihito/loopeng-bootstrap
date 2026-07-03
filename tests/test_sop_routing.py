@@ -10,6 +10,8 @@ from pathlib import Path
 
 import routing_hints as routing_hints_lib
 
+from tests._helpers import class_requires_go
+
 KIT = Path(__file__).resolve().parents[1]
 
 
@@ -21,6 +23,7 @@ def load_hook(path: Path):
     return module
 
 
+@class_requires_go
 class SopRoutingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
