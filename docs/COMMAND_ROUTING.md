@@ -1,5 +1,15 @@
 # Command routing
 
+## Standalone troubleshooting routine
+
+This repository can be installed as a bounded troubleshooting kit with the routing profile:
+
+```bash
+python3 install.py --repo /path/to/repository --profile routing
+```
+
+In that mode, `direct:`, `route:`, and `diag:` remain usable without the autonomous loop layer. Use `route:` when you want frame proposals, `direct:` for bounded one-shot work, and `diag:` when the task must go through the mandatory diagnosis SOP. See `docs/DIRECT_MODE.md`, `docs/SOP_ROUTING.md`, and `docs/INSTALL.md`.
+
 `route:` is a dedicated pre-loop routing entrypoint. It exists outside the autonomous loop and is invoked only when the user explicitly chooses `route:`. It is separate from `direct:`, but like `direct:` it bypasses Gatekeeper for the current turn. In the routing profile, `route:` still works even when loop mode is disabled: the hook loads `command-route`, unprefixed prompts pass through unchanged, and no Gatekeeper state is created.
 
 ## Scope
