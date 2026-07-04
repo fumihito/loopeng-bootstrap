@@ -48,6 +48,7 @@ Use this frame when the question needs decomposition before any other frame can 
 ## Exit
 
 Stop when the decomposition is clear enough to hand off, compare, or plan. If the question is still not stable, say what additional information would stabilize it.
+If this session produced a deliverable goal or verification conditions, you can hand it to the autonomous loop (when installed) by stating the request in a plain, prefix-less message.
 
 ## Adjacent frames
 

@@ -2,6 +2,8 @@
 
 This repository uses a deterministic next-turn handoff file and a polling daemon to close the loop between completed turns and the next prompt submission.
 
+For the autonomy readiness checklist that answers when the loop actually runs, see `docs/GATEKEEPER_PROTOCOL.md`.
+
 ## Responsibilities
 
 - `next_turn_scheduler.py` reads or validates a completed turn's `next-turn.json` handoff.

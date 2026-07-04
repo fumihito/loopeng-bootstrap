@@ -8,6 +8,15 @@
 
 設計判断を残す目的は、将来の変更時に「なぜ複雑なのか」を忘れて、以前に排除した危険な単純化へ戻ることを防ぐことにある。
 
+## 1.1 Two-phase model
+
+This repository uses a two-phase model.
+
+- Phase 1 is exploration: human-driven HITL work that helps form the completion contract. Its entry points are conversation without a prefix, `direct:`, `route:`, and the `frame-*` skill family. The routing profile is sufficient on its own for this phase.
+- Phase 2 is the autonomous loop: human-supervised HOTL work that runs after Gatekeeper has validated a READY Loop Brief. The full profile corresponds to this phase.
+
+The boundary between the phases is that human position shifts from in-the-loop during exploration to on-the-loop during supervision.
+
 ## 2. 現行アーキテクチャの最小図
 
 ```text

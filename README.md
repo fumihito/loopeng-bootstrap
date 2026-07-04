@@ -1,6 +1,6 @@
 # Loop Engineering Bootstrap
 
-Loop Engineering Bootstrap is a bootstrap kit for running AI-agent work as engineered loops: a deterministic control layer around LLM roles, with humans holding final authority. It ships two usable layers: bounded entry routing (`direct:`, `route:`, and `frame-*` skills) and an autonomous, contract-gated loop on top of it.
+Loop Engineering Bootstrap is a bootstrap kit for running AI-agent work as engineered loops: a deterministic control layer around LLM roles, with humans holding final authority. It ships two usable layers: the exploration phase, which uses bounded entry routing (`direct:`, `route:`, and `frame-*` skills), and the autonomous phase, which runs as a contract-gated loop on top of it.
 
 ## Core concept
 

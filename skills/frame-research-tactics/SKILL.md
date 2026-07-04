@@ -39,6 +39,7 @@ Use this frame when sources or claims need hypotheses, verification, and falsifi
 ## Exit
 
 Stop when the hypotheses are paired with the checks that would settle them. If the uncertainty requires a live probe, hand off to experiments.
+If this session produced a deliverable goal or verification conditions, you can hand it to the autonomous loop (when installed) by stating the request in a plain, prefix-less message.
 
 ## Adjacent frames
 

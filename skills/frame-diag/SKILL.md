@@ -73,6 +73,7 @@ In `Emergency Mode`, produce P0 containment first and then move to standard plan
 ## Exit
 
 Ask before proceeding if the cause has been identified and the next step requires code changes, configuration changes, or a move from investigation to execution. `diag:` does not perform implementation.
+If this session produced a deliverable goal or verification conditions, you can hand it to the autonomous loop (when installed) by stating the request in a plain, prefix-less message.
 
 ## Adjacent frames
 

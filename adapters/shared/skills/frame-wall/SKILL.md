@@ -38,6 +38,7 @@ Challenge the user's framing rather than the artifact in front of it. Heifetz's 
 ## Exit
 
 End with premises challenged and their status, frames offered, and open questions now owned by the user. If a premise survives examination, say so and why. Do not claim learning outcomes.
+If this session produced a deliverable goal or verification conditions, you can hand it to the autonomous loop (when installed) by stating the request in a plain, prefix-less message.
 
 ## Adjacent frames
 

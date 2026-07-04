@@ -49,6 +49,7 @@ Use this frame when the question cannot be settled confidently by reasoning alon
 ## Exit
 
 End when the smallest useful probe and its settling observation are clear. If the uncertainty can still be narrowed on paper, hand off to research or tactics instead.
+If this session produced a deliverable goal or verification conditions, you can hand it to the autonomous loop (when installed) by stating the request in a plain, prefix-less message.
 
 ## Adjacent frames
 

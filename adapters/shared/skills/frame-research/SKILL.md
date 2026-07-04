@@ -53,6 +53,7 @@ Keep codebase analysis, implementation planning, and local repository change wor
 ## Exit
 
 End when the source-backed comparison is clear enough to hand off, or state the unresolved contradictions and the next source to seek.
+If this session produced a deliverable goal or verification conditions, you can hand it to the autonomous loop (when installed) by stating the request in a plain, prefix-less message.
 
 ## Adjacent frames
 

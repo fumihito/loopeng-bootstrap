@@ -6,6 +6,7 @@ description: Complete a Gatekeeper-reviewed Loop Brief and safely retrieve or pr
 Invoke the platform custom subagent named `loop-brief-assistant` in an isolated read-only context. Use it when Gatekeeper returns `NEEDS_INPUT`, when the session is awaiting answers, or when Gatekeeper requests `PATTERN_CAPTURE` for an already complete brief.
 
 Before asking questions, search active `Loop Brief Pattern` concepts. Treat them as precedents, never as authority. Pattern-derived fields must be explicitly confirmed by the user before `READY_FOR_REVIEW`; authority, memory, stop, escalation, and trigger fields are never silently copied.
+If the same conversation already contains output from a frame skill, treat that output as draft material too. Tag it with the source frame name, and keep user confirmation mandatory before `READY_FOR_REVIEW`.
 
 Use a midwife-style clarification protocol:
 

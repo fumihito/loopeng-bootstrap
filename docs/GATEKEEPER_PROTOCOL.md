@@ -104,3 +104,15 @@ Additional output fields:
 - `brief_pattern_assessment`: exhaustive, disjoint accepted/rejected/challenged proposal IDs plus duplicate and correction findings.
 
 A READY brief may temporarily hand back to Loop Brief Assistant only for PATTERN_CAPTURE. During that phase it must not hand off to Sensemaker. After Assistant returns a proposal, Gatekeeper performs a second independent review. Accepted proposals must be committed by Brief Pattern Curator before Sensemaker starts.
+
+## When does the loop actually run?
+
+Use this checklist when a request seems complete on paper but still does not start the autonomous loop.
+
+- A READY Loop Brief exists from Gatekeeper.
+- `trigger_cadence` permits automatic execution for the current profile.
+- The scheduler daemon is running.
+- `trigger_command` is configured and has been validated with the dry-run path.
+- A notification path exists for non-PASS outcomes.
+
+See `docs/SCHEDULER.md` for the scheduler daemon and command behavior. That document explains the execution path; it does not repeat this checklist.
