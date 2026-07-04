@@ -315,7 +315,7 @@ skills/                         # the only real skill tree
 .claude/skills -> ../skills/    # Claude Code alias
 ```
 
-All package skills are sourced from `adapters/shared/skills` and installed only into `{ROOT}/skills`. The two platform paths are normalized to the exact relative symlink target `../skills/`. They therefore expose the same inode-backed `SKILL.md` files rather than two synchronized copies.
+Package skills are authored under `adapters/shared/skills` and installed into `{ROOT}/skills`, so the repository intentionally contains the same skill files in both locations. `adapters/shared/skills` is the shared source tree, while `skills/` is the canonical post-install tree that Codex and Claude Code consume through the `../skills/` aliases. They expose the same inode-backed `SKILL.md` files rather than two independently maintained copies.
 
 If an older installation contains physical `.agents/skills` or `.claude/skills` directories, the installer backs them up, merges unrelated skills into `{ROOT}/skills`, replaces known package-managed skills with the current shared version, and then creates the canonical symlinks. Unknown same-path files with different contents are not guessed or overwritten; installation stops for semantic review.
 

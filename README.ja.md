@@ -301,3 +301,7 @@ python3 install.py --repo /path/to/repository --validate-only
 ```
 
 root の `INSTALL_AGENT.md` と `docs/MERGE_RULES.md` が、権威ある手順を定義します。plan と report には、設定内容をログやチャットへコピーしないよう、意図的に hash と path だけが含まれます。
+
+## Deterministic mixed Codex / Claude layouts
+
+この package の skill は `adapters/shared/skills/` にある共有ソースを正本として作られ、`{ROOT}/skills/` にインストールされます。そのため、リポジトリ上では同じ skill ファイルが 2 か所にあるように見えますが、`adapters/shared/skills/` は共有元、`skills/` は Codex と Claude Code が参照する正規の導出先です。両者は `../skills/` の symlink 経由で同じ inode 上の `SKILL.md` を指すため、別々に保守される複製ではありません。
