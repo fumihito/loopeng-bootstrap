@@ -36,6 +36,7 @@ CLUSTERS: dict[str, tuple[str, ...]] = {
         "frame-critical-review",
         "frame-blind-spot",
         "frame-inertia",
+        "frame-wall",
     ),
     "independent": (
         "frame-cynefin",
@@ -61,6 +62,10 @@ PAIR_RULES: dict[str, tuple[tuple[str, str], ...]] = {
         ("frame-first-principles", "frame-critical-review"),
         ("frame-critical-review", "frame-blind-spot"),
         ("frame-blind-spot", "frame-inertia"),
+        ("frame-first-principles", "frame-wall"),
+        ("frame-wall", "frame-critical-review"),
+        ("frame-wall", "frame-blind-spot"),
+        ("frame-wall", "frame-inertia"),
     ),
     "independent": (),
 }

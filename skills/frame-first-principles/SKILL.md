@@ -12,6 +12,7 @@ It helps separate facts from assumptions, break the work into minimal subproblem
 ## Adjacent frames
 
 - Use `frame-cynefin` first when the question may not yet be stable enough to decompose.
+- Use `frame-wall` when the user's framing itself needs challenge or reframing before decomposition.
 - Use `frame-blind-spot` when the main problem is hidden assumptions or avoided alternatives.
 - Use `frame-critical-review` when the work has become a claim that can be tested against evidence.
 

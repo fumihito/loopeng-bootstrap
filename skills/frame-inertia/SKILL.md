@@ -11,6 +11,7 @@ It checks whether a judgment is driven by convention, authority, metric fixation
 
 ## Adjacent frames
 
+- Use `frame-wall` when the inherited judgment may be masking a deeper framing error.
 - Use `frame-critical-review` when there is a claim to test rather than an inherited judgment to audit.
 - Use `frame-first-principles` when the judgment needs to be rebuilt from scratch.
 - Use `frame-blind-spot` when the concern is the hidden commitment that keeps the inherited judgment in place.

@@ -16,6 +16,11 @@ phrase = "claim testing"
 aliases = ["主張は正しいか", "検証"]
 weight = -4
 
+[[avoid]]
+phrase = "壁打ち"
+aliases = ["premise challenge", "前提を疑って"]
+weight = -4
+
 [[good_for]]
 phrase = "subproblem map"
 aliases = ["facts", "constraints"]

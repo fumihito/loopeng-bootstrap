@@ -16,6 +16,11 @@ phrase = "initial decomposition"
 aliases = ["何から手を付ける", "分解"]
 weight = -4
 
+[[avoid]]
+phrase = "壁打ち"
+aliases = ["premise challenge", "前提を疑って"]
+weight = -4
+
 [[good_for]]
 phrase = "counterargument review"
 aliases = ["証拠", "反証"]

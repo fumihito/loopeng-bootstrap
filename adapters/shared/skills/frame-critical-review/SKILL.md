@@ -11,6 +11,7 @@ It maps claims, checks evidence, generates the strongest counterargument, and su
 
 ## Adjacent frames
 
+- Use `frame-wall` when the argument may be downstream of a bad frame rather than a weak claim.
 - Use `frame-blind-spot` when the issue is hidden assumptions, avoided alternatives, or an inference chain that is not yet a testable claim.
 - Use `frame-proofread-ja` when the issue is sentence quality, notation, or readability rather than argument validity.
 - Use `frame-first-principles` when the claim set is still too underspecified and needs decomposition before it can be reviewed.

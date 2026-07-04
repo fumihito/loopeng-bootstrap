@@ -11,6 +11,7 @@ It separates observed patterns from interpretations and looks for missing altern
 
 ## Adjacent frames
 
+- Use `frame-wall` when the user's framing is the thing that needs pressure-testing rather than the hidden assumption alone.
 - Use `frame-critical-review` when the hidden assumption has become a claim that can be checked against sources or evidence.
 - Use `frame-inertia` when the main question is whether a judgment is being repeated by habit or authority.
 - Use `frame-first-principles` when the problem still needs decomposition before any claim can be tested.

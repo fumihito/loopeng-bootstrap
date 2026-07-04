@@ -16,6 +16,11 @@ phrase = "implicit assumption scan"
 aliases = ["見落とし", "思い込み"]
 weight = -4
 
+[[avoid]]
+phrase = "壁打ち"
+aliases = ["premise challenge", "前提を疑って"]
+weight = -4
+
 [[good_for]]
 phrase = "habit check"
 aliases = ["authority", "metric fixation"]
