@@ -41,6 +41,17 @@ Look for information, judgment, resource, coordination, and power gaps.
 - Elster: add checklists, waiting, two-person checks, and escalation conditions
 - Starhawk: reduce power-over and support power-with, power-from-within, and collective power
 
+## WAD-GRILL sheet
+
+- A. Incident summary
+- B. WAI
+- C. WAD
+- D. Gap types
+- E. Adaptation chain
+- F. Assumptions and reasoning
+- G. Constraint and power conditions
+- H. Redesign ideas
+
 ## Output
 
 - WAI

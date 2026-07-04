@@ -30,6 +30,17 @@ Use this frame for Japanese surface-quality review. It focuses on wording, rhyth
 - Notation and punctuation
 - Tone and register
 
+## AI-smell signals
+
+Pass C で補完するための注意点。
+
+- 言い換えの反復
+- 構造的マーカーの過剰
+- 受け身逃げ
+- 形式的な締め
+- 抽象語の多用
+- 感情の起伏がない均一文体
+
 ## Output
 
 - Issues found

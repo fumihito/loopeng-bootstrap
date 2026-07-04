@@ -14,6 +14,8 @@ FRONTMATTER_RE = re.compile(r"^---\n(?P<body>.*?)\n---\n", re.S)
 SECTION_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.M)
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*")
 FRAME_REF_RE = re.compile(r"\bframe-[A-Za-z0-9-]+\b")
+SKILL_MD_REF_RE = re.compile(r"(?<![A-Za-z0-9_/.-])(?P<path>(?:\./)?(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.md)\b")
+IGNORED_MD_NAMES = {"SKILL.md", "routing.md"}
 
 
 @dataclass(frozen=True)
@@ -63,6 +65,45 @@ def description_word_count(description: str) -> int:
     return len(WORD_RE.findall(description))
 
 
+def iter_skill_markdown_files(skill_dir: Path) -> list[Path]:
+    return [
+        path
+        for path in sorted(skill_dir.rglob("*.md"))
+        if path.is_file() and path.name not in IGNORED_MD_NAMES and not path.is_symlink()
+    ]
+
+
+def referenced_skill_markdown_paths(skill_dir: Path, body: str) -> set[Path]:
+    refs: set[Path] = set()
+    for match in SKILL_MD_REF_RE.finditer(body):
+        rel_text = match.group("path")
+        candidate = (skill_dir / rel_text).resolve()
+        try:
+            rel = candidate.relative_to(skill_dir.resolve())
+        except ValueError:
+            continue
+        if rel.name in IGNORED_MD_NAMES:
+            continue
+        refs.add(skill_dir / rel)
+    return refs
+
+
+def validate_bundle_markdown(skill_dir: Path, body: str) -> list[str]:
+    errors: list[str] = []
+    bundled_files = iter_skill_markdown_files(skill_dir)
+    referenced_files = referenced_skill_markdown_paths(skill_dir, body)
+
+    for path in bundled_files:
+        if path not in referenced_files:
+            errors.append(f"unreferenced bundled markdown: {path.relative_to(skill_dir)}")
+
+    for path in sorted(referenced_files):
+        if not path.exists():
+            errors.append(f"broken bundled markdown reference: {path.relative_to(skill_dir)}")
+
+    return errors
+
+
 def validate_skill(path: Path) -> list[str]:
     errors: list[str] = []
     text = path.read_text(encoding="utf-8")
@@ -94,6 +135,8 @@ def validate_skill(path: Path) -> list[str]:
     for section in REQUIRED_SECTIONS:
         if section not in titles:
             errors.append(f"missing required section: {section}")
+
+    errors.extend(validate_bundle_markdown(path.parent, body))
 
     return errors
 

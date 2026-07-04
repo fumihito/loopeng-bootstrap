@@ -28,6 +28,14 @@ Use this frame when the question cannot be settled confidently by reasoning alon
 - design-optimization: tune a few interacting factors
 - exploratory-probe: learn what matters when the space is unclear
 
+## Cynefin mapping
+
+- Clear: best practice
+- Complicated: analysis first, then focused test
+- Complex: safe-to-fail probe
+- Chaotic: stabilize first
+- Disorder: classify before acting
+
 ## Decision rules
 
 - Complicated: a specialist can probably narrow the choice without a probe

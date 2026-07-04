@@ -55,6 +55,15 @@ Check for:
 
 The boundary with `frame-blind-spot` is whether the issue is a testable claim. If there is no claim yet, surface the assumption or omission first. If the target survives scrutiny, say that it survived and why.
 
+## Source priority
+
+1. Primary source
+2. Official documentation or official code
+3. Direct tests / release notes / changelog
+4. Secondary source only when primary sources are unavailable
+
+If the primary source is missing, say so explicitly.
+
 ## Synthesis hint
 
 Do not end with critique alone. Offer what to narrow, qualify, add, preempt, or synthesize more strongly.

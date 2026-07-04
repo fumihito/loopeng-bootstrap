@@ -44,6 +44,94 @@ Test frame.
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("missing required section", result.stdout)
 
+    def test_lint_flags_unreferenced_bundled_markdown(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            skill_dir = root / "adapters/shared/skills/frame-sample"
+            refs_dir = skill_dir / "references"
+            refs_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(
+                """---
+name: frame-sample
+description: \"Test frame for linting. Use when a sample is enough. The point is to stay concise.\"
+user-invocable: true
+---
+
+## Purpose
+
+Test frame.
+
+## When to use
+
+- Sample cases only
+
+## Workflow
+
+1. Do the sample thing.
+
+## Output
+
+- Sample output
+
+## Exit
+
+Stop.
+
+## Adjacent frames
+
+- Use `frame-diag` when needed.
+""",
+                encoding="utf-8",
+            )
+            (refs_dir / "orphan.md").write_text("# Orphan\n", encoding="utf-8")
+
+            result = run([sys.executable, str(LINT), "--root", str(root)], root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unreferenced bundled markdown", result.stdout)
+
+    def test_lint_flags_broken_bundled_markdown_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            skill_dir = root / "adapters/shared/skills/frame-sample"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(
+                """---
+name: frame-sample
+description: \"Test frame for linting. Use when a sample is enough. The point is to stay concise.\"
+user-invocable: true
+---
+
+## Purpose
+
+Test frame.
+
+## When to use
+
+- Sample cases only
+
+## Workflow
+
+1. Read `references/missing.md`.
+
+## Output
+
+- Sample output
+
+## Exit
+
+Stop.
+
+## Adjacent frames
+
+- Use `frame-diag` when needed.
+""",
+                encoding="utf-8",
+            )
+
+            result = run([sys.executable, str(LINT), "--root", str(root)], root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("broken bundled markdown reference", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

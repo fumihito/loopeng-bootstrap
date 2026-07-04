@@ -25,10 +25,18 @@ Use this frame when an incident may involve timing, scheduling, stale state, dup
 
 ## Required axes
 
-- Location
-- Failure mode
-- Time and ordering
-- Broken guarantee
+- Location: where the fault most likely sits
+- Failure mode: what kind of failure is happening
+- Time and ordering: when key events happened
+- Broken guarantee: what promise may have been violated
+
+## Discipline
+
+- Do not jump to root cause too early.
+- Do not confuse observation with inference.
+- Do not treat uncertainty as evidence.
+- Do not skip time ordering.
+- Do not ignore duplicate or stale state.
 
 ## Pattern prompts
 
