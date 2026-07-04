@@ -29,6 +29,7 @@ class InstalledRepoSelfSufficiencyTests(unittest.TestCase):
             wrapper = repo / ".agent-loop/bin/okfctl"
             self.assertTrue(binary.is_file())
             self.assertTrue(os.access(binary, os.X_OK))
+            self.assertFalse((repo / "AGENTS.md").exists() or (repo / "CLAUDE.md").exists())
 
             version = subprocess.run(
                 [str(wrapper), "version"],

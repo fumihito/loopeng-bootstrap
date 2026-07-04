@@ -2,3 +2,6 @@ __pycache__
 /_*
 .agent-loop/runtime/
 .agent-loop/bin/okfctl.bin
+
+# Loop Engineering runtime and installer backups
+.loop-engineering-backups/

@@ -947,8 +947,38 @@ def is_mutation(event: dict[str, Any], policy: dict[str, Any]) -> bool:
     return False
 
 
+PATH_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_./-])(?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+")
+
+
+def protected_path_fragments(policy: dict[str, Any]) -> list[str]:
+    return [str(value).replace("\\", "/").strip("/") for value in policy.get("protected_path_fragments", []) if str(value).strip()]
+
+
+def extracted_path_tokens(text: str) -> list[str]:
+    normalized = text.replace("\\", "/")
+    tokens = [match.group(0).strip(".,:;\"'`()[]{}<>") for match in PATH_TOKEN_RE.finditer(normalized)]
+    return [token for token in tokens if token]
+
+
 def protected(policy: dict[str, Any], text: str) -> str | None:
-    return next((item for item in policy.get("protected_path_fragments", []) if item in text), None)
+    fragments = protected_path_fragments(policy)
+    normalized = text.replace("\\", "/")
+    tokens = extracted_path_tokens(normalized)
+
+    if tokens:
+        for fragment in fragments:
+            variants = {fragment}
+            if fragment.startswith("."):
+                variants.add(fragment.lstrip("."))
+            for token in tokens:
+                if any(token.startswith(variant) for variant in variants):
+                    return fragment
+        return None
+
+    if "adapters/" in normalized:
+        return None
+
+    return next((item for item in fragments if item in normalized), None)
 
 
 def memory_policy(root: Path) -> dict[str, Any]:
@@ -2341,8 +2371,13 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
 
     if name == "PermissionRequest":
         text = tool_text(event)
-        if matches(policy.get("deny_command_patterns", []), text) or matches(policy.get("high_risk_command_patterns", []), text) or protected(policy, text):
-            return emit({"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "deny", "message": "Denied by loop-control policy; use Governor and human execution for high-risk work."}}})
+        protected_hit = protected(policy, text)
+        if matches(policy.get("deny_command_patterns", []), text) or matches(policy.get("high_risk_command_patterns", []), text) or protected_hit:
+            message = "Denied by loop-control policy; use Governor and human execution for high-risk work."
+            if protected_hit:
+                display_hit = protected_hit if "." in Path(protected_hit).name else f"{protected_hit}/"
+                message = f"Denied by loop-control policy: protected path fragment {display_hit}."
+            return emit({"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "deny", "message": message}}})
         return 0
 
     if name in {"PostToolUse", "PostToolUseFailure"}:

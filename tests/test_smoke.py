@@ -256,6 +256,16 @@ class IntegrationTest(unittest.TestCase):
         perm.update({"tool_name": "Bash", "tool_input": {"command": "git push origin main"}})
         self.assertEqual(self.call(perm)["hookSpecificOutput"]["decision"]["behavior"], "deny")
 
+        adapter_edit = self.event("PermissionRequest", session, turn)
+        adapter_edit.update({"tool_name": "Bash", "tool_input": {"command": "Edit adapters/codex/.codex/agents/x.toml"}})
+        self.assertEqual(self.call(adapter_edit), {})
+
+        root_edit = self.event("PermissionRequest", session, turn)
+        root_edit.update({"tool_name": "Bash", "tool_input": {"command": "Edit .codex/agents/x.toml"}})
+        denied_root = self.call(root_edit)
+        self.assertEqual(denied_root["hookSpecificOutput"]["decision"]["behavior"], "deny")
+        self.assertIn(".codex/agents/", denied_root["hookSpecificOutput"]["decision"]["message"])
+
         post = self.event("PostToolUse", session, turn)
         post.update({"tool_name": "apply_patch", "tool_input": {"command": "patch"}, "tool_response": {"success": True}})
         self.call(post)

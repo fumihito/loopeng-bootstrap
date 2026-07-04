@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -67,10 +68,49 @@ RUNTIME_MANIFEST = [
     { 'path': '.agent-loop/cmd/okfctl/main.go', 'profiles': {PROFILE_FULL} },
     { 'path': '.agent-loop/lib/learning_observer.py', 'profiles': {PROFILE_FULL} },
 ]
+CONFIG_JSON_RELS = {
+    '.agent-loop/policy.json',
+    '.agent-loop/scheduler-policy.json',
+    '.agent-loop/learning-policy.json',
+    '.agent-loop/memory-policy.json',
+    '.agent-loop/brief-pattern-policy.json',
+    '.agent-loop/direct-policy.json',
+    '.agent-loop/sop-policy.json',
+    '.agent-loop/otel.json',
+}
+GENERATED_JSON_SIDECAR_DIRS = {
+    '.claude',
+    '.codex',
+}
+COMMENTABLE_SUFFIXES = {
+    '.md',
+    '.toml',
+    '.py',
+    '.sh',
+    '.yaml',
+    '.yml',
+    '.service',
+    '.conf',
+    '.ini',
+    '.desktop',
+}
 
 
 def stamp() -> str:
     return datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
+
+
+def run_git(root: Path, *args: str) -> str:
+    completed = subprocess.run(
+        ['git', *args],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise InstallerError((completed.stderr or completed.stdout or 'git command failed').strip())
+    return completed.stdout.strip()
 
 
 @dataclass(frozen=True)
@@ -94,14 +134,72 @@ class InstallerError(RuntimeError):
 
 
 class Installer:
-    def __init__(self, repo: Path, *, dry_run: bool, conflict: str, profile: str) -> None:
+    def __init__(
+        self,
+        repo: Path,
+        *,
+        dry_run: bool,
+        conflict: str,
+        profile: str,
+        self_mode: bool = False,
+        update_mode: bool = False,
+        prune: bool = False,
+        force_overwrite_tampered: str | None = None,
+    ) -> None:
         self.repo = repo
         self.dry_run = dry_run
         self.conflict = conflict
         self.profile = profile
+        self.self_mode = self_mode
+        self.update_mode = update_mode
+        self.prune = prune
+        self.force_overwrite_tampered = force_overwrite_tampered
         self.run_stamp = stamp()
         self.backup_root = repo / '.loop-engineering-backups' / self.run_stamp
         self.actions: list[dict[str, str]] = []
+        self.manifest_path = self.repo / '.agent-loop/runtime/install-manifest.json'
+        self.source_commit: str | None = None
+        self.manifest: dict[str, object] | None = self.load_existing_manifest()
+        self.manifest_entries_by_rel: dict[str, dict[str, object]] = {}
+        self.obsolete_manifest_paths: list[str] = []
+
+    @staticmethod
+    def kit_commit() -> str:
+        return run_git(SRC, 'rev-parse', 'HEAD')
+
+    def source_commit_value(self) -> str:
+        if self.source_commit is None:
+            try:
+                self.source_commit = self.kit_commit()
+            except (InstallerError, FileNotFoundError, RuntimeError):
+                self.source_commit = 'unknown'
+        return self.source_commit
+
+    def load_existing_manifest(self) -> dict[str, object] | None:
+        if not self.manifest_path.is_file():
+            return None
+        try:
+            data = json.loads(self.manifest_path.read_text(encoding='utf-8'))
+        except Exception:
+            return None
+        return data if isinstance(data, dict) else None
+
+    def manifest_entry(self, rel: str) -> dict[str, object] | None:
+        if self.manifest is None:
+            return None
+        entries = self.manifest.get('entries')
+        if not isinstance(entries, list):
+            return None
+        for item in entries:
+            if isinstance(item, dict) and item.get('relative_path') == rel:
+                return item
+        return None
+
+    def is_self_install(self) -> bool:
+        return self.repo.resolve() == SRC.resolve()
+
+    def maybe_self_mode(self) -> bool:
+        return self.self_mode or self.is_self_install()
 
     def manifest_entries(self) -> list[dict[str, object]]:
         return [entry for entry in RUNTIME_MANIFEST if self.profile in entry['profiles']]
@@ -123,6 +221,145 @@ class Installer:
 
     def should_install_skill(self, skill_name: str) -> bool:
         return not (self.profile == PROFILE_ROUTING and skill_name in LOOP_ONLY_SKILLS)
+
+    def destination_rel(self, path: Path) -> str:
+        return path.relative_to(self.repo).as_posix()
+
+    def is_config_json(self, destination: Path) -> bool:
+        return self.destination_rel(destination) in CONFIG_JSON_RELS
+
+    def is_generated_json(self, destination: Path) -> bool:
+        rel = self.destination_rel(destination)
+        return rel in {'.codex/hooks.json', '.claude/settings.json'}
+
+    def is_commentable_text(self, path: Path) -> bool:
+        return path.suffix.lower() in COMMENTABLE_SUFFIXES
+
+    def should_add_banner(self, destination: Path) -> bool:
+        rel = self.destination_rel(destination)
+        if rel == 'routing_hints.py':
+            return False
+        if rel.startswith('skills/') or rel.startswith('llmwiki/') or rel.startswith('.agent-loop/templates/'):
+            return False
+        return True
+
+    def do_not_edit_line(self, source_rel: str) -> str:
+        return f'DO NOT EDIT — generated by install.py from {source_rel} (kit {self.source_commit_value()[:12]}). Edit the source and run install.py --update.'
+
+    def do_not_edit_banner(self, destination: Path, source_rel: str) -> str:
+        message = self.do_not_edit_line(source_rel)
+        suffix = destination.suffix.lower()
+        if suffix == '.md':
+            return f'<!-- {message} -->'
+        if suffix in {'.py', '.sh', '.toml', '.yaml', '.yml'}:
+            return f'# {message}'
+        return message
+
+    def lock_read_only(self, path: Path) -> None:
+        if self.dry_run or not path.exists():
+            return
+        current = path.stat().st_mode
+        os.chmod(path, current & ~0o222)
+
+    def preserve_executable_bits(self, source: Path | None, destination: Path) -> None:
+        if self.dry_run or source is None or not destination.exists():
+            return
+        if source.exists() and os.access(source, os.X_OK):
+            current = destination.stat().st_mode
+            os.chmod(destination, current | 0o111)
+
+    def unlock_for_update(self, path: Path) -> None:
+        if self.dry_run or not path.exists():
+            return
+        current = path.stat().st_mode
+        os.chmod(path, current | stat.S_IWUSR)
+
+    def render_managed_text(self, source: Path, destination: Path, text: str) -> str:
+        rel = source.relative_to(SRC).as_posix()
+        header = self.do_not_edit_banner(destination, rel)
+        if destination.suffix.lower() == '.md' and text.startswith('---\n'):
+            closing = text.find('\n---\n', 4)
+            if closing != -1:
+                boundary = closing + len('\n---\n')
+                return text[:boundary] + header + '\n' + text[boundary:].lstrip('\n')
+        if text.startswith('#!') and destination.suffix.lower() in {'.py', '.sh'}:
+            first_line, _, rest = text.partition('\n')
+            return first_line + '\n' + header + ('\n' + rest if rest else '\n')
+        return header + '\n' + text.lstrip('\n')
+
+    def record_manifest_entry(self, destination: Path, *, source: Path | None, classification: str) -> None:
+        rel = self.destination_rel(destination)
+        if rel == '.agent-loop/runtime/install-manifest.json':
+            return
+        entry: dict[str, object] = {
+            'relative_path': rel,
+            'sha256': self.sha256_file(destination) if destination.is_file() else None,
+            'classification': classification,
+            'source_commit': self.source_commit_value(),
+        }
+        if source is not None:
+            try:
+                entry['source_sha256'] = self.sha256_file(source)
+            except FileNotFoundError:
+                entry['source_sha256'] = None
+            try:
+                entry['source_rel'] = source.relative_to(SRC).as_posix()
+            except ValueError:
+                try:
+                    entry['source_rel'] = source.relative_to(self.repo).as_posix()
+                except ValueError:
+                    entry['source_rel'] = str(source)
+        self.manifest_entries_by_rel[rel] = entry
+
+    def generated_sidecar_targets(self) -> dict[Path, list[str]]:
+        grouped: dict[Path, list[str]] = {}
+        for rel in self.manifest_entries_by_rel:
+            if rel.endswith('hooks.json') or rel.endswith('settings.json'):
+                path = self.repo / rel
+                grouped.setdefault(path.parent, []).append(rel)
+        return grouped
+
+    def write_generated_sidecars(self) -> None:
+        for parent, rels in self.generated_sidecar_targets().items():
+            sidecar = parent / 'GENERATED — DO NOT EDIT.md'
+            if self.update_mode and sidecar.exists():
+                manifest_entry = self.managed_entry(sidecar)
+                if manifest_entry is not None and manifest_entry.get('classification') == 'generated':
+                    current_hash = self.sha256_file(sidecar)
+                    if current_hash != manifest_entry.get('sha256') and self.force_overwrite_tampered is None:
+                        raise InstallerError(f'tampered generated file requires --force-overwrite-tampered: {sidecar}')
+            body = [
+                self.do_not_edit_line('generated-sidecar'),
+                '',
+                'Generated outputs in this directory:',
+                '',
+            ]
+            body.extend(f'- `{rel}`' for rel in sorted(rels))
+            body.append('')
+            body.append('These files are generated by install.py and must be updated through `install.py --update`.')
+            text = '\n'.join(body) + '\n'
+            if self.dry_run:
+                print(f'[dry-run] write sidecar {sidecar}')
+                continue
+            sidecar.parent.mkdir(parents=True, exist_ok=True)
+            self.unlock_for_update(sidecar)
+            self.unlock_for_update(sidecar.parent)
+            sidecar.write_text(text, encoding='utf-8')
+            self.record_manifest_entry(sidecar, source=None, classification='generated')
+            self.lock_read_only(sidecar)
+
+    def managed_entry(self, destination: Path) -> dict[str, object] | None:
+        return self.manifest_entry(self.destination_rel(destination))
+
+    def is_generated_artifact(self, destination: Path) -> bool:
+        rel = self.destination_rel(destination)
+        if rel in CONFIG_JSON_RELS:
+            return False
+        if rel == '.agent-loop/runtime/install-manifest.json':
+            return False
+        if rel.startswith('.agent-loop/runtime/'):
+            return False
+        return True
 
     def describe(self, path: Path) -> str:
         if path.is_symlink():
@@ -467,8 +704,6 @@ class Installer:
             '.agent-loop/templates/INSTALL_MERGE_REPORT.md',
             '.codex/hooks.json',
             '.claude/settings.json',
-            'AGENTS.md',
-            'CLAUDE.md',
             '.gitignore',
         ])
         if self.profile == PROFILE_FULL:
@@ -648,6 +883,8 @@ class Installer:
             print(f'[dry-run] create symlink {link} -> {target}')
             return
         link.parent.mkdir(parents=True, exist_ok=True)
+        if self.maybe_self_mode():
+            self.unlock_for_update(link.parent)
         if link.exists() or link.is_symlink():
             raise InstallerError(f'Cannot create canonical skills symlink over existing node: {link}')
         os.symlink(target, link, target_is_directory=True)
@@ -765,37 +1002,90 @@ class Installer:
             temp_path.unlink(missing_ok=True)
 
     def copy_file(self, source: Path, destination: Path) -> None:
+        if self.maybe_self_mode() and destination.relative_to(self.repo).as_posix().startswith('.agent-loop/'):
+            return
         if self.dry_run:
             print(f'[dry-run] copy {source.relative_to(SRC)} -> {destination}')
             return
+        if source.resolve(strict=False) == destination.resolve(strict=False):
+            return
+        if self.update_mode:
+            manifest_entry = self.managed_entry(destination)
+            if manifest_entry is not None and destination.exists():
+                current_hash = self.sha256_file(destination)
+                if manifest_entry.get('classification') == 'generated' and current_hash != manifest_entry.get('sha256') and self.force_overwrite_tampered is None:
+                    raise InstallerError(f'tampered generated file requires --force-overwrite-tampered: {destination}')
+                if manifest_entry.get('classification') == 'config' and current_hash != manifest_entry.get('sha256'):
+                    return
+        self.unlock_for_update(destination)
         self.backup_existing(destination)
         self.ensure_parent(destination)
-        shutil.copy2(source, destination)
+        text = source.read_text(encoding='utf-8')
+        if self.is_generated_artifact(destination) and self.is_commentable_text(destination) and self.should_add_banner(destination):
+            text = self.render_managed_text(source, destination, text)
+        self.atomic_write_text(destination, text)
+        self.preserve_executable_bits(source, destination)
+        if self.is_generated_artifact(destination):
+            self.lock_read_only(destination)
         self.record('copy', source, destination)
+        classification = 'config' if self.is_config_json(destination) else 'generated'
+        self.record_manifest_entry(destination, source=source, classification=classification)
 
     def copy_rendered_file(self, source: Path, destination: Path, *, replacements: dict[str, str]) -> None:
         if self.dry_run:
             print(f'[dry-run] render {source.relative_to(SRC)} -> {destination}')
             return
+        if source.resolve(strict=False) == destination.resolve(strict=False):
+            return
+        if self.update_mode:
+            manifest_entry = self.managed_entry(destination)
+            if manifest_entry is not None and destination.exists() and manifest_entry.get('classification') == 'generated':
+                current_hash = self.sha256_file(destination)
+                if current_hash != manifest_entry.get('sha256') and self.force_overwrite_tampered is None:
+                    raise InstallerError(f'tampered generated file requires --force-overwrite-tampered: {destination}')
+        self.unlock_for_update(destination)
         self.backup_existing(destination)
         self.ensure_parent(destination)
         text = source.read_text(encoding='utf-8')
         for needle, replacement in replacements.items():
             text = text.replace(needle, replacement)
+        if self.is_generated_artifact(destination) and self.is_commentable_text(destination) and self.should_add_banner(destination):
+            text = self.render_managed_text(source, destination, text)
         self.atomic_write_text(destination, text)
+        self.preserve_executable_bits(source, destination)
+        if self.is_generated_artifact(destination):
+            self.lock_read_only(destination)
         self.record('copy', source, destination)
+        self.record_manifest_entry(destination, source=source, classification='generated')
 
     def copy_file_if_missing(self, source: Path, destination: Path) -> None:
         if destination.exists() or destination.is_symlink():
             if destination.is_file() and not destination.is_symlink():
+                if self.update_mode:
+                    manifest_entry = self.managed_entry(destination)
+                    if manifest_entry is not None and manifest_entry.get('classification') == 'generated':
+                        current_hash = self.sha256_file(destination)
+                        if current_hash != manifest_entry.get('sha256') and self.force_overwrite_tampered is None:
+                            raise InstallerError(f'tampered generated file requires --force-overwrite-tampered: {destination}')
+                if not self.dry_run:
+                    classification = 'config' if self.is_config_json(destination) else 'generated'
+                    self.record_manifest_entry(destination, source=source, classification=classification)
                 return
             raise InstallerError(f'Cannot preserve non-file LLMWiki destination: {destination}')
         if self.dry_run:
             print(f'[dry-run] create missing {source.relative_to(SRC)} -> {destination}')
             return
         self.ensure_parent(destination)
-        shutil.copy2(source, destination)
+        text = source.read_text(encoding='utf-8')
+        if self.is_generated_artifact(destination) and self.is_commentable_text(destination) and self.should_add_banner(destination):
+            text = self.render_managed_text(source, destination, text)
+        self.atomic_write_text(destination, text)
+        self.preserve_executable_bits(source, destination)
+        if self.is_generated_artifact(destination):
+            self.lock_read_only(destination)
         self.record('copy-missing', source, destination)
+        classification = 'config' if self.is_config_json(destination) else 'generated'
+        self.record_manifest_entry(destination, source=source, classification=classification)
 
     def install_llmwiki_skeleton(self) -> None:
         source_root = SRC / 'llmwiki'
@@ -809,9 +1099,16 @@ class Installer:
                 self.copy_file_if_missing(source, target_root / source.relative_to(source_root))
 
     def merge_json(self, source: Path, destination: Path) -> None:
+        generated_destination = self.is_generated_artifact(destination)
+        if self.update_mode:
+            manifest_entry = self.managed_entry(destination)
+            if manifest_entry is not None and manifest_entry.get('classification') == 'generated' and destination.exists():
+                current_hash = self.sha256_file(destination)
+                if current_hash != manifest_entry.get('sha256') and self.force_overwrite_tampered is None:
+                    raise InstallerError(f'tampered generated file requires --force-overwrite-tampered: {destination}')
         incoming = json.loads(source.read_text(encoding='utf-8'))
         current: dict = {}
-        if destination.exists():
+        if destination.exists() and not (self.update_mode and generated_destination):
             if not destination.is_file():
                 raise InstallerError(f'JSON destination is not a regular file: {destination}')
             try:
@@ -820,48 +1117,56 @@ class Installer:
                 raise InstallerError(
                     f'Existing JSON is invalid and was not modified: {destination}: {exc}'
                 ) from exc
+        elif self.update_mode and generated_destination:
+            current = incoming
         if not isinstance(current, dict):
             raise InstallerError(f'Existing JSON root must be an object: {destination}')
         current.setdefault('hooks', {})
         if not isinstance(current['hooks'], dict):
             raise InstallerError(f'Existing hooks field must be an object: {destination}')
 
-        # Replace only previous versions of this kit; preserve unrelated user hooks.
-        for event, groups in list(current['hooks'].items()):
-            if not isinstance(groups, list):
-                raise InstallerError(f'Hook event {event!r} must contain a list: {destination}')
-            current['hooks'][event] = [
-                group for group in groups
-                if MANAGED_HOOK_MARKER not in json.dumps(group, sort_keys=True)
-            ]
-        for event, groups in incoming.get('hooks', {}).items():
-            current['hooks'].setdefault(event, [])
-            seen = {json.dumps(item, sort_keys=True) for item in current['hooks'][event]}
-            for group in groups:
-                key = json.dumps(group, sort_keys=True)
-                if key not in seen:
-                    current['hooks'][event].append(group)
-                    seen.add(key)
+        if not (self.update_mode and generated_destination):
+            # Replace only previous versions of this kit; preserve unrelated user hooks.
+            for event, groups in list(current['hooks'].items()):
+                if not isinstance(groups, list):
+                    raise InstallerError(f'Hook event {event!r} must contain a list: {destination}')
+                current['hooks'][event] = [
+                    group for group in groups
+                    if MANAGED_HOOK_MARKER not in json.dumps(group, sort_keys=True)
+                ]
+            for event, groups in incoming.get('hooks', {}).items():
+                current['hooks'].setdefault(event, [])
+                seen = {json.dumps(item, sort_keys=True) for item in current['hooks'][event]}
+                for group in groups:
+                    key = json.dumps(group, sort_keys=True)
+                    if key not in seen:
+                        current['hooks'][event].append(group)
+                        seen.add(key)
 
-        if 'env' in incoming:
-            current.setdefault('env', {})
-            if not isinstance(current['env'], dict):
-                raise InstallerError(f'Existing env field must be an object: {destination}')
-            privacy_keys = {
-                'OTEL_LOG_USER_PROMPTS', 'OTEL_LOG_TOOL_DETAILS',
-                'OTEL_LOG_TOOL_CONTENT', 'OTEL_LOG_RAW_API_BODIES',
-            }
-            for key, value in incoming['env'].items():
-                if key in privacy_keys:
-                    current['env'][key] = value
-                else:
-                    current['env'].setdefault(key, value)
+            if 'env' in incoming:
+                current.setdefault('env', {})
+                if not isinstance(current['env'], dict):
+                    raise InstallerError(f'Existing env field must be an object: {destination}')
+                privacy_keys = {
+                    'OTEL_LOG_USER_PROMPTS', 'OTEL_LOG_TOOL_DETAILS',
+                    'OTEL_LOG_TOOL_CONTENT', 'OTEL_LOG_RAW_API_BODIES',
+                }
+                for key, value in incoming['env'].items():
+                    if key in privacy_keys:
+                        current['env'][key] = value
+                    else:
+                        current['env'].setdefault(key, value)
 
         if self.dry_run:
             print(f'[dry-run] merge {source.relative_to(SRC)} -> {destination}')
             return
+        self.unlock_for_update(destination)
         self.backup_existing(destination)
         self.atomic_write_text(destination, json.dumps(current, indent=2, ensure_ascii=False) + '\n')
+        if self.is_generated_artifact(destination):
+            self.lock_read_only(destination)
+        classification = 'config' if self.is_config_json(destination) else 'generated'
+        self.record_manifest_entry(destination, source=source, classification=classification)
 
     def patch_marked_file(self, path: Path, snippet: str) -> None:
         old = path.read_text(encoding='utf-8') if path.exists() else ''
@@ -903,6 +1208,8 @@ class Installer:
             return
         self.backup_existing(path)
         self.atomic_write_text(path, text)
+        self.lock_read_only(path)
+        self.record_manifest_entry(path, source=None, classification='generated')
 
     def ensure_go_toolchain(self) -> str:
         if shutil.which('go') is None:
@@ -948,6 +1255,9 @@ class Installer:
                 raise InstallerError(f'okfctl build failed: {stderr}')
             tmp.chmod(0o755)
             os.replace(tmp, binary)
+            if not self.dry_run:
+                self.lock_read_only(binary)
+                self.record_manifest_entry(binary, source=source, classification='generated')
         finally:
             tmp.unlink(missing_ok=True)
 
@@ -987,8 +1297,6 @@ class Installer:
         rel = destination.relative_to(self.repo).as_posix()
         if rel in {'.codex/hooks.json', '.claude/settings.json'}:
             return 'structured-json-merge'
-        if rel in {'AGENTS.md', 'CLAUDE.md'}:
-            return 'managed-markdown-block-merge'
         if rel == '.gitignore':
             return 'set-union-lines'
         if '/skills/' in rel or '/agents/' in rel:
@@ -1149,6 +1457,7 @@ class Installer:
 
         required_files = [
             *self.runtime_manifest_paths(),
+            '.agent-loop/runtime/install-manifest.json',
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
@@ -1171,9 +1480,12 @@ class Installer:
             '.agent-loop/templates/INSTALL_MERGE_REPORT.md',
             '.codex/hooks.json',
             '.claude/settings.json',
-            'AGENTS.md',
-            'CLAUDE.md',
         ]
+        if self.maybe_self_mode():
+            required_files = [
+                rel for rel in required_files
+                if not str(rel).startswith('.agent-loop/docs/') and not str(rel).startswith('.agent-loop/templates/')
+            ]
         if expected_loop_mode:
             required_files.extend([
                 '.agent-loop/systemd/agent-loop-scheduler.service',
@@ -1204,13 +1516,6 @@ class Installer:
             if path.is_file() and MANAGED_HOOK_MARKER not in path.read_text(encoding='utf-8'):
                 errors.append(f'managed hook command absent: {rel}')
 
-        for rel in ['AGENTS.md', 'CLAUDE.md']:
-            path = self.repo / rel
-            if path.is_file():
-                body = path.read_text(encoding='utf-8')
-                if body.count(BEGIN) != 1 or body.count(END) != 1:
-                    errors.append(f'invalid managed instruction markers: {rel}')
-
         for path in self.routing_hint_paths():
             try:
                 document = routing_hints_lib.load_routing_hints(path)
@@ -1220,6 +1525,43 @@ class Installer:
                 )
             except Exception as exc:
                 errors.append(f'routing hint invalid: {path.relative_to(self.repo)}: {type(exc).__name__}: {exc}')
+
+        manifest_path = self.repo / '.agent-loop/runtime/install-manifest.json'
+        manifest: dict[str, object] | None = None
+        if manifest_path.is_file():
+            try:
+                loaded = json.loads(manifest_path.read_text(encoding='utf-8'))
+            except Exception as exc:
+                errors.append(f'invalid install manifest .agent-loop/runtime/install-manifest.json: {type(exc).__name__}: {exc}')
+            else:
+                if isinstance(loaded, dict):
+                    manifest = loaded
+                else:
+                    errors.append('install manifest root must be an object: .agent-loop/runtime/install-manifest.json')
+        if manifest is not None:
+            entries = manifest.get('entries')
+            if isinstance(entries, list):
+                for item in entries:
+                    if not isinstance(item, dict):
+                        continue
+                    rel = str(item.get('relative_path') or '')
+                    classification = str(item.get('classification') or '')
+                    if self.maybe_self_mode() and (rel.startswith('.agent-loop/docs/') or rel.startswith('.agent-loop/templates/')):
+                        continue
+                    path = self.repo / rel
+                    if classification == 'generated' and path.is_file():
+                        mode = path.stat().st_mode
+                        if mode & 0o222:
+                            errors.append(f'generated file is writable: {rel}')
+                        if path.suffix.lower() in COMMENTABLE_SUFFIXES and self.should_add_banner(path):
+                            body = path.read_text(encoding='utf-8')
+                            header_text = 'DO NOT EDIT — generated by install.py'
+                            if not any(header_text in line for line in body.splitlines()[:10]):
+                                errors.append(f'generated file is missing a DO NOT EDIT header: {rel}')
+                    if rel in {'.codex/hooks.json', '.claude/settings.json'}:
+                        sidecar = path.parent / 'GENERATED — DO NOT EDIT.md'
+                        if not sidecar.is_file():
+                            errors.append(f'missing generated sidecar for JSON outputs: {sidecar.relative_to(self.repo)}')
 
         for skill in self.skill_names():
             canonical = self.repo / f'skills/{skill}/SKILL.md'
@@ -1297,14 +1639,19 @@ class Installer:
             return
         manifest = {
             'installed_at': datetime.now(timezone.utc).isoformat(),
+            'source_commit': self.source_commit_value(),
             'source_version': (SRC / 'VERSION').read_text(encoding='utf-8').strip(),
             'profile': self.profile,
+            'self_mode': self.maybe_self_mode(),
+            'update_mode': self.update_mode,
+            'force_overwrite_tampered_reason': self.force_overwrite_tampered,
             'conflict_policy': self.conflict,
             'backup_root': str(self.backup_root.relative_to(self.repo)) if self.backup_root.exists() else None,
             'actions': self.actions,
+            'entries': [self.manifest_entries_by_rel[key] for key in sorted(self.manifest_entries_by_rel)],
         }
-        path = self.repo / '.agent-loop' / 'install-manifest.json'
-        self.atomic_write_text(path, json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
+        self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        self.atomic_write_text(self.manifest_path, json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
 
     def write_profile_policy(self) -> None:
         if self.dry_run:
@@ -1312,6 +1659,12 @@ class Installer:
         path = self.repo / '.agent-loop/policy.json'
         if not path.is_file():
             return
+        if self.update_mode:
+            manifest_entry = self.managed_entry(path)
+            if manifest_entry is not None and manifest_entry.get('classification') == 'config' and path.exists():
+                current_hash = self.sha256_file(path)
+                if current_hash != manifest_entry.get('sha256'):
+                    return
         try:
             value = json.loads(path.read_text(encoding='utf-8'))
         except json.JSONDecodeError as exc:
@@ -1320,9 +1673,56 @@ class Installer:
             raise InstallerError(f'policy root must be an object: {path}')
         value['loop_mode_enabled'] = self.profile == PROFILE_FULL
         self.atomic_write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + '\n')
+        self.record_manifest_entry(path, source=SRC / '.agent-loop/policy.json', classification='config')
+
+    def write_memory_policy(self) -> None:
+        if self.dry_run:
+            return
+        path = self.repo / '.agent-loop/memory-policy.json'
+        if not path.is_file():
+            return
+        if self.update_mode:
+            manifest_entry = self.managed_entry(path)
+            if manifest_entry is not None and manifest_entry.get('classification') == 'config' and path.exists():
+                current_hash = self.sha256_file(path)
+                if current_hash != manifest_entry.get('sha256'):
+                    return
+        try:
+            value = json.loads(path.read_text(encoding='utf-8'))
+        except json.JSONDecodeError as exc:
+            raise InstallerError(f'invalid memory policy JSON after copy: {path}: {exc}') from exc
+        if not isinstance(value, dict):
+            raise InstallerError(f'memory policy root must be an object: {path}')
+        if self.maybe_self_mode():
+            value['bundle_root'] = '.agent-loop/runtime/llmwiki-live'
+        else:
+            value['bundle_root'] = 'llmwiki'
+        self.atomic_write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + '\n')
+        self.record_manifest_entry(path, source=SRC / '.agent-loop/memory-policy.json', classification='config')
 
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
         conflicts, migrations = self.analyze_layout()
+        if self.maybe_self_mode() and not self.dry_run:
+            (self.repo / '.agent-loop/runtime/llmwiki-live').mkdir(parents=True, exist_ok=True)
+        if self.update_mode:
+            if self.manifest is None:
+                raise InstallerError('update mode requires .agent-loop/runtime/install-manifest.json')
+            current_rels = {self.destination_rel(path) for path in self.destination_paths()}
+            current_rels.add('.agent-loop/runtime/install-manifest.json')
+            current_rels.update({f'{directory}/GENERATED — DO NOT EDIT.md' for directory in GENERATED_JSON_SIDECAR_DIRS})
+            entries = self.manifest.get('entries')
+            if isinstance(entries, list):
+                obsolete: list[str] = []
+                for item in entries:
+                    if isinstance(item, dict):
+                        rel = str(item.get('relative_path') or '')
+                        if rel and rel not in current_rels:
+                            obsolete.append(rel)
+                self.obsolete_manifest_paths = sorted(obsolete)
+                if self.obsolete_manifest_paths:
+                    print('Obsolete manifest entries:')
+                    for rel in self.obsolete_manifest_paths:
+                        print(f'  - {rel}')
         if self.conflict == 'agent':
             plan = self.generate_agent_plan(conflicts, migrations, agent_plan_dir)
             print(f'LLM-assisted installation plan created: {plan}')
@@ -1353,6 +1753,7 @@ class Installer:
             rel = str(entry['path'])
             self.copy_file(SRC / rel, self.repo / rel)
         self.write_profile_policy()
+        self.write_memory_policy()
         if self.profile == PROFILE_FULL:
             self.copy_rendered_file(
                 SRC / 'systemd/agent-loop-scheduler.service',
@@ -1385,7 +1786,7 @@ class Installer:
         ]:
             self.copy_file(SRC / source_rel, self.repo / destination_rel)
 
-        if self.profile == PROFILE_FULL:
+        if self.profile == PROFILE_FULL and not self.maybe_self_mode():
             self.install_llmwiki_skeleton()
 
         self.merge_json(SRC / 'adapters/codex/.codex/hooks.json', self.repo / '.codex/hooks.json')
@@ -1419,12 +1820,9 @@ class Installer:
                         continue
                     self.copy_file(source, target_base / relative)
 
-        snippet = (SRC / 'instruction-snippet.md').read_text(encoding='utf-8')
-        self.patch_marked_file(self.repo / 'AGENTS.md', snippet)
-        self.patch_marked_file(self.repo / 'CLAUDE.md', snippet)
         self.patch_gitignore()
 
-        if self.profile == PROFILE_FULL and not self.dry_run:
+        if self.profile == PROFILE_FULL and not self.dry_run and not self.maybe_self_mode():
             self.build_okfctl()
             version = self.run_okfctl('version')
             if version.returncode != 0:
@@ -1435,17 +1833,25 @@ class Installer:
         elif self.profile == PROFILE_ROUTING and not self.dry_run:
             print('Routing profile selected; okfctl build and validation are out of scope.')
 
-        if not self.dry_run:
-            (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o755)
+        self.write_generated_sidecars()
+        if not self.dry_run and not self.maybe_self_mode():
+            (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o555)
             if self.profile == PROFILE_FULL:
-                (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o755)
-                (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o755)
-                (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o755)
-                (self.repo / '.agent-loop/bin/loop_status.py').chmod(0o755)
-                (self.repo / '.agent-loop/bin/trigger-dryrun.sh').chmod(0o755)
-                (self.repo / '.agent-loop/bin/trigger-example.sh').chmod(0o755)
-                (self.repo / '.agent-loop/bin/okfctl').chmod(0o755)
-                (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o755)
+                (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o555)
+                (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o555)
+                (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o555)
+                (self.repo / '.agent-loop/bin/loop_status.py').chmod(0o555)
+                (self.repo / '.agent-loop/bin/trigger-dryrun.sh').chmod(0o555)
+                (self.repo / '.agent-loop/bin/trigger-example.sh').chmod(0o555)
+                (self.repo / '.agent-loop/bin/okfctl').chmod(0o555)
+                (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o555)
+        if self.update_mode and self.prune and not self.dry_run:
+            for rel in self.obsolete_manifest_paths:
+                path = self.repo / rel
+                if path.is_file() or path.is_symlink():
+                    path.unlink()
+                elif path.is_dir():
+                    shutil.rmtree(path)
         self.write_install_manifest()
 
 
@@ -1456,6 +1862,14 @@ def main() -> int:
     parser.add_argument('--repo', type=Path, required=True)
     parser.add_argument('--profile', choices=sorted(INSTALL_PROFILES), default=PROFILE_FULL)
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--self', dest='self_mode', action='store_true', help='Apply the installer to the kit repository itself.')
+    parser.add_argument('--update', action='store_true', help='Re-derive an existing installation from the current source tree.')
+    parser.add_argument('--prune', action='store_true', help='Remove files listed as obsolete by the install manifest.')
+    parser.add_argument(
+        '--force-overwrite-tampered',
+        metavar='REASON',
+        help='Overwrite generated files even when the install manifest reports tampering. Reason required.',
+    )
     parser.add_argument(
         '--conflict', choices=('error', 'backup', 'agent'), default='error',
         help=(
@@ -1478,9 +1892,16 @@ def main() -> int:
         raise SystemExit(f'Repository not found: {repo}')
     if not repo.is_dir():
         raise SystemExit(f'Repository path is not a directory: {repo}')
+    auto_self = repo.resolve() == SRC.resolve()
+    if args.self_mode and not auto_self:
+        raise SystemExit('--self can only be used when --repo points at the kit repository root.')
+    if auto_self and not args.self_mode:
+        args.self_mode = True
+    if args.force_overwrite_tampered is not None and not args.force_overwrite_tampered.strip():
+        raise SystemExit('--force-overwrite-tampered requires a non-empty reason string.')
 
     if args.validate_only:
-        manifest_path = repo / '.agent-loop' / 'install-manifest.json'
+        manifest_path = repo / '.agent-loop/runtime/install-manifest.json'
         if manifest_path.is_file():
             try:
                 manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
@@ -1489,7 +1910,16 @@ def main() -> int:
             if isinstance(manifest, dict) and manifest.get('profile') in INSTALL_PROFILES:
                 args.profile = str(manifest['profile'])
 
-    installer = Installer(repo, dry_run=args.dry_run, conflict=args.conflict, profile=args.profile)
+    installer = Installer(
+        repo,
+        dry_run=args.dry_run,
+        conflict=args.conflict,
+        profile=args.profile,
+        self_mode=args.self_mode,
+        update_mode=args.update,
+        prune=args.prune,
+        force_overwrite_tampered=args.force_overwrite_tampered,
+    )
     if args.validate_only:
         errors = installer.validate_installation()
         if errors:

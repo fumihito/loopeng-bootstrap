@@ -55,7 +55,7 @@ class InstallerConflictTests(unittest.TestCase):
         backups = list((repo / ".loop-engineering-backups").glob("*/.codex"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(backups[0].read_text(encoding="utf-8"), "legacy codex config\n")
-        manifest = json.loads((repo / ".agent-loop/install-manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads((repo / ".agent-loop/runtime/install-manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["conflict_policy"], "backup")
         self.assertTrue(any(a["action"] == "relocate-conflict" for a in manifest["actions"]))
 
@@ -146,7 +146,7 @@ class SharedCodexClaudeLayoutTests(unittest.TestCase):
         backups = list((repo / ".loop-engineering-backups").glob("*/.codex"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(backups[0].read_text(encoding="utf-8"), legacy)
-        manifest = json.loads((repo / ".agent-loop/install-manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads((repo / ".agent-loop/runtime/install-manifest.json").read_text(encoding="utf-8"))
         actions = [item["action"] for item in manifest["actions"]]
         self.assertIn("migrate-legacy-codex-config", actions)
         self.assertIn("use-canonical-skill-root", actions)

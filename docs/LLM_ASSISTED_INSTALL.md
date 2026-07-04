@@ -100,7 +100,7 @@ Also validate:
 - all required skills and agents exist for both products;
 - the Codex and Claude hook settings contain the current managed hook command;
 - existing unrelated hooks and settings are still present;
-- `AGENTS.md` and `CLAUDE.md` retain their previous content outside the managed block;
+- `AGENTS.md` and `CLAUDE.md`, if present in the target repository, are left untouched by `install.py`;
 - no managed destination is an external symlink;
 - Git diff contains only intended installation and merge changes.
 

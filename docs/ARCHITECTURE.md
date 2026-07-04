@@ -270,6 +270,8 @@ routing プロファイルでは `loop_mode_enabled=false` を使い、次の lo
 
 routing で残すガードは `deny_command_patterns`、`high_risk_command_patterns`、`protected_path_fragments`、journal/telemetry のサニタイズ、`max_tool_calls_per_turn` である。残さないのは mutation epoch や watchdog のターン状態機械、protected-path drift のスナップショットのような、loop の開始/終了対に依存するものだ。routing にはその対がないため、これらを保持するとデッドコンフィグになる。
 
+`protected_path_fragments` はリポジトリルート基準の前方一致として解釈する。`adapters/` 配下の実装作業は保護対象の自己参照ではないため、`adapters/.../.codex/agents/...` のような入力は保護境界に数えず、ルート直下の `.codex/agents/...` や `.claude/skills/...` だけを拒否する。コマンド文字列からパストークンを切り出せない場合に限り、部分一致へフォールバックしてよいが、その場合も `adapters/` 配下は除外する。
+
 ## 3.13 SOPを安全制約から完全に除外する
 
 ### 案

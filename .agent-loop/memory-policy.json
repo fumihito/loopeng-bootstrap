@@ -2,7 +2,7 @@
   "version": 1,
   "format": "Open Knowledge Format",
   "okf_version": "0.1",
-  "bundle_root": "llmwiki",
+  "bundle_root": ".agent-loop/runtime/llmwiki-live",
   "profile": "agent-loop-llmwiki-v1",
   "require_meta_evaluator_acceptance": true,
   "require_memory_curator": true,
