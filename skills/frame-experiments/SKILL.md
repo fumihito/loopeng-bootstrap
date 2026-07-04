@@ -28,7 +28,7 @@ Use this frame when the question cannot be settled confidently by reasoning alon
 - design-optimization: tune a few interacting factors
 - exploratory-probe: learn what matters when the space is unclear
 
-## Cynefin mapping
+## Domain split
 
 - Clear: best practice
 - Complicated: analysis first, then focused test

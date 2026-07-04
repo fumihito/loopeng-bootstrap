@@ -89,6 +89,7 @@ def referenced_skill_markdown_paths(skill_dir: Path, body: str) -> set[Path]:
 
 
 def validate_bundle_markdown(skill_dir: Path, body: str) -> list[str]:
+    """直後により深い階層の見出し(### 以下)が続く親見出しは空とみなさない。"""
     errors: list[str] = []
     bundled_files = iter_skill_markdown_files(skill_dir)
     referenced_files = referenced_skill_markdown_paths(skill_dir, body)
