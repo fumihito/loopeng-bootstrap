@@ -1,6 +1,6 @@
 # Command routing
 
-`route:` is a dedicated pre-loop routing entrypoint. It exists outside the autonomous loop and is invoked only when the user explicitly chooses `route:`. It is separate from `direct:`, but like `direct:` it bypasses Gatekeeper for the current turn.
+`route:` is a dedicated pre-loop routing entrypoint. It exists outside the autonomous loop and is invoked only when the user explicitly chooses `route:`. It is separate from `direct:`, but like `direct:` it bypasses Gatekeeper for the current turn. In the routing profile, `route:` still works even when loop mode is disabled: the hook loads `command-route`, unprefixed prompts pass through unchanged, and no Gatekeeper state is created.
 
 ## Scope
 

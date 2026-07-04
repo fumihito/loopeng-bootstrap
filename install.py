@@ -26,28 +26,46 @@ BEGIN = '<!-- LOOP-ENGINEERING:BEGIN -->'
 END = '<!-- LOOP-ENGINEERING:END -->'
 MANAGED_HOOK_MARKER = '.agent-loop/hooks/loop_hook.py'
 GO_MINIMUM_VERSION = '1.21'
+PROFILE_FULL = 'full'
+PROFILE_ROUTING = 'routing'
+INSTALL_PROFILES = {PROFILE_FULL, PROFILE_ROUTING}
+LOOP_ONLY_SKILLS = {
+    'gatekeeper',
+    'loop-brief-assistant',
+    'brief-pattern-curator',
+    'sensemaker',
+    'integrator',
+    'governor',
+    'state-steward',
+    'watchdog-recovery',
+    'meta-evaluator',
+    'learning-auditor',
+    'memory-curator',
+    'sop-learning-audit',
+}
 RUNTIME_MANIFEST = [
-    '.agent-loop/hooks/loop_hook.py',
-    '.agent-loop/policy.json',
-    '.agent-loop/scheduler-policy.json',
-    '.agent-loop/learning-policy.json',
-    '.agent-loop/memory-policy.json',
-    '.agent-loop/brief-pattern-policy.json',
-    '.agent-loop/sop-policy.json',
-    '.agent-loop/direct-policy.json',
-    '.agent-loop/bin/learning_health.py',
-    '.agent-loop/bin/next_turn_scheduler.py',
-    '.agent-loop/bin/next_turn_scheduler_daemon.py',
-    '.agent-loop/bin/loop_status.py',
-    '.agent-loop/bin/trigger-dryrun.sh',
-    '.agent-loop/bin/trigger-example.sh',
-    '.agent-loop/bin/okfctl',
-    '.agent-loop/bin/build-okfctl.sh',
-    '.agent-loop/cmd/okfctl/main.go',
-    '.agent-loop/lib/learning_observer.py',
-    '.agent-loop/otel.json',
-    '.agent-loop/otel-collector.yaml',
-    'routing_hints.py',
+    { 'path': '.agent-loop/hooks/loop_hook.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': '.agent-loop/policy.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': '.agent-loop/sop-policy.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': '.agent-loop/direct-policy.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': '.agent-loop/otel.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': '.agent-loop/otel-collector.yaml', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': 'routing_hints.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': 'utils/routing_hints_lint.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': '.agent-loop/scheduler-policy.json', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/learning-policy.json', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/memory-policy.json', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/brief-pattern-policy.json', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/learning_health.py', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/next_turn_scheduler.py', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/next_turn_scheduler_daemon.py', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/loop_status.py', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/trigger-dryrun.sh', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/trigger-example.sh', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/okfctl', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/bin/build-okfctl.sh', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/cmd/okfctl/main.go', 'profiles': {PROFILE_FULL} },
+    { 'path': '.agent-loop/lib/learning_observer.py', 'profiles': {PROFILE_FULL} },
 ]
 
 
@@ -76,13 +94,35 @@ class InstallerError(RuntimeError):
 
 
 class Installer:
-    def __init__(self, repo: Path, *, dry_run: bool, conflict: str) -> None:
+    def __init__(self, repo: Path, *, dry_run: bool, conflict: str, profile: str) -> None:
         self.repo = repo
         self.dry_run = dry_run
         self.conflict = conflict
+        self.profile = profile
         self.run_stamp = stamp()
         self.backup_root = repo / '.loop-engineering-backups' / self.run_stamp
         self.actions: list[dict[str, str]] = []
+
+    def manifest_entries(self) -> list[dict[str, object]]:
+        return [entry for entry in RUNTIME_MANIFEST if self.profile in entry['profiles']]
+
+    def runtime_manifest_paths(self) -> list[Path]:
+        return [self.repo / str(entry['path']) for entry in self.manifest_entries()]
+
+    def skill_names(self) -> list[str]:
+        source_root = SRC / 'adapters/shared/skills'
+        names: list[str] = []
+        for path in sorted(source_root.glob('*/SKILL.md')):
+            if not path.is_file() or path.is_symlink():
+                continue
+            name = path.parent.name
+            if self.profile == PROFILE_ROUTING and name in LOOP_ONLY_SKILLS:
+                continue
+            names.append(name)
+        return names
+
+    def should_install_skill(self, skill_name: str) -> bool:
+        return not (self.profile == PROFILE_ROUTING and skill_name in LOOP_ONLY_SKILLS)
 
     def describe(self, path: Path) -> str:
         if path.is_symlink():
@@ -130,7 +170,7 @@ class Installer:
         return {
             path.relative_to(source_root)
             for path in source_root.rglob('*')
-            if path.is_file()
+            if path.is_file() and self.should_install_skill(path.parent.name)
         }
 
     def command_skill_names(self) -> list[str]:
@@ -268,6 +308,8 @@ class Installer:
                 continue
             for path in sorted(source_root.rglob('*')):
                 relative = path.relative_to(source_root)
+                if relative.parts and not self.should_install_skill(relative.parts[0]):
+                    continue
                 if path.is_dir():
                     if relative in seen_files:
                         conflicts.append(Conflict(
@@ -399,8 +441,9 @@ class Installer:
 
     def destination_paths(self) -> list[Path]:
         paths: list[Path] = []
-        paths.extend(self.repo / rel for rel in RUNTIME_MANIFEST)
-        paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
+        paths.extend(self.runtime_manifest_paths())
+        if self.profile == PROFILE_FULL:
+            paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
         paths.extend(self.repo / rel for rel in [
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
@@ -428,19 +471,25 @@ class Installer:
             'CLAUDE.md',
             '.gitignore',
         ])
+        if self.profile == PROFILE_FULL:
+            paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
         for source in (SRC / "llmwiki").rglob("*"):
             if source.is_file():
                 paths.append(self.repo / "llmwiki" / source.relative_to(SRC / "llmwiki"))
         skill_mappings, _ = self.skill_install_layout()
-        mappings = [
-            *skill_mappings,
-            (SRC / 'adapters/codex/.codex/agents', self.repo / '.codex/agents', 'codex-agents'),
-            (SRC / 'adapters/claude/.claude/agents', self.repo / '.claude/agents', 'claude-agents'),
-        ]
+        mappings = list(skill_mappings)
+        if self.profile == PROFILE_FULL:
+            mappings.extend([
+                (SRC / 'adapters/codex/.codex/agents', self.repo / '.codex/agents', 'codex-agents'),
+                (SRC / 'adapters/claude/.claude/agents', self.repo / '.claude/agents', 'claude-agents'),
+            ])
         for source_base, target_base, _ in mappings:
             for source in source_base.rglob('*'):
                 if source.is_file():
-                    paths.append(target_base / source.relative_to(source_base))
+                    relative = source.relative_to(source_base)
+                    if relative.parts and not self.should_install_skill(relative.parts[0]):
+                        continue
+                    paths.append(target_base / relative)
         return paths
 
     def analyze_layout(self) -> tuple[list[Conflict], list[LayoutMigration]]:
@@ -569,6 +618,8 @@ class Installer:
             if source.is_symlink():
                 raise InstallerError(f'Nested skill symlink was not migrated: {source}')
             relative = source.relative_to(source_root)
+            if relative.parts and not self.should_install_skill(relative.parts[0]):
+                continue
             destination = target_root / relative
             if source.is_dir():
                 if destination.exists() and not destination.is_dir():
@@ -1045,29 +1096,29 @@ class Installer:
         (destination / 'PROMPT.txt').write_text(prompt, encoding='utf-8')
         return destination
 
-    def validate_installation(self) -> list[str]:
+    def validate_installation_profile(self) -> list[str]:
         errors: list[str] = []
-        frame_skills = [
-            'frame-diag',
-            'frame-plandev',
-            'frame-plantask',
-            'frame-first-principles',
-            'frame-experiments',
-            'frame-cynefin',
-            'frame-smeac',
-            'frame-proofread-ja',
-            'frame-blind-spot',
-            'frame-inertia',
-            'frame-waiwad-grill',
-            'frame-distributed-incident-analysis',
-            'frame-critical-review',
-            'frame-research-arch',
-            'frame-research-tactics',
-        ]
+        expected_loop_mode = self.profile == PROFILE_FULL
+
+        def skill_name(path: Path) -> str | None:
+            try:
+                body = path.read_text(encoding='utf-8')
+            except OSError:
+                return None
+            if not body.startswith('---\n'):
+                return None
+            end = body.find('\n---\n', 4)
+            if end < 0:
+                return None
+            for line in body[4:end].splitlines():
+                if line.startswith('name:'):
+                    return line.split(':', 1)[1].strip().strip('"\'')
+            return None
 
         canonical_skills = self.canonical_skill_root
         if canonical_skills.is_symlink() or not canonical_skills.is_dir():
             errors.append('canonical skills root must be a real directory: skills')
+
         expected_skill_target = self.canonical_skill_link_target()
         for rel in ['.agents/skills', '.claude/skills']:
             link = self.repo / rel
@@ -1095,131 +1146,71 @@ class Installer:
                     errors.append('TOML root is not a table: .codex/config.toml')
             except Exception as exc:
                 errors.append(f'invalid TOML .codex/config.toml: {type(exc).__name__}: {exc}')
+
         required_files = [
-            *RUNTIME_MANIFEST,
-            '.agent-loop/systemd/agent-loop-scheduler.service',
+            *self.runtime_manifest_paths(),
             '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
             '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
             '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
             '.agent-loop/docs/DIRECT_MODE.md',
             '.agent-loop/docs/COMMAND_ROUTING.md',
+            '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
+            '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
+            '.agent-loop/docs/SOP_ROUTING.md',
+            '.agent-loop/docs/LLM_ASSISTED_INSTALL.md',
+            '.agent-loop/docs/MERGE_RULES.md',
+            '.agent-loop/docs/SHARED_LAYOUTS.md',
             '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
             '.agent-loop/docs/ARCHITECTURE.md',
-            '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
             '.agent-loop/docs/LEARNING_OBSERVABILITY.md',
             '.agent-loop/docs/OKF_LLMWIKI.md',
+            '.agent-loop/templates/LOOP_BRIEF.md',
             '.agent-loop/templates/OKF_CONCEPT.md',
             '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md',
-            'llmwiki/index.md',
-            'llmwiki/loop-brief-patterns/index.md',
-            'llmwiki/log.md',
+            '.agent-loop/templates/SOP_SKILL_TEMPLATE.md',
+            '.agent-loop/templates/INSTALL_MERGE_REPORT.md',
             '.codex/hooks.json',
             '.claude/settings.json',
             'AGENTS.md',
             'CLAUDE.md',
         ]
+        if expected_loop_mode:
+            required_files.extend([
+                '.agent-loop/systemd/agent-loop-scheduler.service',
+                'llmwiki/index.md',
+                'llmwiki/loop-brief-patterns/index.md',
+                'llmwiki/log.md',
+            ])
         for rel in required_files:
             path = self.repo / rel
             if not path.is_file() or path.is_symlink():
                 errors.append(f'missing or unsafe required file: {rel}')
 
-        for rel in ['.codex/hooks.json', '.claude/settings.json', '.agent-loop/policy.json', '.agent-loop/scheduler-policy.json', '.agent-loop/learning-policy.json', '.agent-loop/memory-policy.json', '.agent-loop/brief-pattern-policy.json', '.agent-loop/sop-policy.json', '.agent-loop/direct-policy.json', '.agent-loop/otel.json']:
+        for rel in ['.codex/hooks.json', '.claude/settings.json', '.agent-loop/policy.json', '.agent-loop/sop-policy.json', '.agent-loop/direct-policy.json', '.agent-loop/otel.json']:
             path = self.repo / rel
             if path.is_file():
+                value = None
                 try:
                     value = json.loads(path.read_text(encoding='utf-8'))
                     if not isinstance(value, dict):
                         errors.append(f'JSON root is not an object: {rel}')
                 except Exception as exc:
                     errors.append(f'invalid JSON {rel}: {type(exc).__name__}: {exc}')
+                if rel == '.agent-loop/policy.json' and isinstance(value, dict) and bool(value.get('loop_mode_enabled', True)) != expected_loop_mode:
+                    errors.append(f'loop_mode_enabled must be {str(expected_loop_mode).lower()} for profile {self.profile}')
 
         for rel in ['.codex/hooks.json', '.claude/settings.json']:
             path = self.repo / rel
             if path.is_file() and MANAGED_HOOK_MARKER not in path.read_text(encoding='utf-8'):
                 errors.append(f'managed hook command absent: {rel}')
 
-        roles = ['gatekeeper', 'loop-brief-assistant', 'brief-pattern-curator', 'sensemaker', 'integrator', 'governor', 'state-steward', 'watchdog-recovery', 'meta-evaluator', 'learning-auditor', 'memory-curator']
-        for role in roles:
-            toml_path = self.repo / f'.codex/agents/{role}.toml'
-            if toml_path.is_file():
-                try:
-                    value = tomllib.loads(toml_path.read_text(encoding='utf-8'))
-                    if not isinstance(value, dict):
-                        errors.append(f'TOML root is not a table: .codex/agents/{role}.toml')
-                except Exception as exc:
-                    errors.append(f'invalid TOML .codex/agents/{role}.toml: {type(exc).__name__}: {exc}')
-
-        def skill_name(path: Path) -> str | None:
-            try:
+        for rel in ['AGENTS.md', 'CLAUDE.md']:
+            path = self.repo / rel
+            if path.is_file():
                 body = path.read_text(encoding='utf-8')
-            except OSError:
-                return None
-            if not body.startswith('---\n'):
-                return None
-            end = body.find('\n---\n', 4)
-            if end < 0:
-                return None
-            for line in body[4:end].splitlines():
-                if line.startswith('name:'):
-                    return line.split(':', 1)[1].strip().strip('\"\'')
-            return None
+                if body.count(BEGIN) != 1 or body.count(END) != 1:
+                    errors.append(f'invalid managed instruction markers: {rel}')
 
-        for role in roles:
-            canonical = self.repo / f'skills/{role}/SKILL.md'
-            for rel in [
-                f'skills/{role}/SKILL.md',
-                f'.codex/agents/{role}.toml',
-                f'.claude/agents/{role}.md',
-            ]:
-                path = self.repo / rel
-                if not path.is_file() or path.is_symlink():
-                    errors.append(f'missing or unsafe role component: {rel}')
-                elif rel.endswith('/SKILL.md') and skill_name(path) != role:
-                    errors.append(f'skill frontmatter name mismatch: {rel}')
-            for rel in [f'.agents/skills/{role}/SKILL.md', f'.claude/skills/{role}/SKILL.md']:
-                path = self.repo / rel
-                if not path.is_file():
-                    errors.append(f'missing platform-visible role skill: {rel}')
-                else:
-                    try:
-                        if not os.path.samefile(path, canonical):
-                            errors.append(f'platform role skill is not the canonical shared file: {rel}')
-                    except OSError as exc:
-                        errors.append(f'cannot compare platform role skill identity: {rel}: {exc}')
-        for frame in frame_skills:
-            canonical = self.repo / f'skills/{frame}/SKILL.md'
-            if not canonical.is_file() or canonical.is_symlink():
-                errors.append(f'missing or unsafe human frame skill: skills/{frame}/SKILL.md')
-                continue
-            if skill_name(canonical) != frame:
-                errors.append(f'frame skill frontmatter name mismatch: skills/{frame}/SKILL.md')
-            for rel in [f'.agents/skills/{frame}/SKILL.md', f'.claude/skills/{frame}/SKILL.md']:
-                path = self.repo / rel
-                if not path.is_file():
-                    errors.append(f'missing platform-visible frame skill: {rel}')
-                else:
-                    try:
-                        if not os.path.samefile(path, canonical):
-                            errors.append(f'platform frame skill is not the canonical shared file: {rel}')
-                    except OSError as exc:
-                        errors.append(f'cannot compare platform frame skill identity: {rel}: {exc}')
-        for skill in self.command_skill_names():
-            canonical = self.repo / f'skills/{skill}/SKILL.md'
-            if not canonical.is_file() or canonical.is_symlink():
-                errors.append(f'missing or unsafe command route skill: skills/{skill}/SKILL.md')
-                continue
-            if skill_name(canonical) != skill:
-                errors.append(f'command route skill frontmatter name mismatch: skills/{skill}/SKILL.md')
-            for rel in [f'.agents/skills/{skill}/SKILL.md', f'.claude/skills/{skill}/SKILL.md']:
-                path = self.repo / rel
-                if not path.is_file():
-                    errors.append(f'missing platform-visible command route skill: {rel}')
-                else:
-                    try:
-                        if not os.path.samefile(path, canonical):
-                            errors.append(f'platform command route skill is not the canonical shared file: {rel}')
-                    except OSError as exc:
-                        errors.append(f'cannot compare platform command route skill identity: {rel}: {exc}')
         for path in self.routing_hint_paths():
             try:
                 document = routing_hints_lib.load_routing_hints(path)
@@ -1229,48 +1220,77 @@ class Installer:
                 )
             except Exception as exc:
                 errors.append(f'routing hint invalid: {path.relative_to(self.repo)}: {type(exc).__name__}: {exc}')
-        for skill in ['sop-diag', 'sop-list', 'sop-install', 'sop-learning-audit']:
+
+        for skill in self.skill_names():
             canonical = self.repo / f'skills/{skill}/SKILL.md'
             if not canonical.is_file() or canonical.is_symlink():
-                errors.append(f'missing or unsafe canonical SOP skill: skills/{skill}/SKILL.md')
+                errors.append(f'missing or unsafe canonical skill: skills/{skill}/SKILL.md')
                 continue
             if skill_name(canonical) != skill:
-                errors.append(f'SOP skill frontmatter name mismatch: skills/{skill}/SKILL.md')
+                errors.append(f'skill frontmatter name mismatch: skills/{skill}/SKILL.md')
             for rel in [f'.agents/skills/{skill}/SKILL.md', f'.claude/skills/{skill}/SKILL.md']:
                 path = self.repo / rel
                 if not path.is_file():
-                    errors.append(f'missing platform-visible SOP skill: {rel}')
+                    errors.append(f'missing platform-visible skill: {rel}')
                 else:
                     try:
                         if not os.path.samefile(path, canonical):
-                            errors.append(f'platform SOP skill is not the canonical shared file: {rel}')
+                            errors.append(f'platform skill is not the canonical shared file: {rel}')
                     except OSError as exc:
-                        errors.append(f'cannot compare platform SOP skill identity: {rel}: {exc}')
+                        errors.append(f'cannot compare platform skill identity: {rel}: {exc}')
 
-        for rel in ['AGENTS.md', 'CLAUDE.md']:
-            path = self.repo / rel
-            if path.is_file():
-                body = path.read_text(encoding='utf-8')
-                if body.count(BEGIN) != 1 or body.count(END) != 1:
-                    errors.append(f'invalid managed instruction markers: {rel}')
+        if expected_loop_mode:
+            for role in ['gatekeeper', 'loop-brief-assistant', 'brief-pattern-curator', 'sensemaker', 'integrator', 'governor', 'state-steward', 'watchdog-recovery', 'meta-evaluator', 'learning-auditor', 'memory-curator']:
+                toml_path = self.repo / f'.codex/agents/{role}.toml'
+                if toml_path.is_file():
+                    try:
+                        value = tomllib.loads(toml_path.read_text(encoding='utf-8'))
+                        if not isinstance(value, dict):
+                            errors.append(f'TOML root is not a table: .codex/agents/{role}.toml')
+                    except Exception as exc:
+                        errors.append(f'invalid TOML .codex/agents/{role}.toml: {type(exc).__name__}: {exc}')
+                for rel in [f'.codex/agents/{role}.toml', f'.claude/agents/{role}.md', f'.agents/skills/{role}/SKILL.md', f'.claude/skills/{role}/SKILL.md']:
+                    path = self.repo / rel
+                    if not path.exists():
+                        errors.append(f'missing required loop artifact: {rel}')
+            for skill in ['sop-diag', 'sop-list', 'sop-install', 'sop-learning-audit']:
+                canonical = self.repo / f'skills/{skill}/SKILL.md'
+                if not canonical.is_file() or canonical.is_symlink():
+                    errors.append(f'missing or unsafe canonical SOP skill: skills/{skill}/SKILL.md')
+                    continue
+                if skill_name(canonical) != skill:
+                    errors.append(f'SOP skill frontmatter name mismatch: skills/{skill}/SKILL.md')
+                for rel in [f'.agents/skills/{skill}/SKILL.md', f'.claude/skills/{skill}/SKILL.md']:
+                    path = self.repo / rel
+                    if not path.is_file():
+                        errors.append(f'missing platform-visible SOP skill: {rel}')
+                    else:
+                        try:
+                            if not os.path.samefile(path, canonical):
+                                errors.append(f'platform SOP skill is not the canonical shared file: {rel}')
+                        except OSError as exc:
+                            errors.append(f'cannot compare platform SOP skill identity: {rel}: {exc}')
 
-        okf_binary = self.repo / '.agent-loop/bin/okfctl.bin'
-        if not okf_binary.exists():
-            errors.append('missing built okfctl binary: .agent-loop/bin/okfctl.bin')
-        elif not os.access(okf_binary, os.X_OK):
-            errors.append('built okfctl binary is not executable: .agent-loop/bin/okfctl.bin')
-        else:
-            try:
-                completed = subprocess.run(
-                    [str(okf_binary), 'validate', '--root', 'llmwiki', '--json'],
-                    cwd=self.repo, text=True, capture_output=True, timeout=30, check=False,
-                )
-                if completed.returncode != 0:
-                    errors.append('OKF LLMWiki validation failed; run .agent-loop/bin/okfctl validate --root llmwiki for details')
-            except (OSError, subprocess.TimeoutExpired) as exc:
-                errors.append(f'cannot execute built OKF validator: {type(exc).__name__}: {exc}')
+            okf_binary = self.repo / '.agent-loop/bin/okfctl.bin'
+            if not okf_binary.exists():
+                errors.append('missing built okfctl binary: .agent-loop/bin/okfctl.bin')
+            elif not os.access(okf_binary, os.X_OK):
+                errors.append('built okfctl binary is not executable: .agent-loop/bin/okfctl.bin')
+            else:
+                try:
+                    completed = subprocess.run(
+                        [str(okf_binary), 'validate', '--root', 'llmwiki', '--json'],
+                        cwd=self.repo, text=True, capture_output=True, timeout=30, check=False,
+                    )
+                    if completed.returncode != 0:
+                        errors.append('OKF LLMWiki validation failed; run .agent-loop/bin/okfctl validate --root llmwiki for details')
+                except (OSError, subprocess.TimeoutExpired) as exc:
+                    errors.append(f'cannot execute built OKF validator: {type(exc).__name__}: {exc}')
 
         return errors
+
+    def validate_installation(self) -> list[str]:
+        return self.validate_installation_profile()
 
     def write_install_manifest(self) -> None:
         if self.dry_run:
@@ -1278,12 +1298,28 @@ class Installer:
         manifest = {
             'installed_at': datetime.now(timezone.utc).isoformat(),
             'source_version': (SRC / 'VERSION').read_text(encoding='utf-8').strip(),
+            'profile': self.profile,
             'conflict_policy': self.conflict,
             'backup_root': str(self.backup_root.relative_to(self.repo)) if self.backup_root.exists() else None,
             'actions': self.actions,
         }
         path = self.repo / '.agent-loop' / 'install-manifest.json'
         self.atomic_write_text(path, json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
+
+    def write_profile_policy(self) -> None:
+        if self.dry_run:
+            return
+        path = self.repo / '.agent-loop/policy.json'
+        if not path.is_file():
+            return
+        try:
+            value = json.loads(path.read_text(encoding='utf-8'))
+        except json.JSONDecodeError as exc:
+            raise InstallerError(f'invalid policy JSON after copy: {path}: {exc}') from exc
+        if not isinstance(value, dict):
+            raise InstallerError(f'policy root must be an object: {path}')
+        value['loop_mode_enabled'] = self.profile == PROFILE_FULL
+        self.atomic_write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + '\n')
 
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
         conflicts, migrations = self.analyze_layout()
@@ -1303,7 +1339,7 @@ class Installer:
         if remaining and not self.dry_run:
             self.print_conflicts(remaining)
             raise SystemExit(2)
-        if not self.dry_run:
+        if self.profile == PROFILE_FULL and not self.dry_run:
             self.ensure_go_toolchain()
         for migration in migrations:
             self.apply_layout_migration(migration)
@@ -1313,13 +1349,16 @@ class Installer:
                 self.print_conflicts(after_migration)
                 raise SystemExit(2)
 
-        for rel in RUNTIME_MANIFEST:
+        for entry in self.manifest_entries():
+            rel = str(entry['path'])
             self.copy_file(SRC / rel, self.repo / rel)
-        self.copy_rendered_file(
-            SRC / 'systemd/agent-loop-scheduler.service',
-            self.repo / '.agent-loop/systemd/agent-loop-scheduler.service',
-            replacements={'__REPO_ROOT__': str(self.repo)},
-        )
+        self.write_profile_policy()
+        if self.profile == PROFILE_FULL:
+            self.copy_rendered_file(
+                SRC / 'systemd/agent-loop-scheduler.service',
+                self.repo / '.agent-loop/systemd/agent-loop-scheduler.service',
+                replacements={'__REPO_ROOT__': str(self.repo)},
+            )
         for source_rel, destination_rel in [
             ('docs/GATEKEEPER_PROTOCOL.md', '.agent-loop/docs/GATEKEEPER_PROTOCOL.md'),
             ('docs/LOOP_BRIEF_ASSISTANT.md', '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md'),
@@ -1346,7 +1385,8 @@ class Installer:
         ]:
             self.copy_file(SRC / source_rel, self.repo / destination_rel)
 
-        self.install_llmwiki_skeleton()
+        if self.profile == PROFILE_FULL:
+            self.install_llmwiki_skeleton()
 
         self.merge_json(SRC / 'adapters/codex/.codex/hooks.json', self.repo / '.codex/hooks.json')
         self.merge_json(SRC / 'adapters/claude/.claude/settings.json', self.repo / '.claude/settings.json')
@@ -1359,11 +1399,12 @@ class Installer:
             skill_mappings, skill_conflicts = self.skill_install_layout()
             if skill_conflicts:
                 raise InstallerError('Skill layout changed after preflight.')
-        mappings = [
-            *skill_mappings,
-            (SRC / 'adapters/codex/.codex/agents', self.repo / '.codex/agents', 'codex-agents'),
-            (SRC / 'adapters/claude/.claude/agents', self.repo / '.claude/agents', 'claude-agents'),
-        ]
+        mappings = list(skill_mappings)
+        if self.profile == PROFILE_FULL:
+            mappings.extend([
+                (SRC / 'adapters/codex/.codex/agents', self.repo / '.codex/agents', 'codex-agents'),
+                (SRC / 'adapters/claude/.claude/agents', self.repo / '.claude/agents', 'claude-agents'),
+            ])
         for source_base, target_base, layout_kind in mappings:
             if layout_kind == 'canonical-shared':
                 if self.dry_run:
@@ -1373,14 +1414,17 @@ class Installer:
                     print(f'Using canonical shared skills root: {target_base}')
             for source in source_base.rglob('*'):
                 if source.is_file():
-                    self.copy_file(source, target_base / source.relative_to(source_base))
+                    relative = source.relative_to(source_base)
+                    if relative.parts and not self.should_install_skill(relative.parts[0]):
+                        continue
+                    self.copy_file(source, target_base / relative)
 
         snippet = (SRC / 'instruction-snippet.md').read_text(encoding='utf-8')
         self.patch_marked_file(self.repo / 'AGENTS.md', snippet)
         self.patch_marked_file(self.repo / 'CLAUDE.md', snippet)
         self.patch_gitignore()
 
-        if not self.dry_run:
+        if self.profile == PROFILE_FULL and not self.dry_run:
             self.build_okfctl()
             version = self.run_okfctl('version')
             if version.returncode != 0:
@@ -1388,17 +1432,20 @@ class Installer:
             validation = self.run_okfctl('validate', '--root', 'llmwiki')
             if validation.returncode != 0:
                 raise InstallerError(f'okfctl validate failed: {validation.stderr.strip() or validation.stdout.strip() or "unknown error"}')
+        elif self.profile == PROFILE_ROUTING and not self.dry_run:
+            print('Routing profile selected; okfctl build and validation are out of scope.')
 
         if not self.dry_run:
             (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o755)
-            (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o755)
-            (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o755)
-            (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o755)
-            (self.repo / '.agent-loop/bin/loop_status.py').chmod(0o755)
-            (self.repo / '.agent-loop/bin/trigger-dryrun.sh').chmod(0o755)
-            (self.repo / '.agent-loop/bin/trigger-example.sh').chmod(0o755)
-            (self.repo / '.agent-loop/bin/okfctl').chmod(0o755)
-            (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o755)
+            if self.profile == PROFILE_FULL:
+                (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o755)
+                (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o755)
+                (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o755)
+                (self.repo / '.agent-loop/bin/loop_status.py').chmod(0o755)
+                (self.repo / '.agent-loop/bin/trigger-dryrun.sh').chmod(0o755)
+                (self.repo / '.agent-loop/bin/trigger-example.sh').chmod(0o755)
+                (self.repo / '.agent-loop/bin/okfctl').chmod(0o755)
+                (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o755)
         self.write_install_manifest()
 
 
@@ -1407,6 +1454,7 @@ def main() -> int:
         description='Install Gatekeeper-first loop engineering adapters safely.'
     )
     parser.add_argument('--repo', type=Path, required=True)
+    parser.add_argument('--profile', choices=sorted(INSTALL_PROFILES), default=PROFILE_FULL)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument(
         '--conflict', choices=('error', 'backup', 'agent'), default='error',
@@ -1431,7 +1479,17 @@ def main() -> int:
     if not repo.is_dir():
         raise SystemExit(f'Repository path is not a directory: {repo}')
 
-    installer = Installer(repo, dry_run=args.dry_run, conflict=args.conflict)
+    if args.validate_only:
+        manifest_path = repo / '.agent-loop' / 'install-manifest.json'
+        if manifest_path.is_file():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+            except Exception:
+                manifest = {}
+            if isinstance(manifest, dict) and manifest.get('profile') in INSTALL_PROFILES:
+                args.profile = str(manifest['profile'])
+
+    installer = Installer(repo, dry_run=args.dry_run, conflict=args.conflict, profile=args.profile)
     if args.validate_only:
         errors = installer.validate_installation()
         if errors:
@@ -1451,7 +1509,10 @@ def main() -> int:
     if args.dry_run:
         print('Dry-run complete; no files were modified.')
     else:
-        print('Installed direct routing, SOP routing, Gatekeeper plus Loop Brief Assistant and reusable input-pattern controls, OKF LLMWiki memory governance, learning observability, sanitized OTel telemetry, canonical root-level skills with Codex/Claude symlinks, and LLM-assisted merge guidance.')
+        if installer.profile == PROFILE_FULL:
+            print('Installed direct routing, SOP routing, Gatekeeper plus Loop Brief Assistant and reusable input-pattern controls, OKF LLMWiki memory governance, learning observability, sanitized OTel telemetry, canonical root-level skills with Codex/Claude symlinks, and LLM-assisted merge guidance.')
+        else:
+            print('Installed direct routing, command-route, SOP routing, frame skills, sanitized OTel telemetry, canonical root-level skills with Codex/Claude symlinks, and profile-scoped routing safeguards.')
         if installer.backup_root.exists():
             print(f'Backups: {installer.backup_root}')
     return 0

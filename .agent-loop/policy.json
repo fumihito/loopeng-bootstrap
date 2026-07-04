@@ -59,6 +59,7 @@
   "learning_observer_enabled": true,
   "require_memory_contract": true,
   "memory_curator_enabled": true,
+  "loop_mode_enabled": true,
   "okf_llmwiki_write_mode": "trusted-curator-report-only",
   "direct_mode_enabled": true,
   "loop_brief_assistant_enabled": true,

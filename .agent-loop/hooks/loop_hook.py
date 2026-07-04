@@ -494,6 +494,10 @@ def direct_config(root: Path) -> dict[str, Any]:
     }
 
 
+def loop_mode_enabled(policy: dict[str, Any]) -> bool:
+    return bool(policy.get("loop_mode_enabled", True))
+
+
 def sop_route(prompt: str) -> tuple[str, str, str] | None:
     """Return (header, skill_name, task_body) for a strict leading SOP header.
 
@@ -1972,11 +1976,16 @@ def telemetry_for_hook(root: Path, event: dict[str, Any], platform: str) -> None
 def handle(event: dict[str, Any], platform: str = "unknown") -> int:
     root = root_for(event.get("cwd"))
     policy = load(root / ".agent-loop/policy.json", {})
+    loop_enabled = loop_mode_enabled(policy)
     name = str(event.get("hook_event_name") or "")
     telemetry_for_hook(root, event, platform)
 
     if name == "SessionStart":
-        return emit(add_context(name, "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."))
+        if loop_enabled:
+            message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."
+        else:
+            message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. A strict leading route: prefix loads command-route in isolated pre-loop proposal mode. A strict leading sop-<header>: prefix loads the matching SOP skill in isolated SOP mode. Unprefixed prompts pass through unchanged and do not enter Gatekeeper in this profile."
+        return emit(add_context(name, message))
     if name == "UserPromptSubmit":
         prompt = str(event.get("prompt", ""))
         if prompt.startswith(CONTINUATION_MARKER):
@@ -2180,6 +2189,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 "sop.loaded": True, "sop.allow_mutations": skill["allow_mutations"],
             }))
             return emit(add_context(name, sop_context(skill, header)))
+        if not loop_enabled:
+            return 0
         state = start_turn(root, event, LOOP_ROUTING_MODE)
         if state.get("entry_role") == LOOP_BRIEF_ASSISTANT_ROLE:
             return emit(add_context(name, "This message answers outstanding Loop Brief Assistant questions. Invoke loop-brief-assistant before Gatekeeper, using prior-loop-brief-assistant.json and prior-gatekeeper.json. Merge only explicit user answers. If the draft becomes READY_FOR_REVIEW, return it to Gatekeeper; otherwise ask only the remaining minimal questions. Product mutations remain blocked."))
@@ -2187,6 +2198,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         return emit(add_context(name, "No direct or SOP header was detected. Treat the user's message as input to Gatekeeper. Invoke the gatekeeper skill before every other control role. Gatekeeper must return READY, NEEDS_INPUT, or REJECT. NEEDS_INPUT must hand off to loop-brief-assistant; the Assistant retrieves reviewed input patterns but may not silently apply them. A READY brief may request PATTERN_CAPTURE before Sensemaker. Durable memory remains write-protected and may be promoted only by memory-curator or brief-pattern-curator through deterministic Go transactions." + prior))
 
     state = runtime(root, event)
+    if not state and not loop_enabled and name == "Stop":
+        return 0
     if not state:
         state = start_turn(root, event)
     target = turn_dir(root, state)
@@ -2210,6 +2223,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
 
     if name == "SubagentStart":
         agent_type = safe_identity(event.get("agent_type"))
+        if not loop_enabled and agent_type in ROLES:
+            return emit(block("loop_mode_enabled=false; loop-control roles are disabled in this profile."))
         gate = load(target / "gatekeeper.json", {})
         journal(
             target,
@@ -2385,6 +2400,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         role = str(event.get("agent_type") or "")
         if role not in ROLES:
             return 0
+        if not loop_enabled:
+            return emit(block("loop_mode_enabled=false; loop-control roles are disabled in this profile."))
         if state.get("routing_mode") == DIRECT_ROUTING_MODE:
             journal(target, "role-report-ignored", role=role, routing_mode=DIRECT_ROUTING_MODE)
             return 0
@@ -2704,6 +2721,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             return emit({"continue": False, "stopReason": "Gatekeeper rejected autonomous-loop startup.", "systemMessage": "Explain these Gatekeeper rejection reasons to the user: " + json.dumps(gate.get("rejection_reasons", []), ensure_ascii=False)})
         if gate.get("mode") == "ADVISORY_ONLY":
             return emit({"continue": False, "stopReason": "Gatekeeper classified the request as advisory-only.", "systemMessage": "Do not start an autonomous coding loop. Provide the Gatekeeper's normalized brief and limitations to the user."})
+        if not loop_enabled:
+            return emit(block("loop_mode_enabled=false; loop-control turn handling is disabled in this profile."))
         if gate.get("verdict") == "READY" and gate.get("assistant_handoff_reason") == "PATTERN_CAPTURE":
             fresh_assistant = assistant.get("_trusted_subagent") and assistant.get("_gatekeeper_recorded_at") == gate.get("_recorded_at")
             if not fresh_assistant:

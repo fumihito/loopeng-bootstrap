@@ -33,6 +33,23 @@ See `docs/DIRECT_MODE.md`, `docs/SOP_ROUTING.md`, and `docs/HUMAN_SKILL_NAMESPAC
 The hook auto-routes strict leading `direct:`, `list:`, `frame-<name>:`, and other `<header>:` prompts into their dedicated modes before the model processes the request.
 See `docs/COMMAND_ROUTING.md` for the separate `route:` pre-loop proposal mode.
 
+## Troubleshooting routine
+
+Use the routing profile when you want this repository as a bounded troubleshooting kit instead of a full autonomous loop:
+
+```bash
+python3 install.py --repo /path/to/repository --profile routing
+```
+
+Then use one of these entry families in one line: `direct:` for bounded help, `route:` for frame selection before the loop, or `diag:` for mandatory SOP diagnosis. The user does not need to know the prefixes ahead of time, so this README is the single place where the routing lesson is stated.
+
+Examples:
+
+```text
+route: production is occasionally double-processing a request
+diag: the service keeps restarting
+```
+
 ## Design philosophy and architecture decisions
 
 This archive now includes two Japanese design documents intended for maintainers and reviewers, not only operators.

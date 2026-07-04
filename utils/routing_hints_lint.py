@@ -37,6 +37,10 @@ CLUSTERS: dict[str, tuple[str, ...]] = {
         "frame-blind-spot",
         "frame-inertia",
     ),
+    "independent": (
+        "frame-cynefin",
+        "frame-proofread-ja",
+    ),
 }
 PAIR_RULES: dict[str, tuple[tuple[str, str], ...]] = {
     "incident": (
@@ -58,6 +62,7 @@ PAIR_RULES: dict[str, tuple[tuple[str, str], ...]] = {
         ("frame-critical-review", "frame-blind-spot"),
         ("frame-blind-spot", "frame-inertia"),
     ),
+    "independent": (),
 }
 FRAME_TO_CLUSTER: dict[str, str] = {
     frame: cluster

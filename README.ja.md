@@ -32,6 +32,23 @@ systemd 前提の scheduler daemon も同梱されています。`.agent-loop/bi
 フックは先頭が `direct:`、`list:`、`frame-<name>:`、およびその他の `<header>:` のプロンプトを、それぞれ専用モードへ自動ルーティングします。
 `route:` の pre-loop 提案モードについては `docs/COMMAND_ROUTING.md` にまとめています。
 
+## トラブルシューティング用の使い方
+
+このリポジトリを自律ループではなく有界なトラブルシューティングキットとして使うときは、routing プロファイルで入れます。
+
+```bash
+python3 install.py --repo /path/to/repository --profile routing
+```
+
+そのうえで、入口は 1 行だけ覚えれば十分です。`direct:` は bounded な質問、`route:` はループ前の frame 選択、`diag:` は必須 SOP の診断です。ユーザーが prefix を事前に知っている前提ではないので、この README にだけ教示を集約します。
+
+例:
+
+```text
+route: 本番でたまに二重処理が起きる
+diag: サービスが再起動を繰り返す
+```
+
 ## 設計思想とアーキテクチャ上の判断
 
 このアーカイブには、運用者だけでなく保守者とレビュー担当者向けの日本語設計文書が 2 つ含まれています。
