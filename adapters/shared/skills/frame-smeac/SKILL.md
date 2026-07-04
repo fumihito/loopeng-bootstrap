@@ -1,50 +1,57 @@
 ---
 name: frame-smeac
-description: "Turn discussion or research into an actionable SMEAC brief with tradeoffs and gaps surfaced."
+description: "Compress discussion or notes into a handoffable brief. Use when a plan or incident note already exists and needs structure. The point is to preserve essentials while trimming noise."
 user-invocable: true
 ---
 
 ## Purpose
 
-Use SMEAC when you need to compress discussion, research, or incident notes into a handoffable brief.
-It is useful for meetings, planning, and operational summaries.
+Use this frame when the input is already a plan, incident note, or discussion that needs to be compressed into a handoffable brief.
 
-## Adjacent frames
+## When to use
 
-- Use `frame-plandev` when the task is to create a new phased plan rather than compress an existing one.
-- Use `frame-plantask` when the input needs explicit dependency structure before it can be compressed.
-- Use `frame-critical-review` when the brief needs argument validity checked instead of compression.
+- You need a brief, not a new plan
+- The source material already contains the important content
+- You need to trim noise while preserving the essentials
+
+## Workflow
+
+1. Identify the source reality.
+2. Map it to the brief structure.
+3. Record distortions or missing pieces.
+4. Add required context and handoff notes.
+5. Remove repetition without removing meaning.
 
 ## Mapping
 
-- Situation: source reality and context
-- Mission: what should be achieved
-- Execution: only the concrete sequence for this case
-- Administration / Logistics: resources and support
-- Command / Signal: who decides, who is informed, and how escalation works
+- Inputs become the brief's source reality
+- Decisions become the action or recommendation section
+- Open issues become the handoff section
 
 ## Distortion report
 
-Always note what SMEAC flattens or obscures.
-If the fit is weak, say so explicitly.
-
-When useful, mark items as:
-
-- `baseline`: already provided by the surrounding skill or runtime
-- `override`: specific to this case
-- `open`: still needs to be decided
+Note what was compressed, what was lost, and what remains uncertain.
 
 ## Required additions
 
-- Always note what SMEAC flattens or obscures
-- If the fit is weak, say so explicitly
-- Keep `Execution` limited to the current case rather than generic procedure
+- What changed
+- What still needs attention
+- What the next person must know
 
-## Output structure
+## Output
 
-- Why SMEAC helps here
-- Source Reality
-- SMEAC View
-- Distortion Report
-- Not Yet Actionable
-- Next Step
+- Source reality
+- Brief
+- Distortions
+- Required additions
+- Handoff
+
+## Exit
+
+Finish when the brief is ready to hand off and the distortions are named. If a new plan is needed, hand off to planning instead.
+
+## Adjacent frames
+
+- Use `frame-plandev` when a new phased plan is needed.
+- Use `frame-plantask` when the input needs explicit dependency structure before it can be compressed.
+- Use `frame-critical-review` when the brief needs argument validity checked instead of compression.

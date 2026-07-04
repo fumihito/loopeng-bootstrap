@@ -255,6 +255,85 @@ class AuditGuardTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn("次の手順: `git add docs/audit-log.md && git commit` してから push", stream.getvalue())
 
+    def test_skill_tree_integrity_detects_drift(self) -> None:
+        module = load_guard_module()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            source = root / "adapters/shared/skills/frame-sample"
+            source.mkdir(parents=True)
+            (source / "SKILL.md").write_text(
+                """---
+name: frame-sample
+description: \"Test frame for integrity checking. Use when the example needs syncing. The point is to stay short.\"
+user-invocable: true
+---
+
+## Purpose
+
+Test frame.
+
+## When to use
+
+- sample
+
+## Workflow
+
+1. sample
+
+## Output
+
+- sample
+
+## Exit
+
+- sample
+
+## Adjacent frames
+
+- sample
+""",
+                encoding="utf-8",
+            )
+            installed = root / "skills/frame-sample"
+            installed.mkdir(parents=True)
+            (installed / "SKILL.md").write_text(
+                """---
+name: frame-sample
+description: \"Test frame for integrity checking. Use when the example needs syncing. The point is to stay short.\"
+user-invocable: true
+---
+
+## Purpose
+
+Changed frame.
+
+## When to use
+
+- sample
+
+## Workflow
+
+1. sample
+
+## Output
+
+- sample
+
+## Exit
+
+- sample
+
+## Adjacent frames
+
+- sample
+""",
+                encoding="utf-8",
+            )
+
+            result = module.skill_tree_integrity_check(root)
+            self.assertIsNotNone(result.error)
+            self.assertIn("install.py --self --update", result.error)
+
     def test_run_test_suite_falls_back_to_unittest(self) -> None:
         module = load_guard_module()
         fake_output = "Ran 8 tests in 0.1s\n\nOK (skipped=2)\n"

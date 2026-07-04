@@ -11,6 +11,7 @@ It is read-only except for the explicit audit log entry created by `record`.
    - `python3 utils/journal_sanitization_lint.py`;
    - `python3 utils/routing_hints_lint.py --root .`;
    - `python3 utils/completion_protocol_lint.py --root .`;
+   - `python3 utils/skill_structure_lint.py --root .`;
    - `python3 .agent-loop/hooks/loop_hook.py --self-test --platform claude`.
    It appends `- <date> | audit <origin/<branch>-hash> | <deterministic summary>` to `docs/audit-log.md` only when every check passes.
 2. If `record` fails, fix the reported issue and rerun `record`. Do not hand-write a failed audit line.

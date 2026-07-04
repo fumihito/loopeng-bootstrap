@@ -1,18 +1,18 @@
 ---
 name: frame-waiwad-grill
-description: "Analyze incidents by comparing Work-as-Imagined and Work-as-Done, then redesign the conditions."
+description: "Compare Work-as-Imagined with Work-as-Done to redesign conditions. Use after containment when the question is why the system behaved that way. The point is to fix the setup, not relitigate the incident."
 user-invocable: true
 ---
 
 ## Purpose
 
-Use this frame for incidents, errors, and retrospectives.
-It avoids blame-first analysis and instead looks at the gap between how work was imagined and how it was actually done.
+Use this frame for incidents, errors, and retrospectives. It avoids blame-first analysis and instead looks at the gap between how work was imagined and how it was actually done.
 
-## Adjacent frames
+## When to use
 
-- Use `frame-diag` when the incident is still active and the next step is live diagnosis or stabilization.
-- Use `frame-distributed-incident-analysis` when the symptom pattern is still too distributed or too early for a redesign conversation.
+- The incident is contained
+- You are redesigning conditions rather than diagnosing a live failure
+- The gap between intended and actual work matters
 
 ## Workflow
 
@@ -26,27 +26,13 @@ It avoids blame-first analysis and instead looks at the gap between how work was
 
 ## Gap analysis
 
-Look for:
-
-- information gaps
-- judgment gaps
-- resource gaps
-- coordination gaps
-- power gaps
+Look for information, judgment, resource, coordination, and power gaps.
 
 ## Grill directions
 
 - Argyris: what was seen, what was inferred, what was not questioned
 - Elster: what made the choice feel rational at the time
 - Starhawk: what power relations made some voices easier to hear than others
-
-## Gap types
-
-- Information gap
-- Judgment gap
-- Resource gap
-- Coordination gap
-- Power gap
 
 ## Redesign directions
 
@@ -55,7 +41,7 @@ Look for:
 - Elster: add checklists, waiting, two-person checks, and escalation conditions
 - Starhawk: reduce power-over and support power-with, power-from-within, and collective power
 
-## Output details
+## Output
 
 - WAI
 - WAD
@@ -65,11 +51,11 @@ Look for:
 - Redesign ideas
 - What the redesign changes in practice
 
-## Output structure
+## Exit
 
-- WAI
-- WAD
-- Gap list
-- Adaptation chain
-- Root conditions
-- Redesign ideas
+Stop when the redesign is handoffable and the gap has been translated into concrete condition changes. If the incident is still active, hand off back to diagnosis.
+
+## Adjacent frames
+
+- Use `frame-diag` when the incident is still active and the next step is live diagnosis or stabilization.
+- Use `frame-distributed-incident-analysis` when the symptom pattern is still too distributed or too early for a redesign conversation.

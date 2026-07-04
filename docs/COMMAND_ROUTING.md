@@ -51,6 +51,8 @@ Each `summary` should say when to choose the frame instead of its neighbors.
 | independent | `frame-cynefin` | Pre-classification of domain before a frame choice | Do you need to classify the domain first, before choosing among research, planning, experiment, or incident frames? | `Complex` points to `frame-experiments` when probing is required; `Complicated` points to `frame-research` or `frame-research-tactics` when comparison and hypothesis narrowing are enough; `Chaotic` points to `frame-distributed-incident-analysis` and then `frame-diag` for stabilization; `Clear` can proceed to `frame-plandev` or `frame-plantask`; `Disorder` should fall back to `frame-first-principles`. Do not auto-connect the next frame from `frame-cynefin`; keep the choice explicit. |
 | independent | `frame-proofread-ja` | Japanese surface-quality review | Is the issue sentence-level Japanese quality, not argument validity or planning? | If the problem is really about whether the claim holds, hand off to `frame-critical-review`; if the issue is actually planning or decomposition, hand off to the appropriate planning or thinking frame. |
 
+The canonical frame behavior lives in `adapters/shared/skills/frame-*/SKILL.md`; `routing.md` is the routing hint layer, and any prompt copy in another environment is the user's responsibility to keep in sync.
+
 ## Output contract
 
 `command-route` must return structured output.
@@ -189,5 +191,7 @@ The current implementation uses:
 - a route-aware shortlist of candidate frames, ranked before prompt assembly;
 - a dedicated routing lint that validates the block and field constraints;
 - route telemetry for load, selection, fallback, and frame activation.
+
+For `frame-wall`, the prompt skill is the authoritative home of the T/A/D marker wording and the provisional-classification flow; keep `routing.md` aligned with the routing summary, but do not treat it as the canonical source for the prompt text itself.
 
 Further improvements can extend the hint schema or add more edge-case tests, but the core wiring is now in place.

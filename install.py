@@ -53,6 +53,7 @@ RUNTIME_MANIFEST = [
     { 'path': '.agent-loop/otel-collector.yaml', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
     { 'path': 'routing_hints.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
     { 'path': 'utils/routing_hints_lint.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
+    { 'path': 'utils/skill_structure_lint.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
     { 'path': '.agent-loop/scheduler-policy.json', 'profiles': {PROFILE_FULL} },
     { 'path': '.agent-loop/learning-policy.json', 'profiles': {PROFILE_FULL} },
     { 'path': '.agent-loop/memory-policy.json', 'profiles': {PROFILE_FULL} },

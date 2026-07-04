@@ -1,51 +1,47 @@
 ---
 name: frame-research-tactics
-description: "Design research tactics, hypotheses, and verification/falsification actions."
+description: "Turn claims into hypotheses and verification steps. Use when evidence exists but needs falsification or confirmation planning. The point is to decide what observation would change the answer."
 user-invocable: true
 ---
 
 ## Purpose
 
-Use this frame when research needs to turn into actionable tactics.
-It helps build a hypothesis set, choose what to verify, and decide how to falsify bad ideas quickly.
+Use this frame when sources or claims need hypotheses, verification, and falsification steps. It turns research findings into a checkable plan.
+
+## When to use
+
+- You already have claims or sources
+- You need a verification or falsification plan
+- The next step is paper-based, not a live probe
+
+## Workflow
+
+1. Restate the claims as hypotheses.
+2. List the evidence that would support or refute each one.
+3. Rank the checks by information gain and cost.
+4. Identify the result that would change the answer.
+5. Note whether a live probe is actually required.
+
+## Notes to preserve from the distilled version
+
+- Keep hypotheses explicit and falsifiable
+- Make verification conditions concrete
+- Preserve the path to a bounded probe when paper checks are not enough
+
+## Output
+
+- Hypotheses
+- Verification plan
+- Falsification plan
+- Priority order
+- Residual uncertainty
+
+## Exit
+
+Stop when the hypotheses are paired with the checks that would settle them. If the uncertainty requires a live probe, hand off to experiments.
 
 ## Adjacent frames
 
 - Use `frame-research` when the task is still source-backed comparison rather than a verification plan.
 - Use `frame-experiments` when the uncertainty has to be resolved by a bounded probe in the world.
 - Use `frame-research-arch` when the task is narrowing architecture choices instead of building a test plan.
-
-## Workflow
-
-### Phase 1: Survey frameworks
-
-Survey the relevant mental models or frameworks and capture their design intent and use cases.
-
-### Phase 2: Enumerate candidates
-
-List all frameworks considered. Do not collapse the survey into a single winner too early.
-
-### Phase 3: Select top hypotheses
-
-Pick the most promising frameworks based on domain fit, prior examples, and whether they lead to concrete action.
-
-### Phase 4: Verify and falsify
-
-For each top hypothesis, define verification actions and falsification actions.
-
-## Notes to preserve from the distilled version
-
-- Keep the survey broad enough to avoid missing relevant frameworks
-- Prefer hypotheses that can be verified and falsified with concrete actions
-- Do not stop at a list of frameworks; turn them into testable ideas
-- Make the next action concrete enough to reduce uncertainty
-- Keep hypothesis generation separate from hypothesis testing
-
-## Output structure
-
-- Framework survey
-- Candidate hypotheses
-- Top hypotheses
-- Verification actions
-- Falsification actions
-- Next step

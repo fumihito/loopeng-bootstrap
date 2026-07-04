@@ -1,24 +1,14 @@
 ---
 name: frame-plandev
-description: "Human planning frame for phased delivery, scope control, verification, and handoff."
+description: "Build phased delivery plans with decisions, verification, and handoff points. Use when the work needs a sequence, not just a task list. The point is to turn scope into a delivery path with checkpoints."
 user-invocable: true
 ---
 
 ## Purpose
 
-Planning frame for multi-step delivery work.
-It helps a human turn a request into phases, identify scope and constraints, define verification, and decide what handoff is needed.
+Planning frame for multi-step delivery work. It helps a human turn a request into phases, identify scope and constraints, define verification, and decide what handoff is needed.
 
-This is the human-facing replacement for the old plandev orchestration shape.
-Use it to keep delivery work explicit about scope, phase boundaries, verification, blockers, and handoff.
-Use `goal` as the single source of truth for current checkpoint, completed phases, open decisions, and next safe action.
-If the work is already in flight, recover state from `goal` before re-planning.
-
-## Adjacent frames
-
-- Use `frame-plantask` when the main work is making dependencies and ordering explicit.
-- Use `frame-smeac` when the plan already exists and needs compression into a handoffable brief.
-- Use `frame-first-principles` when the plan still rests on shaky assumptions that need decomposition first.
+This is the human-facing replacement for the old plandev orchestration shape. Use it to keep delivery work explicit about scope, phase boundaries, verification, blockers, and handoff.
 
 ## When to use
 
@@ -27,19 +17,16 @@ If the work is already in flight, recover state from `goal` before re-planning.
 - You need to decide what to do first, what to defer, and what to test
 - A decision is missing and should be called out before work starts
 - You need a plan that can survive interruption and be resumed later
-- The current state is partial and you need to recover a coherent next step from `goal`
 
-## Procedure
+## Workflow
 
 1. Define the outcome in one sentence.
 2. List scope, non-goals, constraints, and risks.
-3. Read `goal` for the current checkpoint and unresolved work.
-4. Classify the work size and risk level.
-5. Break the work into 3 to 5 phases.
-6. For each phase, note inputs, outputs, verification, and the next phase boundary.
-7. Identify blocked decisions and required human input.
-8. Decide what counts as done and what evidence will prove it.
-9. Summarize the handoff for the next person or next turn.
+3. Break the work into 3 to 5 phases.
+4. For each phase, note inputs, outputs, verification, and the next phase boundary.
+5. Identify blocked decisions and required human input.
+6. Decide what counts as done and what evidence will prove it.
+7. Summarize the handoff for the next person or next turn.
 
 ## Planning rules
 
@@ -49,10 +36,8 @@ If the work is already in flight, recover state from `goal` before re-planning.
 - If the work spans design and delivery, keep the design assumptions visible
 - If a phase cannot start, say why and what input would unblock it
 - If the handoff is incomplete, say so explicitly
-- If the plan is already underway, identify the last completed phase and the next unfinished one from `goal`
-- Keep the distinction between fresh planning and resumption explicit, but let `goal` carry the resumption state
 
-## Output structure
+## Output
 
 - Goal
 - Scope and non-goals
@@ -67,26 +52,12 @@ If the work is already in flight, recover state from `goal` before re-planning.
 - Current checkpoint
 - Goal state
 
-## Completion criteria
+## Exit
 
-- The outcome is defined
-- The scope is bounded
-- Every phase has a verification step
-- Blockers are named
-- The handoff is explicit
-- The current checkpoint is known when resuming work
-- `goal` captures the resumption state
+Finish when the outcome is defined, every phase has verification, blockers are named, and the handoff is explicit. If the plan is already underway, identify the current checkpoint from `goal` before continuing.
 
-## Open decisions
+## Adjacent frames
 
-- What still needs a human decision
-- What is deliberately deferred
-- What would change the plan
-- What phase boundary the next turn should start from
-- What part of the state belongs in `goal`
-
-## Interaction with companion frames
-
-- Use `frame-smeac` when the plan needs to be compressed into a handoffable brief
-- Use `frame-first-principles` when the plan still rests on shaky assumptions
-- Use `goal` rather than a separate resume frame for interrupted work
+- Use `frame-plantask` when the main work is making dependencies and ordering explicit.
+- Use `frame-smeac` when the plan already exists and needs compression into a handoffable brief.
+- Use `frame-first-principles` when the plan still rests on shaky assumptions that need decomposition first.

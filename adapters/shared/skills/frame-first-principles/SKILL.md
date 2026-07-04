@@ -1,61 +1,57 @@
 ---
 name: frame-first-principles
-description: "Decompose a task into goal, facts, constraints, assumptions, tools, subproblems, and verification before acting."
+description: "Decompose an underspecified task into facts, constraints, assumptions, and subproblems. Use when the question is still too fuzzy to judge another way. The point is to build a stable problem signature before acting."
 user-invocable: true
 ---
 
 ## Purpose
 
-Use this frame when a request feels underspecified, overly analogical, or too large to attack directly.
-It helps separate facts from assumptions, break the work into minimal subproblems, and verify each step.
+Use this frame when the question needs decomposition before any other frame can work well. It builds a stable problem signature from goal, facts, constraints, assumptions, and subproblems.
 
-## Adjacent frames
+## When to use
 
-- Use `frame-cynefin` first when the question may not yet be stable enough to decompose.
-- Use `frame-wall` when the user's framing itself needs challenge or reframing before decomposition.
-- Use `frame-blind-spot` when the main problem is hidden assumptions or avoided alternatives.
-- Use `frame-critical-review` when the work has become a claim that can be tested against evidence.
+- The work is still underspecified or unstable
+- You need to separate facts from assumptions
+- The next step depends on a clearer problem statement
 
-## Procedure
+## Workflow
 
 1. Restate the goal.
-2. Separate facts, constraints, assumptions, and unknowns.
-3. List available tools and required evidence.
-4. Split the work into minimal subproblems.
-5. Define the done condition and verification step for each subproblem.
-6. Order subproblems by dependency and risk.
-7. Replan if assumptions fail or evidence is missing.
+2. List the facts.
+3. List the constraints.
+4. List the assumptions.
+5. Break the task into subproblems.
+6. Identify what would change the framing.
 
 ## Decomposition contract
 
-For each subproblem, include:
-
-- objective
-- inputs
-- expected output
-- done condition
-- verification step
+- Separate goal, facts, constraints, assumptions, tools, subproblems, and verification
+- Do not jump to implementation before the problem is stable
+- Keep unresolved unknowns visible
 
 ## Replanning triggers
 
-- A major assumption breaks
-- A subproblem does not satisfy its done condition
-- Required evidence is missing
-- A tool limitation makes the current plan invalid
+- A hidden assumption fails
+- The goal changes
+- The problem proves to be better handled by another frame
 
-## Interaction with other frames
-
-- Use `frame-cynefin` first if the question itself may not be stable
-- Use `frame-smeac` after decomposition when you need a handoffable brief
-
-## Output structure
+## Output
 
 - Goal
 - Facts
 - Constraints
-- Assumptions to test
-- Tools
+- Assumptions
 - Subproblems
-- Plan
-- Verification points
-- Result or replan reason
+- Verification
+- Next step
+
+## Exit
+
+Stop when the decomposition is clear enough to hand off, compare, or plan. If the question is still not stable, say what additional information would stabilize it.
+
+## Adjacent frames
+
+- Use `frame-cynefin` first if the question itself may not be stable.
+- Use `frame-wall` when the user's framing itself needs challenge or reframing before decomposition.
+- Use `frame-blind-spot` when the main problem is hidden assumptions or avoided alternatives.
+- Use `frame-critical-review` when the work has become a claim that can be tested against evidence.

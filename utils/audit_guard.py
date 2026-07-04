@@ -350,6 +350,60 @@ def manifest_integrity_check(root: Path) -> CheckResult:
     return CheckResult(summary="install integrity ok")
 
 
+def skill_tree_integrity_check(root: Path) -> CheckResult:
+    source_root = root / "adapters/shared/skills"
+    installed_root = root / "skills"
+    if not source_root.is_dir():
+        return CheckResult(summary="skill tree integrity skipped; adapters/shared/skills absent")
+    if not installed_root.is_dir():
+        return CheckResult(
+            summary="",
+            error=(
+                "ERROR: installed skill tree is missing or invalid: skills\n"
+                "To fix:\n"
+                "  1) python3 install.py --self --update\n"
+                "  2) rerun record"
+            ),
+        )
+
+    source_files = {
+        path.relative_to(source_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in source_root.rglob("*")
+        if path.is_file() and not path.is_symlink()
+    }
+    installed_files = {
+        path.relative_to(installed_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in installed_root.rglob("*")
+        if path.is_file() and not path.is_symlink()
+    }
+    missing = sorted(set(source_files) - set(installed_files))
+    extra = sorted(set(installed_files) - set(source_files))
+    mismatched = sorted(
+        rel for rel in source_files.keys() & installed_files.keys()
+        if source_files[rel] != installed_files[rel]
+    )
+    if missing or extra or mismatched:
+        details: list[str] = []
+        if missing:
+            details.append(f"missing: {', '.join(missing[:8])}")
+        if extra:
+            details.append(f"extra: {', '.join(extra[:8])}")
+        if mismatched:
+            details.append(f"mismatched: {', '.join(mismatched[:8])}")
+        return CheckResult(
+            summary="",
+            error=(
+                "ERROR: installed skill tree diverged from adapters/shared/skills: "
+                + "; ".join(details)
+                + "\nTo fix:\n"
+                "  1) python3 install.py --self --update\n"
+                "  2) rerun record"
+            ),
+        )
+
+    return CheckResult(summary="skill tree integrity ok")
+
+
 def run_record_checks(root: Path) -> CheckResult:
     parts: list[str] = []
     try:
@@ -361,10 +415,15 @@ def run_record_checks(root: Path) -> CheckResult:
     if integrity.error:
         return integrity
     parts.append(integrity.summary)
+    tree = skill_tree_integrity_check(root)
+    if tree.error:
+        return tree
+    parts.append(tree.summary)
     for label, args in [
         ("journal lint", (sys.executable, str(root / "utils/journal_sanitization_lint.py"))),
         ("routing lint", (sys.executable, str(root / "utils/routing_hints_lint.py"), "--root", str(root))),
         ("protocol lint", (sys.executable, str(root / "utils/completion_protocol_lint.py"), "--root", str(root))),
+        ("skill structure lint", (sys.executable, str(root / "utils/skill_structure_lint.py"), "--root", str(root))),
         ("self-test", (sys.executable, str(root / ".agent-loop/hooks/loop_hook.py"), "--self-test", "--platform", "claude")),
     ]:
         result = run_named_check(root, label, *args)

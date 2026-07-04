@@ -1,50 +1,48 @@
 ---
 name: frame-plantask
-description: "Human workflow-DAG design frame for task graphs, dependencies, validation, and Mermaid renderings."
+description: "Turn a workflow into an explicit dependency graph. Use when order, blockers, and validation steps are the main design problem. The point is to make execution dependencies visible before committing to a plan."
 user-invocable: true
 ---
 
 ## Purpose
 
-Frame for designing multi-step workflow graphs as a DAG.
-Use it when you need to turn a process into named tasks with dependencies, validation steps, and a diagram that can be reviewed by humans.
+Use this frame when the task is mainly to make dependencies, order, and validation steps explicit. It turns a rough task list into a dependency-aware workflow graph.
 
-This is a human planning frame. It does not require a specific executor or workflow engine.
+## When to use
+
+- The main question is what depends on what
+- You need to expose blockers and ordering
+- Validation steps must be placed before execution
+
+## Workflow
+
+1. List the nodes.
+2. Draw the edges.
+3. Identify blockers and validation gates.
+4. Collapse duplicate or unnecessary steps.
+5. Check whether the graph supports delivery.
+
+## Constraints
+
+- Do not confuse dependency design with phase planning
+- Do not lose validation steps while simplifying the graph
+- Keep the graph small enough to inspect
+
+## Output
+
+- Nodes
+- Edges
+- Blockers
+- Validation gates
+- Suggested order
+- Residual uncertainty
+
+## Exit
+
+Stop when the dependency structure is explicit enough to hand off or turn into phases. If the graph is still unstable, say what node or edge is missing.
 
 ## Adjacent frames
 
 - Use `frame-plandev` when the workflow graph needs phases, verification, and handoff decisions.
 - Use `frame-smeac` when the graph is already known and only needs compression into a brief.
 - Use `frame-first-principles` when the task graph is still unclear and needs decomposition first.
-
-## When to use
-
-- You are designing a task pipeline
-- The order of work matters
-- You want to review dependencies before execution
-- You need a Mermaid diagram or a task table
-
-## Procedure
-
-1. Capture the task sequence in stable task IDs.
-2. Mark dependencies with explicit `needs` edges.
-3. Identify inputs and outputs for each task.
-4. Remove cycles and undefined dependencies.
-5. Check for duplicate outputs and ambiguous ownership.
-6. Render a Mermaid DAG for review.
-7. Validate that the graph matches the intended process.
-
-## Output structure
-
-- Workflow name
-- Task list
-- Dependency graph
-- Inputs and outputs
-- Validation checks
-- Mermaid diagram
-
-## Constraints
-
-- Prefer DAGs over implicit ordering
-- Keep task IDs stable
-- Do not mix source-of-truth spec with generated diagram

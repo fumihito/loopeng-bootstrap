@@ -1,70 +1,47 @@
 ---
 name: frame-research-arch
-description: "Explore software architecture options, tradeoffs, and conditions for choosing each option."
+description: "Narrow architecture options and their selection conditions. Use when the problem is design choice, not source comparison or probing. The point is to compare tradeoffs before choosing a direction."
 user-invocable: true
 ---
 
 ## Purpose
 
-Use this frame when a system design needs architectural options, not a single answer.
-It helps compare candidate structures, make tradeoffs explicit, and narrow the choice to the contexts where each option fits.
+Use this frame when the task is narrowing design options and their conditions. It compares architecture choices, tradeoffs, and fit for the situation.
 
-## Adjacent frames
+## When to use
 
-- Use `frame-research` when the design choice still needs source-backed comparison before narrowing.
-- Use `frame-research-tactics` when the architecture choice needs hypothesis and verification planning.
-- Use `frame-experiments` when the choice can only be separated by a bounded live probe.
+- You need to choose between design options
+- The main question is selection conditions, not evidence gathering
+- A probe is not the right next move
 
 ## Workflow
 
-### Phase 0: Clarify the problem
-
-If key facts are missing, ask once, in one batch, about:
-
-1. system type
-2. scale and availability
-3. team size and skill set
-4. cloud usage and provider
-5. existing stack and hard constraints
-
-### Phase 1: Enumerate patterns
-
-List plausible architecture patterns and do not omit obvious candidates.
-
-### Phase 2: Select top options
-
-Score candidates by:
-
-1. requirements fit
-2. team fit
-3. prior examples
-4. change tolerance
-
-Pick at least two viable options.
-
-### Phase 3: Suggest OSS and components
-
-When helpful, suggest standard OSS or middleware and note where each fits or does not fit.
-
-### Phase 4: Check cloud best practices
-
-If cloud use is confirmed, compare against the relevant well-architected guidance and note alignment and drift.
+1. List the candidate options.
+2. Compare their tradeoffs.
+3. State the conditions where each option wins.
+4. Identify the decision that still needs evidence.
+5. Note the safest next step.
 
 ## Notes to preserve from the distilled version
 
-- Do not force a one-answer result when multiple patterns fit different contexts
-- Keep the selection criteria explicit: requirements fit, team fit, prior examples, and change tolerance
-- Make the choice conditional on context rather than universal
-- Do not skip context questions when the setup is incomplete
-- Always state the conditions that justify each choice
+- Keep the focus on option narrowing, not implementation
+- Make the conditions for choice explicit
+- Keep the tradeoff surface visible
 
-## Output structure
+## Output
 
-- Requirements
-- Candidate patterns
-- Top options
-- Conditions for choice
+- Option set
 - Tradeoffs
-- Residual risks
-- OSS / components
-- Cloud best-practice check
+- Selection conditions
+- Recommendation
+- Residual uncertainty
+
+## Exit
+
+End when the choice space is narrowed enough to compare or commit. If a bounded probe is still required, hand off instead of forcing a choice.
+
+## Adjacent frames
+
+- Use `frame-research` when the design choice still needs source-backed comparison.
+- Use `frame-research-tactics` when the architecture choice needs hypothesis and verification planning.
+- Use `frame-experiments` when the choice can only be separated by a bounded live probe.

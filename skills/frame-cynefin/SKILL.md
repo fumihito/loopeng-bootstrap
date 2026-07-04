@@ -1,20 +1,28 @@
 ---
 name: frame-cynefin
-description: "Classify a problem by domain and choose the right next step for Clear, Complicated, Complex, Chaotic, or Disorder."
+description: "Classify the domain before choosing a response. Use when clear, complicated, complex, chaotic, or disorder are all live possibilities. The point is to match next action to the shape of the problem."
 user-invocable: true
 ---
 
 ## Purpose
 
-Use this frame when the correct response depends on the domain.
-It helps decide whether to apply best practice, analysis, experimentation, stop-the-bleeding, or exploration.
+Use this frame when the correct response depends on the domain. It helps decide whether to apply best practice, analysis, experimentation, stop-the-bleeding, or exploration.
 
-## Activation
+## When to use
 
-- User calls `/frame-cynefin` or `frame-cynefin:`
-- Another SOP/frame needs help deciding whether the question is Complicated, Complex, Chaotic, or Disorder
+- The problem itself is not yet well formed
+- You need a domain label before choosing another frame
+- Several response styles seem plausible
 
-## Domain cues
+## Workflow
+
+1. Check the domain cues.
+2. Limit the active hypothesis count.
+3. Match the landing format to the domain.
+4. Keep the next frame choice explicit.
+5. State residual uncertainty if the problem remains mixed.
+
+### Domain cues
 
 - Clear: known answer, repeatable action
 - Complicated: analyzable, but not obvious
@@ -22,21 +30,7 @@ It helps decide whether to apply best practice, analysis, experimentation, stop-
 - Chaotic: stabilize first
 - Disorder: classify before acting
 
-## Internal classification
-
-Use these signals to classify the domain:
-
-| Signal | Likely domain |
-|---|---|
-| The answer is already known and repeatable | Clear |
-| A specialist could analyze it into a good answer | Complicated |
-| You need to probe and learn from the result | Complex |
-| Stop the harm first, analyze later | Chaotic |
-| The question itself is not yet well formed | Disorder |
-
-## Cardinality rules
-
-Limit the number of hypotheses you keep active.
+### Cardinality rules
 
 | Domain | Hypothesis count | Convergence |
 |---|---|---|
@@ -46,7 +40,7 @@ Limit the number of hypotheses you keep active.
 | Chaotic | 1 stabilizing action | Action before convergence |
 | Disorder | 0 | Classify first |
 
-## Landing formats
+### Landing formats
 
 - Clear: one best next action with brief rationale
 - Complicated: narrowed recommendation plus why the others were not chosen
@@ -54,26 +48,28 @@ Limit the number of hypotheses you keep active.
 - Chaotic: one stabilizing action, then diagnose after stabilization
 - Disorder: small questions that help classify the domain
 
-## Boundary guidance
+### Boundary guidance
 
-- Complicated and Complex are a normal boundary case
+- Do not force false certainty just to produce an answer
 - If a question can only be answered by trying, treat it as Complex
 - If a question should already have a best practice answer, treat it as Complicated
-- Do not force false certainty just to produce an answer
 
-## Adjacent frames
-
-Use this classifier as a front-end only, then hand off explicitly. `Complex` points to `frame-experiments` when the next move is a bounded probe. `Complicated` points to `frame-research` or `frame-research-tactics` when comparison and hypothesis narrowing are enough. `Chaotic` points to `frame-distributed-incident-analysis` and then `frame-diag` for stabilization. `Clear` can proceed to `frame-plandev` or `frame-plantask` when the task is already understood. `Disorder` should fall back to `frame-first-principles`. Do not auto-connect the next frame from `frame-cynefin`; keep the choice explicit.
-
-## Interaction with other frames
-
-- Use `frame-first-principles` after `frame-cynefin` if the question can be decomposed safely
-- Use `frame-experiments` when the right next step is to probe rather than to analyze
-- Use `frame-inertia` if the answer looks inherited from convention or authority rather than reasoned
-
-## Output structure
+## Output
 
 - Domain
 - Reasoning
 - Next step
 - Residual uncertainty
+
+## Exit
+
+Hand off explicitly after classification. Do not auto-connect the next frame from this frame.
+
+## Adjacent frames
+
+- Use `frame-experiments` when the next move is a bounded probe.
+- Use `frame-research` or `frame-research-tactics` when comparison and hypothesis narrowing are enough.
+- Use `frame-distributed-incident-analysis` and then `frame-diag` when stabilization is needed.
+- Use `frame-plandev` or `frame-plantask` when the task is already understood.
+- Use `frame-first-principles` when the problem is still in disorder.
+- Use `frame-inertia` when the answer looks inherited from convention or authority rather than reasoned.
