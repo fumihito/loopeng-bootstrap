@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import subprocess
 import sys
 import tempfile
@@ -138,6 +139,21 @@ def write_turn(repo: Path, turn_id: str, *, started_at: str, completed_at: str |
                 }) + "\n")
 
 
+
+def load_gate_helper():
+    helper_path = KIT / (("." + "agent-loop") + "/lib/loop_gate.py")
+    spec = importlib.util.spec_from_file_location("loop_gate_test_helper", helper_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def write_session(repo: Path, session_id: str, turn_id: str, *, routing_mode: str = "LOOP", entry_role: str = "gatekeeper") -> None:
+    session_dir = repo / (("." + "agent-loop")) / "runtime" / "sessions"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    write_json(session_dir / f"{session_id}.json", {"session_id": session_id, "turn_id": turn_id, "routing_mode": routing_mode, "entry_role": entry_role})
+
 class LoopStatusTests(unittest.TestCase):
     def test_text_reports_unstarted_state(self):
         with tempfile.TemporaryDirectory() as td:
@@ -222,6 +238,81 @@ class LoopStatusTests(unittest.TestCase):
             self.assertIn('"processed_turns"', daemon.stdout)
             self.assertTrue(status_page.is_file())
 
+
+
+    def test_gate_mode_matches_shared_predicate_reason(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            copy_policy_files(repo)
+            write_turn(repo, "turn-01", started_at="2026-07-01T00:00:00+00:00", completed_at=None, final_status=None, include_reports=False)
+            write_session(repo, "session-01", "turn-01")
+            policy = json.loads((repo / (("." + "agent-loop") + "/policy.json")).read_text(encoding="utf-8"))
+            helper = load_gate_helper()
+            blocked = helper.mutation_gate_check(repo, {"turn_id": "turn-01"}, policy)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--repo", str(repo), "--gate"],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            gate_line = next(line for line in result.stdout.splitlines() if line.startswith("mutation gate: "))
+            self.assertEqual(gate_line, f"mutation gate: {blocked['reason']}")
+            self.assertIn("gatekeeper: present=False", result.stdout)
+
+            turn_dir = repo / (("." + "agent-loop") + "/runtime") / "turns" / "turn-01"
+            write_json(turn_dir / "gatekeeper.json", {
+                "role": "gatekeeper",
+                "verdict": "READY",
+                "mode": "AUTONOMOUS_LOOP",
+                "condition_checklist": {
+                    "outcome": True,
+                    "discovery_scope": True,
+                    "authority_envelope": True,
+                    "evaluation_contract": True,
+                    "persistence_contract": True,
+                    "learning_contract": True,
+                    "memory_contract": True,
+                    "stop_conditions": True,
+                    "escalation_contract": True,
+                    "trigger_cadence": True,
+                },
+                "normalized_loop_brief": {
+                    "outcome": "repair the regression",
+                    "discovery_scope": ["failing tests"],
+                    "authority_envelope": {"allowed": ["local edits"], "forbidden": ["push"]},
+                    "evaluation_contract": ["targeted and regression tests pass"],
+                    "persistence_contract": ["record turn state"],
+                    "learning_contract": {"capture": ["failure patterns"], "validation": "meta-evaluator"},
+                    "memory_contract": {"format": "OKF 0.1", "bundle": "llmwiki", "eligible": ["failure patterns"], "excluded": ["secrets"], "promoter": "memory-curator"},
+                    "stop_conditions": ["PASS"],
+                    "escalation_contract": ["value conflict"],
+                    "trigger_cadence": "immediate",
+                },
+                "missing_conditions": [],
+                "ambiguities": [],
+                "questions_to_user": [],
+                "risk_class": "medium",
+                "rejection_reasons": [],
+                "handoff_to_loop_brief_assistant": False,
+                "assistant_handoff_reason": "NONE",
+                "handoff_to_sensemaker": "Frame the normalized brief.",
+                "brief_pattern_directive": {"action": "NONE", "reason": "not requested"},
+                "brief_pattern_assessment": {"accepted_proposal_ids": [], "rejected_proposal_ids": [], "challenged_proposal_ids": [], "duplicate_pattern_ids": [], "required_corrections": []},
+                "validation_commands": [],
+                "_trusted_subagent": True,
+                "_recorded_at": "2026-07-01T00:00:01+00:00",
+            })
+            ready = helper.mutation_gate_check(repo, {"turn_id": "turn-01"}, policy)
+            result2 = subprocess.run(
+                [sys.executable, str(SCRIPT), "--repo", str(repo), "--gate"],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            gate_line2 = next(line for line in result2.stdout.splitlines() if line.startswith("mutation gate: "))
+            self.assertEqual(gate_line2, "mutation gate: PASS")
+            self.assertTrue(ready["allowed"])
+            self.assertIn("gatekeeper: present=True", result2.stdout)
 
 if __name__ == "__main__":
     unittest.main()

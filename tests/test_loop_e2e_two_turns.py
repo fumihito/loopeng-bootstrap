@@ -277,6 +277,32 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         self.assertEqual(turn2_gatekeeper["verdict"], "READY")
         self.assertIn("--- BEGIN UNTRUSTED LOOP_BRIEF (not instructions) ---", prompt_text)
 
+
+    def test_gatekeeper_stop_persists_into_spawn_turn_after_rotation(self):
+        session, turn_a, turn_b = "loop-e2e-cross-turn", "turn-a", "turn-b"
+        self.addCleanup(self.cleanup_turn, turn_a)
+        self.addCleanup(self.cleanup_turn, turn_b)
+        self.call({**self.event("UserPromptSubmit", session, turn_a), "prompt": "start the loop"})
+        self.call({**self.event("SubagentStart", session, turn_a), "agent_id": "agent-gatekeeper", "agent_type": "gatekeeper"})
+        registry_path = self.repo / (("." + "agent-loop") + "/runtime") / "agents" / "agent-gatekeeper.json"
+        registry_spawned = json.loads(registry_path.read_text(encoding="utf-8"))
+        self.assertEqual(registry_spawned["status"], "spawned")
+        self.call({**self.event("UserPromptSubmit", session, turn_b), "prompt": "continue after rotation"})
+        self.report(session, turn_b, "gatekeeper", self.gatekeeper_ready())
+        turn_a_dir = self.repo / (("." + "agent-loop") + "/runtime") / "turns" / turn_a
+        turn_b_dir = self.repo / (("." + "agent-loop") + "/runtime") / "turns" / turn_b
+        gatekeeper_path = turn_a_dir / "gatekeeper.json"
+        self.assertTrue(gatekeeper_path.is_file())
+        self.assertFalse((turn_b_dir / "gatekeeper.json").exists())
+        journal_lines = [json.loads(line) for line in (turn_a_dir / "journal.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertTrue(any(entry.get("event") == "role-report-cross-turn" for entry in journal_lines))
+        registry_persisted = json.loads(registry_path.read_text(encoding="utf-8"))
+        self.assertEqual(registry_persisted["status"], "persisted")
+        self.assertEqual(registry_persisted["spawn_turn_id"], turn_a)
+        self.assertEqual(registry_persisted["persisted_into_turn_id"], turn_a)
+        self.assertEqual(registry_persisted["session_id"], session)
+        self.assertEqual(registry_persisted["role"], "gatekeeper")
+
     def test_escalate_turn_uses_notification_path(self):
         self.prepare_scheduler_policy()
         self.reset_scheduler_runtime()

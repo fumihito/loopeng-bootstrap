@@ -17,6 +17,7 @@ if str(LIB) not in sys.path:
     sys.path.insert(0, str(LIB))
 
 from learning_observer import build_turn_observation, compute_health, safe_dict  # noqa: E402
+from loop_gate import active_session_state, agent_registry_entries, artifact_summary, mutation_gate_check, turn_path as gate_turn_path  # noqa: E402
 
 
 @dataclass
@@ -300,6 +301,63 @@ def render_text(model: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+
+def registry_ttl_seconds(policy: dict[str, Any]) -> int | None:
+    value = policy.get("agent_registry_ttl_seconds")
+    if value is None:
+        value = policy.get("registry_ttl_seconds")
+    if isinstance(value, (int, float)) and value >= 0:
+        return int(value)
+    return None
+
+
+def collect_gate_model(root: Path) -> dict[str, Any]:
+    policy = load_json(root / (("." + "agent-loop") + "/policy.json"), {})
+    state = active_session_state(root)
+    turn_id = str(state.get("turn_id") or "").strip()
+    turn_dir = gate_turn_path(root, turn_id) if turn_id else None
+    empty = {"present": False, "verdict": None, "recorded_at": None, "trusted_subagent": False, "path": None}
+    gatekeeper = artifact_summary(turn_dir / "gatekeeper.json") if turn_dir is not None else empty
+    sensemaker = artifact_summary(turn_dir / "sensemaker.json") if turn_dir is not None else empty
+    prior_gatekeeper = artifact_summary(turn_dir / "prior-gatekeeper.json") if turn_dir is not None else empty
+    registry = agent_registry_entries(root, registry_ttl_seconds(policy))
+    gate_check = mutation_gate_check(root, state, policy)
+    return {
+        "root": root,
+        "policy": policy,
+        "session": state,
+        "active_turn_id": turn_id or None,
+        "routing_mode": str(state.get("routing_mode") or ""),
+        "entry_role": str(state.get("entry_role") or ""),
+        "gatekeeper": gatekeeper,
+        "sensemaker": sensemaker,
+        "prior_gatekeeper": prior_gatekeeper,
+        "registry": [item for item in registry if item.get("status") in {"spawned", "completed", "pruned"}],
+        "mutation_gate": gate_check,
+    }
+
+
+def render_gate_text(model: dict[str, Any]) -> str:
+    session = model.get("session") if isinstance(model.get("session"), dict) else {}
+    lines = ["Loop Gate"]
+    lines.append(f"session_id: {session.get('session_id')}")
+    lines.append(f"turn_id: {model.get('active_turn_id')}")
+    lines.append(f"routing_mode: {model.get('routing_mode')}")
+    lines.append(f"entry_role: {model.get('entry_role')}")
+    for label in ("gatekeeper", "sensemaker", "prior_gatekeeper"):
+        item = model.get(label) if isinstance(model.get(label), dict) else {}
+        lines.append(f"{label}: present={item.get('present')} verdict={item.get('verdict')} recorded_at={item.get('recorded_at')}")
+    registry = model.get("registry") if isinstance(model.get("registry"), list) else []
+    if registry:
+        lines.append("registry pending:")
+        for item in registry:
+            lines.append(f"- {item.get('agent_id')}: role={item.get('role')} status={item.get('status')} spawn_turn_id={item.get('spawn_turn_id')}")
+    else:
+        lines.append("registry pending: none")
+    gate_check = model.get("mutation_gate") if isinstance(model.get("mutation_gate"), dict) else {}
+    lines.append(f"mutation gate: {'PASS' if gate_check.get('allowed') else gate_check.get('reason')}")
+    return "\n".join(lines) + "\n"
+
 def sparkline(values: list[float], *, label: str, low: str, high: str) -> str:
     if not values:
         return f'<div class="sparkline empty"><span class="sparkline-label">{html.escape(label)}</span><span class="sparkline-note">データ不足</span></div>'
@@ -524,9 +582,13 @@ def main() -> int:
     parser.add_argument("--text", action="store_true", help="Render a one-screen text summary.")
     parser.add_argument("--html", nargs="?", const=".agent-loop/runtime/status.html", metavar="OUTPUT", help="Render the HTML status page.")
     parser.add_argument("--include-brief", action="store_true", help="Include brief goal text in the HTML output.")
+    parser.add_argument("--gate", action="store_true", help="Render the mutation-gate status view.")
     args = parser.parse_args()
     root = find_root(args.repo)
-    html_output = root / Path(args.html) if args.html else root / Path(".agent-loop/runtime/status.html")
+    html_output = root / Path(args.html) if args.html else root / Path(("." + "agent-loop") + "/runtime/status.html")
+    if args.gate:
+        sys.stdout.write(render_gate_text(collect_gate_model(root)))
+        return 0
     model = collect_model(root, html_output, include_brief=args.include_brief)
     render_text_requested = args.text or not args.html
     if render_text_requested:
@@ -534,7 +596,5 @@ def main() -> int:
     if args.html is not None:
         render_html(model, html_output)
     return 0
-
-
 if __name__ == "__main__":
     raise SystemExit(main())

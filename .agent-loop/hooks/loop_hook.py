@@ -25,11 +25,18 @@ if _hook_file:
     HOOK_REPO_ROOT = Path(_hook_file).resolve().parents[2]
     if str(HOOK_REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(HOOK_REPO_ROOT))
+    loop_lib = HOOK_REPO_ROOT / ("." + "agent-loop") / "lib"
+    if str(loop_lib) not in sys.path:
+        sys.path.insert(0, str(loop_lib))
 
 try:
     import routing_hints as routing_hints_lib
 except ModuleNotFoundError:
     routing_hints_lib = None
+try:
+    from loop_gate import active_session_state, agent_registry_entries, agent_registry_path, artifact_summary, mutation_gate_check, turn_path as gate_turn_path
+except ModuleNotFoundError:
+    raise ModuleNotFoundError("loop_gate.py is required; install.py must copy .agent-loop/lib/loop_gate.py") from None
 
 ROLES = {
     "gatekeeper": ({"role","verdict","mode","condition_checklist","normalized_loop_brief","missing_conditions","ambiguities","questions_to_user","risk_class","rejection_reasons","handoff_to_loop_brief_assistant","assistant_handoff_reason","handoff_to_sensemaker","brief_pattern_directive","brief_pattern_assessment","validation_commands"}, "gatekeeper.json"),
@@ -90,6 +97,7 @@ JOURNAL_ALLOWED_KEYS = {
     "error_type",
     "event_note",
     "failure_category",
+    "active_turn_id",
     "frame_header",
     "gatekeeper_verdict",
     "invocation_trigger",
@@ -102,6 +110,9 @@ JOURNAL_ALLOWED_KEYS = {
     "role",
     "routing_mode",
     "selected_frame",
+    "spawn_turn_id",
+    "persisted_into_turn_id",
+    "error_class",
     "skill_name",
     "skill_sha256",
     "sop_header",
@@ -399,6 +410,21 @@ def turn_dir(root: Path, state: dict[str, Any]) -> Path:
     return root / ".agent-loop/runtime/turns" / safe(state.get("turn_id"))
 
 
+
+def agent_registry_read(root: Path, agent_id: Any) -> dict[str, Any]:
+    return load(agent_registry_path(root, agent_id), {})
+
+
+def agent_registry_write(root: Path, agent_id: Any, value: dict[str, Any]) -> None:
+    atomic(agent_registry_path(root, agent_id), value)
+
+
+def agent_registry_update(root: Path, agent_id: Any, **changes: Any) -> dict[str, Any]:
+    entry = agent_registry_read(root, agent_id)
+    entry.update(changes)
+    agent_registry_write(root, agent_id, entry)
+    return entry
+
 def validation_command_text(argv: list[str]) -> str:
     return " ".join(argv)
 
@@ -428,6 +454,11 @@ def trigger_cadence_kind(value: Any) -> str:
     return "unknown"
 
 
+def transient_protected_path(rel: str) -> bool:
+    parts = Path(rel).parts
+    return "__pycache__" in parts or rel.endswith(".pyc")
+
+
 def protected_path_snapshot(root: Path, policy: dict[str, Any]) -> dict[str, str]:
     snapshot: dict[str, str] = {}
     protected = [str(value) for value in policy.get("protected_path_fragments", []) if str(value).strip()]
@@ -447,6 +478,8 @@ def protected_path_snapshot(root: Path, policy: dict[str, Any]) -> dict[str, str
             if not path.is_file():
                 continue
             rel = path.relative_to(root).as_posix()
+            if transient_protected_path(rel):
+                continue
             if rel.startswith(".agent-loop/runtime/") or rel.startswith(".agent-loop/state/"):
                 continue
             # The rebuilt okfctl binary is expected to change during install and refresh flows.
@@ -463,9 +496,11 @@ def protected_path_drift(root: Path, state: dict[str, Any], policy: dict[str, An
     if not isinstance(baseline, dict) or not baseline:
         return []
     current = protected_path_snapshot(root, policy)
-    added = sorted(path for path in current if path not in baseline)
-    removed = sorted(path for path in baseline if path not in current)
-    changed = sorted(path for path, digest in baseline.items() if path in current and current.get(path) != digest)
+    filtered_baseline = {path: digest for path, digest in baseline.items() if not transient_protected_path(path)}
+    filtered_current = {path: digest for path, digest in current.items() if not transient_protected_path(path)}
+    added = sorted(path for path in filtered_current if path not in filtered_baseline)
+    removed = sorted(path for path in filtered_baseline if path not in filtered_current)
+    changed = sorted(path for path, digest in filtered_baseline.items() if path in filtered_current and filtered_current.get(path) != digest)
     drifted = [f"+{path}" for path in added] + [f"-{path}" for path in removed] + [f"~{path}" for path in changed]
     return drifted
 
@@ -2264,6 +2299,8 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             routing_mode=state.get("routing_mode"),
             gatekeeper_verdict=gate.get("verdict"),
         )
+        if agent_type in ROLES:
+            agent_registry_update(root, event.get("agent_id"), role=agent_type, spawn_turn_id=state.get("turn_id"), session_id=state.get("session_id"), spawned_at=now(), status="spawned")
         if state.get("routing_mode") == DIRECT_ROUTING_MODE and agent_type in ROLES:
             config = direct_config(root)
             if not config.get("allow_loop_control_roles", False):
@@ -2352,9 +2389,9 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         if mutation and agent in ROLES:
             return emit(deny(name, f"Control role {agent} is read-only and may not mutate files or external state."))
         if mutation and policy.get("require_gatekeeper_before_mutation", True):
-            gate = load(target / "gatekeeper.json", {})
-            if not gate.get("_trusted_subagent") or gate.get("verdict") != "READY":
-                return emit(deny(name, "No trusted READY Gatekeeper report exists for this turn. Continue the Gatekeeper dialogue first."))
+            gate_check = mutation_gate_check(root, state, policy)
+            if not gate_check["allowed"]:
+                return emit(deny(name, gate_check["reason"]))
         if mutation and policy.get("require_sensemaker_before_mutation", True):
             report = load(target / "sensemaker.json", {})
             if not report.get("_trusted_subagent"):
@@ -2435,6 +2472,17 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         role = str(event.get("agent_type") or "")
         if role not in ROLES:
             return 0
+        registry_entry = agent_registry_read(root, event.get("agent_id"))
+        if registry_entry:
+            same_session = str(registry_entry.get("session_id") or "") == str(state.get("session_id") or "")
+            active_spawn = str(registry_entry.get("status") or "").strip().lower() == "spawned"
+            if not same_session or not active_spawn:
+                registry_entry = {}
+        spawn_turn_id = str(registry_entry.get("spawn_turn_id") or state.get("turn_id") or "")
+        target = gate_turn_path(root, spawn_turn_id)
+        if not registry_entry:
+            journal(target, "role-report-orphan-fallback", role=role, active_turn_id=state.get("turn_id"), spawn_turn_id=spawn_turn_id)
+        agent_registry_update(root, event.get("agent_id"), role=role, spawn_turn_id=spawn_turn_id, session_id=state.get("session_id"), completed_at=now(), status="completed")
         if not loop_enabled:
             return emit(block("loop_mode_enabled=false; loop-control roles are disabled in this profile."))
         if state.get("routing_mode") == DIRECT_ROUTING_MODE:
@@ -2450,12 +2498,17 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 return 0
             body = parse_json_message(str(event.get("last_assistant_message") or ""))
             if body is None:
+                agent_registry_update(root, event.get("agent_id"), status="rejected", error_class="parse_error")
                 return emit(block("learning-auditor must return exactly one valid JSON object with no surrounding prose."))
             errors = validate(role, body, root)
             if errors:
+                agent_registry_update(root, event.get("agent_id"), status="rejected", error_class="validation_error")
                 return emit(block("Invalid learning-auditor report: " + "; ".join(errors) + ". Return a corrected JSON object."))
             body.update({"_trusted_subagent": True, "_recorded_at": now(), "_agent_id": event.get("agent_id"), "_agent_type": role})
             atomic(target / ROLES[role][1], body)
+            agent_registry_update(root, event.get("agent_id"), status="persisted", persisted_into_turn_id=target.name)
+            if spawn_turn_id != str(state.get("turn_id") or ""):
+                journal(target, "role-report-cross-turn", role=role, spawn_turn_id=spawn_turn_id, active_turn_id=state.get("turn_id"), persisted_into_turn_id=target.name)
             journal(target, "role-report", role=role, skill_name=role, report_content_logged=False)
             send_otel(root, "agent.loop.learning.audit_reported", telemetry_attributes(event, platform, {"role.report.valid": True, "skill.name": role, "learning.health": body.get("verdict"), "human_review_required": bool(body.get("human_review_required"))}))
             return 0
@@ -2470,9 +2523,11 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             return emit(block("Gatekeeper accepted Loop Brief pattern proposals, but the deterministic pattern commit is incomplete."))
         body = parse_json_message(str(event.get("last_assistant_message") or ""))
         if body is None:
+            agent_registry_update(root, event.get("agent_id"), status="rejected", error_class="parse_error")
             return emit(block(f"{role} must return exactly one valid JSON object with no surrounding prose."))
         errors = validate(role, body, root)
         if errors:
+            agent_registry_update(root, event.get("agent_id"), status="rejected", error_class="validation_error")
             return emit(block(f"Invalid {role} report: " + "; ".join(errors) + ". Return a corrected JSON object."))
         if role == LOOP_BRIEF_ASSISTANT_ROLE:
             active_gate = gate if gate.get("verdict") in {"NEEDS_INPUT", "READY"} and gate.get("handoff_to_loop_brief_assistant") else prior_gate
@@ -2532,6 +2587,9 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 return emit(block("brief-pattern-curator cannot return NO_CHANGES when Gatekeeper accepted pattern proposals."))
         body.update({"_trusted_subagent": True, "_recorded_at": now(), "_agent_id": event.get("agent_id"), "_agent_type": role, "_mutation_epoch": state.get("mutation_epoch", 0)})
         atomic(target / ROLES[role][1], body)
+        agent_registry_update(root, event.get("agent_id"), status="persisted", persisted_into_turn_id=target.name)
+        if spawn_turn_id != str(state.get("turn_id") or ""):
+            journal(target, "role-report-cross-turn", role=role, spawn_turn_id=spawn_turn_id, active_turn_id=state.get("turn_id"), persisted_into_turn_id=target.name)
         if role == "gatekeeper":
             atomic(gatekeeper_session_path(root, event), body)
             if body.get("verdict") == "READY":

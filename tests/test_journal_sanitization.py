@@ -22,7 +22,9 @@ def load_hook(path: Path):
 
 def write_minimal_hook_tree(root: Path, mutated_source: str | None = None) -> None:
     (root / ".agent-loop/hooks").mkdir(parents=True, exist_ok=True)
+    (root / (("." + "agent-loop") + "/lib")).mkdir(parents=True, exist_ok=True)
     (root / "routing_hints.py").write_text((KIT / "routing_hints.py").read_text(encoding="utf-8"), encoding="utf-8")
+    (root / (("." + "agent-loop") + "/lib") / "loop_gate.py").write_text((KIT / (("." + "agent-loop") + "/lib/loop_gate.py")).read_text(encoding="utf-8"), encoding="utf-8")
     source = mutated_source if mutated_source is not None else HOOK.read_text(encoding="utf-8")
     (root / ".agent-loop/hooks/loop_hook.py").write_text(source, encoding="utf-8")
 

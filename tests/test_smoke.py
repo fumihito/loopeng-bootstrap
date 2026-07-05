@@ -836,6 +836,24 @@ class IntegrationTest(unittest.TestCase):
         shutil.rmtree(drift_skill)
         drift_marker.unlink()
 
+
+    def test_protected_path_drift_stays_empty_in_a_clean_tree_on_repeated_runs(self):
+        loop_root = '.' + 'agent' + '-' + 'loop'
+        session, turn = "clean-drift-session", "clean-drift-turn"
+        self.start(session, turn)
+        self.report(session, turn, "gatekeeper", self.gatekeeper("READY"))
+        self.report(session, turn, "sensemaker", self.sensemaker())
+
+        stop = self.event("Stop", session, turn)
+        stop.update({"stop_hook_active": False, "background_tasks": []})
+        self.call(stop)
+        self.call(stop)
+
+        journal_path = self.repo / (loop_root + "/runtime/turns/" + turn + "/journal.jsonl")
+        records = [json.loads(line) for line in journal_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+        drift_events = [record for record in records if record.get("event") == "protected-path-drift"]
+        self.assertEqual(drift_events, [])
+
     def test_gatekeeper_prompt_is_bounded_and_isolates_untrusted_text(self):
         loop_brief = {
             "outcome": "repair the thing",
