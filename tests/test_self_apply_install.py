@@ -119,6 +119,24 @@ class SelfApplyInstallTests(unittest.TestCase):
                 "needed to recover from local tampering",
             )
 
+    def test_reserved_sop_brief_skill_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            clone_repo_tree(repo)
+            reserved = repo / f"adapters/shared/skills/sop-brief"
+            reserved.mkdir(parents=True)
+            (reserved / "SKILL.md").write_text(
+                "---\nname: sop-brief\ndescription: Reserved.\nuser-invocable: true\n---\n\n# Reserved\n",
+                encoding="utf-8",
+            )
+
+            module = load_install_module()
+            module.SRC = repo
+            installer = module.Installer(repo, dry_run=False, conflict="error", profile="full")
+            with self.assertRaises(module.InstallerError) as ctx:
+                installer.should_install_skill("sop-brief")
+            self.assertIn("reserved skill name is forbidden: sop-brief", str(ctx.exception))
+
     def test_update_preserves_user_changed_config(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td) / "repo"

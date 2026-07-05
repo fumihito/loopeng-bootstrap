@@ -113,6 +113,34 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         final = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(final["final_status"], "DIRECT_COMPLETE")
 
+    def test_brief_prefix_starts_loop_brief_assistant_entry(self):
+        session, turn = "brief-entry-session", "brief-entry-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "brief: investigate the failure"
+        output = self.call(start)
+        self.assertIn("Loop Brief elicitation", output["hookSpecificOutput"]["additionalContext"])
+        state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(state["routing_mode"], "LOOP")
+        self.assertEqual(state["entry_role"], "loop-brief-assistant")
+        self.assertTrue((self.repo / f".agent-loop/runtime/turns/{turn}/brief-route.json").exists())
+
+        stop = self.event("Stop", session, turn)
+        stop["background_tasks"] = []
+        continuation = self.call(stop)
+        self.assertEqual(continuation["decision"], "block")
+        self.assertIn("loop-brief-assistant", continuation["reason"])
+
+    def test_brief_prefix_allows_empty_body(self):
+        session, turn = "brief-empty-session", "brief-empty-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "brief:"
+        output = self.call(start)
+        self.assertIn("Loop Brief elicitation", output["hookSpecificOutput"]["additionalContext"])
+        state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(state["routing_mode"], "LOOP")
+        self.assertEqual(state["entry_role"], "loop-brief-assistant")
+        self.assertTrue((self.repo / f".agent-loop/runtime/turns/{turn}/brief-route.json").exists())
+
     def test_gatekeeper_needs_input_activates_assistant_and_persists_dialogue(self):
         session, turn = "brief-session", "brief-turn-1"
         start = self.event("UserPromptSubmit", session, turn)

@@ -27,8 +27,7 @@ mixed な Codex / Claude layout、semantic merge workflow、LLM assisted install
 ## First contact
 
 prefix なしで始めると Gatekeeper intake に入ります。Gatekeeper と `loop-brief-assistant` が contract 作成を支援します。
-`route:` は `frame-*` 候補を提案する pre-loop 入口です。
-`direct:` は autonomous loop を通さない bounded な single-turn です。
+`route:` は `frame-*` 候補を提案する pre-loop 入口です。`brief:` は最初のメッセージから Loop Brief の対話的な聞き取りを始めるための入口で、生成された草案は Gatekeeper が独立に検証します。`direct:` は autonomous loop を通さない bounded な single-turn です。
 
 ```text
 repair CI failures under this operating contract ...

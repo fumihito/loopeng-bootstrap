@@ -64,6 +64,7 @@ LOOP_BRIEF_FIELDS = {
 }
 SOP_HEADER_PATTERN = re.compile(r"^([a-z][a-z0-9-]{0,31}):(?!//)[ \t]*(.*)$", re.S)
 DIRECT_HEADER_PATTERN = re.compile(r"^direct:[ \t]*(.*)$", re.S)
+BRIEF_HEADER_PATTERN = re.compile(r"^brief:[ \t]*(.*)$", re.S)
 COMMAND_ROUTE_HEADER_PATTERN = re.compile(r"^route:[ \t]*(.*)$", re.S)
 SOP_ROUTING_MODE = "SOP"
 FRAME_ROUTING_MODE = "FRAME"
@@ -514,6 +515,11 @@ def direct_route(prompt: str) -> str | None:
     return match.group(1) if match else None
 
 
+def brief_route(prompt: str) -> str | None:
+    match = BRIEF_HEADER_PATTERN.match(prompt)
+    return match.group(1) if match else None
+
+
 def command_route(prompt: str) -> str | None:
     match = COMMAND_ROUTE_HEADER_PATTERN.match(prompt)
     return match.group(1) if match else None
@@ -543,7 +549,7 @@ def sop_route(prompt: str) -> tuple[str, str, str] | None:
     if not match:
         return None
     header = match.group(1)
-    if header == "direct":
+    if header in {"direct", "brief"}:
         return None
     return header, f"sop-{header}", match.group(2)
 
@@ -1120,7 +1126,7 @@ def run_validation_commands(root: Path, target: Path, commands: list[Any]) -> tu
     return ok, payload
 
 
-def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTING_MODE) -> dict[str, Any]:
+def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTING_MODE, entry_role_override: str | None = None) -> dict[str, Any]:
     turn_id = event.get("turn_id") or hashlib.sha256(f"{event.get('session_id')}|{event.get('prompt')}|{time.time_ns()}".encode()).hexdigest()[:16]
     state = {
         "session_id": event.get("session_id"), "turn_id": str(turn_id), "started_at": now(),
@@ -1134,7 +1140,9 @@ def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTI
     state["prior_gatekeeper_verdict"] = prior_gatekeeper.get("verdict") if prior_gatekeeper else None
     state["prior_loop_brief_assistant_available"] = bool(prior_assistant)
     state["prior_loop_brief_assistant_status"] = prior_assistant.get("status") if prior_assistant else None
-    if (prior_gatekeeper.get("verdict") == "NEEDS_INPUT" or prior_gatekeeper.get("assistant_handoff_reason") == "PATTERN_CAPTURE") and prior_assistant.get("status") == "ASK_USER":
+    if entry_role_override is not None:
+        state["entry_role"] = entry_role_override
+    elif (prior_gatekeeper.get("verdict") == "NEEDS_INPUT" or prior_gatekeeper.get("assistant_handoff_reason") == "PATTERN_CAPTURE") and prior_assistant.get("status") == "ASK_USER":
         state["entry_role"] = LOOP_BRIEF_ASSISTANT_ROLE
     else:
         state["entry_role"] = "gatekeeper"
@@ -2047,7 +2055,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
 
     if name == "SessionStart":
         if loop_enabled:
-            message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."
+            message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading brief: prefix starts interactive Loop Brief elicitation via the read-only loop-brief-assistant; the resulting draft is still independently validated by Gatekeeper. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."
         else:
             message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. A strict leading route: prefix loads command-route in isolated pre-loop proposal mode. A strict leading sop-<header>: prefix loads the matching SOP skill in isolated SOP mode. Unprefixed prompts pass through unchanged and do not enter Gatekeeper in this profile."
         return emit(add_context(name, message))
@@ -2116,6 +2124,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 }))
                 return emit(add_context(name, frame_context(skill, frame_state["header"])))
             return emit(add_context(name, "This is an internal loop-control continuation. Preserve the existing turn and follow the instruction after the continuation marker; do not invoke Gatekeeper again."))
+        # Deterministic precedence: command-route, direct, brief, frame, then remaining SOP headers.
         route_task = command_route(prompt)
         if route_task is not None:
             state = start_turn(root, event, COMMAND_ROUTE_ROUTING_MODE)
@@ -2180,6 +2189,16 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             journal(target, "direct-started", routing_mode=DIRECT_ROUTING_MODE, allow_mutations=bool(config.get("allow_mutations")))
             send_otel(root, "agent.loop.direct.started", telemetry_attributes(event, platform, {"routing.mode": DIRECT_ROUTING_MODE, "direct.allow_mutations": bool(config.get("allow_mutations")), "prompt.content_logged": False}))
             return emit(add_context(name, "[DIRECT_MODE] The leading direct: prefix selected a bounded Gatekeeper-free turn. Answer the task after the prefix directly. Do not invoke Gatekeeper, Loop Brief Assistant, Sensemaker, State Steward, Meta-Evaluator, Memory Curator, or the autonomous-loop workflow. Direct mode is read-only unless .agent-loop/direct-policy.json explicitly allows mutations. Destructive-command, protected-path, LLMWiki, permission, Watchdog, and telemetry controls remain active. [/DIRECT_MODE]"))
+        brief_task = brief_route(prompt)
+        if brief_task is not None:
+            if not loop_enabled:
+                return 0
+            state = start_turn(root, event, LOOP_ROUTING_MODE, entry_role_override=LOOP_BRIEF_ASSISTANT_ROLE)
+            target = turn_dir(root, state)
+            atomic(target / "brief-route.json", {"header": "brief", "requested_at": now()})
+            journal(target, "brief-route", routing_mode=LOOP_ROUTING_MODE, skill_name=LOOP_BRIEF_ASSISTANT_ROLE)
+            send_otel(root, "agent.loop.brief.requested", telemetry_attributes(event, platform, {"routing.mode": LOOP_ROUTING_MODE, "entry.role": LOOP_BRIEF_ASSISTANT_ROLE}))
+            return emit(add_context(name, "This message starts interactive Loop Brief elicitation. Invoke loop-brief-assistant before Gatekeeper, using the user's problem statement after the `brief:` prefix as source material. Gatekeeper still independently validates any READY_FOR_REVIEW draft before it can become READY. Product mutations remain blocked."))
         frame = frame_route(prompt)
         if frame:
             header, required_skill, _task_body = frame

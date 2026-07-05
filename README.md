@@ -28,6 +28,7 @@ Details for mixed Codex / Claude layouts, semantic merge workflows, and LLM-assi
 
 Start with no prefix if you want the package to route you into Gatekeeper intake; Gatekeeper and `loop-brief-assistant` will help form the contract.
 Use `route:` when you want a pre-loop proposal that suggests `frame-*` candidates.
+Use `brief:` when you want to start interactive Loop Brief elicitation from the first message; Gatekeeper still independently validates the resulting draft.
 Use `direct:` when you want a bounded single-turn interaction without the autonomous loop.
 
 ```text

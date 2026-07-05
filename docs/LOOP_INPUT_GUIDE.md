@@ -9,6 +9,7 @@ Choose the interaction mode explicitly when the distinction matters:
 - `direct:` for a bounded one-shot question or inspection without Gatekeeper. It is read-only by default and does not create a learning or memory record.
 - `list:` for a mode index that shows the current user-entry prefixes and how to find their canonical sources.
 - `route:` for a pre-loop proposal mode that suggests `frame-*` candidates before Gatekeeper.
+- `brief:` for interactive Loop Brief elicitation from the first message. It starts `loop-brief-assistant`, and Gatekeeper still validates the resulting draft.
 - `<header>:` for a mandatory SOP such as `diag:` or `learning-audit:`.
 - no header for an autonomous-loop request. This enters Gatekeeper and, when incomplete, the Loop Brief Assistant dialogue.
 

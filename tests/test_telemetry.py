@@ -30,6 +30,18 @@ class TelemetryTests(unittest.TestCase):
         for secret in ['supersecret','hunter2','private.py','/tmp/out','status','porcelain']:
             self.assertNotIn(secret,rendered)
 
+    def test_brief_requested_telemetry_is_content_free(self):
+        ns = {}
+        exec(HOOK.read_text(), ns)
+        event = {'hook_event_name': 'UserPromptSubmit', 'session_id': 's', 'turn_id': 't', 'cwd': str(ROOT), 'prompt': 'brief: private prompt'}
+        attrs = ns['telemetry_attributes'](event, 'claude', {'routing.mode': 'LOOP', 'entry.role': 'loop-brief-assistant'})
+        self.assertEqual(attrs['routing.mode'], 'LOOP')
+        self.assertEqual(attrs['entry.role'], 'loop-brief-assistant')
+        self.assertNotIn('prompt', attrs)
+        self.assertNotIn('content', attrs)
+        self.assertNotIn('body', attrs)
+        self.assertNotIn('text', attrs)
+
     def test_otlp_payload_is_sanitized(self):
         with tempfile.TemporaryDirectory() as td:
             repo=Path(td)

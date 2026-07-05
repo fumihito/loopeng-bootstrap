@@ -62,6 +62,9 @@ class SopRoutingTests(unittest.TestCase):
         self.assertEqual(self.hook.sop_route("diag: inspect"), ("diag", "sop-diag", "inspect"))
         self.assertIsNone(self.hook.sop_route("https://example.com"))
         self.assertIsNone(self.hook.sop_route("Diag: inspect"))
+        self.assertIsNone(self.hook.sop_route("brief: inspect"))
+        self.assertEqual(self.hook.brief_route("brief: inspect"), "inspect")
+        self.assertEqual(self.hook.brief_route("brief:"), "")
         self.assertIsNone(self.hook.sop_route("direct: inspect"))
 
     def test_diag_loads_skill_and_bypasses_gatekeeper(self):
@@ -94,6 +97,18 @@ class SopRoutingTests(unittest.TestCase):
         self.assertEqual(self.call(stop), {})
         final = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(final["final_status"], "SOP_COMPLETE")
+
+    def test_brief_prefix_enters_loop_and_skips_sop_resolution(self):
+        session, turn = "brief-session", "brief-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "brief: start the loop brief"
+        output = self.call(start, "claude")
+        self.assertIn("Loop Brief elicitation", output["hookSpecificOutput"]["additionalContext"])
+        state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["routing_mode"], "LOOP")
+        self.assertEqual(state["entry_role"], "loop-brief-assistant")
+        self.assertTrue((self.repo / f".agent-loop/runtime/turns/{turn}/brief-route.json").exists())
+        self.assertFalse((self.repo / f".agent-loop/runtime/turns/{turn}/sop-route.json").exists())
 
     def test_install_header_loads_semantic_installer_sop(self):
         event = self.event("UserPromptSubmit", "install-sop", "install-turn")

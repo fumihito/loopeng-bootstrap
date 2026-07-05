@@ -222,6 +222,8 @@ class Installer:
         return names
 
     def should_install_skill(self, skill_name: str) -> bool:
+        if skill_name == 'sop-brief':
+            raise InstallerError('reserved skill name is forbidden: sop-brief')
         return not (self.profile == PROFILE_ROUTING and skill_name in LOOP_ONLY_SKILLS)
 
     def destination_rel(self, path: Path) -> str:

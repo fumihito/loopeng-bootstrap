@@ -2,7 +2,7 @@
 
 Loop Brief Assistant is a read-only clarification role activated when Gatekeeper returns `NEEDS_INPUT`. Gatekeeper remains the authority that decides whether a Loop Brief is valid; the Assistant only conducts the dialogue needed to make the user's intended contract explicit.
 
-The protocol is midwife-style rather than contract-verbose: it restates the problem in the user's words, then asks only the minimum questions needed to normalize the brief. The user can always start by speaking normally; this document is for shortening the clarification path, not for making loop entry conditional on reading it.
+The protocol is midwife-style rather than contract-verbose: it restates the problem in the user's words, then asks only the minimum questions needed to normalize the brief. The user can always start by speaking normally; this document is for shortening the clarification path, not for making loop entry conditional on reading it. A strict leading `brief:` prefix can also start the same elicitation from the first message, and Gatekeeper still independently validates the resulting draft.
 
 ## Why it is separate from Gatekeeper
 
