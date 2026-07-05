@@ -76,7 +76,7 @@ class SkillAndJournalTests(unittest.TestCase):
     def test_runtime_journal_excludes_tool_input(self):
         with tempfile.TemporaryDirectory() as td:
             repo=Path(td)
-            for rel in ['.agent-loop/hooks/loop_hook.py','.agent-loop/policy.json','.agent-loop/otel.json']:
+            for rel in ['.agent-loop/hooks/loop_hook.py','.agent-loop/policy.json','.agent-loop/otel.json','.agent-loop/lib/loop_gate.py']:
                 src=ROOT/rel; dst=repo/rel; dst.parent.mkdir(parents=True,exist_ok=True); dst.write_bytes(src.read_bytes())
             env=os.environ.copy(); env['AGENT_LOOP_OTEL_EXPORTER']='none'
             start={'hook_event_name':'UserPromptSubmit','session_id':'s1','turn_id':'t1','cwd':str(repo),'prompt':'private prompt'}
