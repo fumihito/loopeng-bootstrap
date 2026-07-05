@@ -54,7 +54,7 @@ This is the human-facing replacement for the old plandev orchestration shape. Us
 
 ## Exit
 
-Finish when the outcome is defined, every phase has verification, blockers are named, and the handoff is explicit. If the plan is already underway, identify the current checkpoint from `goal` before continuing.
+Finish when the outcome is defined, every phase has verification, blockers are named, and the handoff is explicit. If the plan is already underway, identify the current checkpoint from the active brief or turn before continuing.
 
 ## Adjacent frames
 

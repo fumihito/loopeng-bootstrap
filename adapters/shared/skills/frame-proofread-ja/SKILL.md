@@ -32,7 +32,7 @@ Use this frame for Japanese surface-quality review. It focuses on wording, rhyth
 
 ## AI-smell signals
 
-Pass C で補完するための注意点。
+Pass C で拾う観点の例。
 
 - 言い換えの反復
 - 構造的マーカーの過剰

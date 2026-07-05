@@ -18,7 +18,7 @@ Use this frame to surface assumptions that a person or team is making without no
 
 1. List the observed patterns.
 2. Trace the inference chain.
-3. Test for repeated avoidance and absent alternatives.
+3. Test for repeated avoidance and absent alternatives before treating the omission as settled.
 4. Compare the current notes with earlier notes or decisions.
 5. Name the hidden commitment or fear if one is supported.
 6. State what evidence would settle the blind spot.

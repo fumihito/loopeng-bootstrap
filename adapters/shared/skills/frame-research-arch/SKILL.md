@@ -22,11 +22,12 @@ Use this frame when the task is narrowing design options and their conditions. I
 4. Identify the decision that still needs evidence.
 5. Note the safest next step.
 
-## Notes to preserve from the distilled version
+## Design notes
 
 - Keep the focus on option narrowing, not implementation
 - Make the conditions for choice explicit
 - Keep the tradeoff surface visible
+- Keep the option set small enough to compare without flattening the decision
 
 ## Output
 

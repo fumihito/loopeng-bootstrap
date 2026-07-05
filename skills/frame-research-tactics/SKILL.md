@@ -22,11 +22,12 @@ Use this frame when sources or claims need hypotheses, verification, and falsifi
 4. Identify the result that would change the answer.
 5. Note whether a live probe is actually required.
 
-## Notes to preserve from the distilled version
+## Design notes
 
 - Keep hypotheses explicit and falsifiable
 - Make verification conditions concrete
 - Preserve the path to a bounded probe when paper checks are not enough
+- Keep each hypothesis paired with the observation that would change the answer
 
 ## Output
 

@@ -7,6 +7,7 @@ user-invocable: true
 ## Purpose
 
 Use this frame when the correct response depends on the domain. It helps decide whether to apply best practice, analysis, experimentation, stop-the-bleeding, or exploration.
+It classifies first; it does not solve the problem.
 
 ## When to use
 
