@@ -74,3 +74,4 @@ Hand off explicitly after classification. Do not auto-connect the next frame fro
 - Use `frame-plandev` or `frame-plantask` when the task is already understood.
 - Use `frame-first-principles` when the problem is still in disorder.
 - Use `frame-inertia` when the answer looks inherited from convention or authority rather than reasoned.
+- Use `frame-axis` when the disagreement is about what a term means, not what domain the problem is in.

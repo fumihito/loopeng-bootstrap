@@ -43,3 +43,4 @@ Stop when the omission is named with enough evidence to act on, or state that th
 - Use `frame-critical-review` when the hidden assumption has become a claim that can be checked against sources or evidence.
 - Use `frame-inertia` when the main question is whether a judgment is being repeated by habit or authority.
 - Use `frame-first-principles` when the problem still needs decomposition before any claim can be tested.
+- Use `frame-axis` when the disagreement turns out to be two people using the same word for two different things, not a hidden assumption.

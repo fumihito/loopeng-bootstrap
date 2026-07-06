@@ -88,3 +88,4 @@ End when the strongest counterarguments and evidence checks are on the table, or
 - Use `frame-blind-spot` when the issue is hidden assumptions, avoided alternatives, or an inference chain that is not yet a testable claim.
 - Use `frame-proofread-ja` when the issue is sentence quality, notation, or readability rather than argument validity.
 - Use `frame-first-principles` when the claim set is still too underspecified and needs decomposition before it can be reviewed.
+- Use `frame-axis` as the prior step when a claim turns out to bundle more than one axis.
