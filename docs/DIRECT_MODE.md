@@ -25,6 +25,12 @@ Direct mode is read-only by default. It may read repository data and run non-mut
 
 `.agent-loop/direct-policy.json` contains an explicit `allow_mutations` switch. Changing it should be treated as a security decision. Even when enabled, protected paths, high-risk operations, direct LLMWiki writes, and Watchdog controls remain enforced. Direct mutation does not receive the autonomous loop's State Steward, Meta-Evaluator, or memory-promotion guarantees.
 
+## direct-edit:
+
+`direct-edit:` adds a second, per-invocation mutation opt-in on top of the repo-level `allow_mutations` switch. Both locks must be on for a given turn: `.agent-loop/direct-policy.json` must set `allow_direct_edit_prefix: true`, and the user must type `direct-edit:` instead of `direct:` for that invocation. When either lock is off, the prefix is denied explicitly rather than falling back to read-only direct mode.
+
+Even when both locks are on, the same protections still apply: protected paths, destructive commands, high-risk commands, direct LLMWiki writes, permission controls, and Watchdog checks remain enforced. The only difference is that the current direct turn may mutate for that one invocation.
+
 ## Completion
 
 A read-only direct turn completes as `DIRECT_COMPLETE`. No learning observation or durable-memory promotion is generated, because the turn did not pass through the controlled learning loop.

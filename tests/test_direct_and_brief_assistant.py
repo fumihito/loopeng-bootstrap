@@ -56,6 +56,12 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         event.update({"agent_type": role, "agent_id": f"agent-{role}", "last_assistant_message": json.dumps(body)})
         return self.call(event)
 
+    def set_direct_policy(self, **overrides):
+        path = self.repo / ".agent-loop/direct-policy.json"
+        policy = json.loads(path.read_text(encoding="utf-8"))
+        policy.update(overrides)
+        path.write_text(json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
     def gatekeeper(self, verdict, brief=None, mode_recommendation=None):
         brief = brief or {field: None for field in FIELDS}
         if not isinstance(brief.get("trigger_cadence"), str):
@@ -88,9 +94,12 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         start = self.event("UserPromptSubmit", session, turn)
         start["prompt"] = "direct: explain the failing test"
         output = self.call(start)
-        self.assertIn("DIRECT_MODE", output["hookSpecificOutput"]["additionalContext"])
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("DIRECT_MODE", context)
+        self.assertNotIn("direct-edit:", context)
         state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(state["routing_mode"], "DIRECT")
+        self.assertFalse(state["direct"].get("via"))
         self.assertFalse((self.repo / f".agent-loop/runtime/turns/{turn}/gatekeeper.json").exists())
 
         read = self.event("PreToolUse", session, turn)
@@ -101,7 +110,7 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         write.update({"tool_name": "apply_patch", "tool_input": {"command": "*** Begin Patch"}})
         denied = self.call(write)
         self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
-        self.assertIn("read-only", denied["hookSpecificOutput"]["permissionDecisionReason"])
+        self.assertIn("read-only", denied["hookSpecificOutput"]["permissionDecisionReason"] )
 
         role_start = self.event("SubagentStart", session, turn)
         role_start.update({"agent_type": "gatekeeper", "agent_id": "g1"})
@@ -112,6 +121,54 @@ class DirectAndBriefAssistantTests(unittest.TestCase):
         self.assertEqual(self.call(stop), {})
         final = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(final["final_status"], "DIRECT_COMPLETE")
+
+    def test_direct_edit_prefix_is_independently_gated_and_can_mutate(self):
+        self.set_direct_policy(allow_direct_edit_prefix=False, allow_mutations=False)
+        session, turn = "direct-edit-disabled", "direct-edit-disabled-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "direct-edit: fix the typo"
+        output = self.call(start)
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("direct-edit: is disabled", output["reason"])
+        self.assertFalse((self.repo / f".agent-loop/runtime/sessions/{session}.json").exists())
+        self.assertFalse((self.repo / f".agent-loop/runtime/turns/{turn}").exists())
+
+        self.set_direct_policy(allow_direct_edit_prefix=True, allow_mutations=False)
+        session = "direct-edit-enabled"
+        turn = "direct-edit-enabled-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "direct-edit: fix the typo"
+        output = self.call(start)
+        self.assertIn("DIRECT_MODE", output["hookSpecificOutput"]["additionalContext"])
+        state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(state["routing_mode"], "DIRECT")
+        self.assertTrue(state["direct"]["allow_mutations"])
+        self.assertEqual(state["direct"]["via"], "direct-edit")
+        turn_state = json.loads((self.repo / f".agent-loop/runtime/turns/{turn}/turn.json").read_text())
+        self.assertEqual(turn_state["direct"]["via"], "direct-edit")
+        direct_route = json.loads((self.repo / f".agent-loop/runtime/turns/{turn}/direct-route.json").read_text())
+        self.assertTrue(direct_route["allow_mutations"])
+        self.assertEqual(direct_route["via"], "direct-edit")
+
+        write = self.event("PreToolUse", session, turn)
+        write.update({"tool_name": "Write", "tool_input": {"file_path": "scratch.txt", "content": "mutated"}})
+        self.assertEqual(self.call(write), {})
+
+        destructive = self.event("PreToolUse", session, turn)
+        destructive.update({"tool_name": "Bash", "tool_input": {"command": "rm -rf /"}})
+        denied = self.call(destructive)
+        self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("Categorically destructive", denied["hookSpecificOutput"]["permissionDecisionReason"])
+
+        protected = self.event("PreToolUse", session, turn)
+        protected.update({"tool_name": "Write", "tool_input": {"file_path": ".agent-loop/direct-policy.json", "content": "{}"}})
+        denied = self.call(protected)
+        self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("protected loop-control path denied", denied["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_direct_edit_and_direct_routes_remain_disjoint(self):
+        self.assertEqual(self.hook.direct_edit_route("direct-edit: fix the typo"), "fix the typo")
+        self.assertIsNone(self.hook.direct_route("direct-edit: fix the typo"))
 
     def test_brief_prefix_starts_loop_brief_assistant_entry(self):
         session, turn = "brief-entry-session", "brief-entry-turn"

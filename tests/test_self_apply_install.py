@@ -123,12 +123,13 @@ class SelfApplyInstallTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td) / "repo"
             clone_repo_tree(repo)
-            reserved = repo / f"adapters/shared/skills/sop-brief"
-            reserved.mkdir(parents=True)
-            (reserved / "SKILL.md").write_text(
-                "---\nname: sop-brief\ndescription: Reserved.\nuser-invocable: true\n---\n\n# Reserved\n",
-                encoding="utf-8",
-            )
+            for name in ("sop-brief", "sop-direct-edit"):
+                reserved = repo / f"adapters/shared/skills/{name}"
+                reserved.mkdir(parents=True)
+                (reserved / "SKILL.md").write_text(
+                    f"---\nname: {name}\ndescription: Reserved.\nuser-invocable: true\n---\n\n# Reserved\n",
+                    encoding="utf-8",
+                )
 
             module = load_install_module()
             module.SRC = repo
@@ -136,6 +137,9 @@ class SelfApplyInstallTests(unittest.TestCase):
             with self.assertRaises(module.InstallerError) as ctx:
                 installer.should_install_skill("sop-brief")
             self.assertIn("reserved skill name is forbidden: sop-brief", str(ctx.exception))
+            with self.assertRaises(module.InstallerError) as ctx:
+                installer.should_install_skill("sop-direct-edit")
+            self.assertIn("reserved skill name is forbidden: sop-direct-edit", str(ctx.exception))
 
     def test_update_preserves_user_changed_config(self) -> None:
         with tempfile.TemporaryDirectory() as td:

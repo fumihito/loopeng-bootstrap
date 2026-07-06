@@ -66,6 +66,7 @@ LOOP_BRIEF_FIELDS = {
 SCOPE_HASH_FIELDS = ("outcome", "discovery_scope", "authority_envelope", "persistence_contract", "stop_conditions")
 SOP_HEADER_PATTERN = re.compile(r"^([a-z][a-z0-9-]{0,31}):(?!//)[ \t]*(.*)$", re.S)
 DIRECT_HEADER_PATTERN = re.compile(r"^direct:[ \t]*(.*)$", re.S)
+DIRECT_EDIT_HEADER_PATTERN = re.compile(r"^direct-edit:[ \t]*(.*)$", re.S)
 BRIEF_HEADER_PATTERN = re.compile(r"^brief:[ \t]*(.*)$", re.S)
 COMMAND_ROUTE_HEADER_PATTERN = re.compile(r"^route:[ \t]*(.*)$", re.S)
 SOP_ROUTING_MODE = "SOP"
@@ -133,6 +134,7 @@ JOURNAL_ALLOWED_KEYS = {
     "tool_success",
     "trigger",
     "watchdog",
+    "via",
 }
 JOURNAL_FORBIDDEN_KEYS = {
     "arguments",
@@ -555,6 +557,11 @@ def direct_route(prompt: str) -> str | None:
     return match.group(1) if match else None
 
 
+def direct_edit_route(prompt: str) -> str | None:
+    match = DIRECT_EDIT_HEADER_PATTERN.match(prompt)
+    return match.group(1) if match else None
+
+
 def brief_route(prompt: str) -> str | None:
     match = BRIEF_HEADER_PATTERN.match(prompt)
     return match.group(1) if match else None
@@ -572,6 +579,7 @@ def direct_config(root: Path) -> dict[str, Any]:
         "allow_mutations": bool(config.get("allow_mutations", False)),
         "max_prompt_bytes": int(config.get("max_prompt_bytes", 65536)),
         "allow_loop_control_roles": bool(config.get("allow_loop_control_roles", False)),
+        "allow_direct_edit_prefix": bool(config.get("allow_direct_edit_prefix", False)),
     }
 
 
@@ -2176,7 +2184,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
 
     if name == "SessionStart":
         if loop_enabled:
-            message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading brief: prefix starts interactive Loop Brief elicitation via the read-only loop-brief-assistant; the resulting draft is still independently validated by Gatekeeper. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."
+            message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading direct-edit: prefix behaves like direct: but permits mutation for that turn only, when .agent-loop/direct-policy.json sets allow_direct_edit_prefix: true. A strict leading brief: prefix starts interactive Loop Brief elicitation via the read-only loop-brief-assistant; the resulting draft is still independently validated by Gatekeeper. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. Other strict leading <header>: prefixes load the matching sop-<header> skill in isolated SOP mode. All remaining requests enter Gatekeeper. Gatekeeper NEEDS_INPUT activates the read-only loop-brief-assistant, which retrieves reviewed Loop Brief patterns, asks for explicit confirmation or missing fields, and returns a draft to Gatekeeper for independent review. Gatekeeper may also request PATTERN_CAPTURE for a complete brief; accepted proposals are curated by brief-pattern-curator and committed transactionally. Only a trusted READY Gatekeeper report may hand off to Sensemaker. The Loop Brief includes explicit learning_contract and memory_contract fields. Sensemaker retrieves the OKF LLMWiki progressively. After loop mutations, use state-steward and meta-evaluator; accepted durable-memory proposals are committed only by memory-curator through the deterministic Go okfctl transaction. Completed turns are summarized by the deterministic learning observer; use learning-audit: to invoke the read-only learning-auditor. Sanitized OTel records role, skill, tool, and executable names only; arguments and content are excluded."
         else:
             message = "Routing protocol active. A strict leading direct: prefix starts a bounded Gatekeeper-free direct turn. A strict leading frame-<name>: prefix loads the matching human-facing frame skill in isolated FRAME mode. A strict leading route: prefix loads command-route in isolated pre-loop proposal mode. A strict leading sop-<header>: prefix loads the matching SOP skill in isolated SOP mode. Unprefixed prompts pass through unchanged and do not enter Gatekeeper in this profile."
         return emit(add_context(name, message))
@@ -2294,6 +2302,24 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 "command_route.loaded": True,
             }))
             return emit(add_context(name, command_route_context(skill, catalog, route_task)))
+        direct_edit_task = direct_edit_route(prompt)
+        if direct_edit_task is not None:
+            config = direct_config(root)
+            if not config.get("enabled"):
+                return emit(prompt_block(platform, "Direct mode is disabled by .agent-loop/direct-policy.json."))
+            if len(prompt.encode("utf-8")) > int(config.get("max_prompt_bytes", 65536)):
+                return emit(prompt_block(platform, "Direct prompt exceeds max_prompt_bytes."))
+            if not config.get("allow_direct_edit_prefix", False):
+                return emit(prompt_block(platform, "direct-edit: is disabled. Set allow_direct_edit_prefix: true in .agent-loop/direct-policy.json to enable this prefix, then retry."))
+            state = start_turn(root, event, DIRECT_ROUTING_MODE)
+            state["direct"] = {"loaded": True, "allow_mutations": True, "content_logged": False, "via": "direct-edit"}
+            save_runtime(root, event, state)
+            target = turn_dir(root, state)
+            atomic(target / "turn.json", state)
+            atomic(target / "direct-route.json", {"loaded_at": now(), "allow_mutations": True, "content_logged": False, "via": "direct-edit"})
+            journal(target, "direct-edit-started", routing_mode=DIRECT_ROUTING_MODE, allow_mutations=True, via="direct-edit")
+            send_otel(root, "agent.loop.direct.started", telemetry_attributes(event, platform, {"routing.mode": DIRECT_ROUTING_MODE, "direct.allow_mutations": True, "direct.via": "direct-edit", "prompt.content_logged": False}))
+            return emit(add_context(name, "[DIRECT_MODE] The leading direct-edit: prefix selected a bounded Gatekeeper-free turn. Answer the task after the prefix directly. Do not invoke Gatekeeper, Loop Brief Assistant, Sensemaker, State Steward, Meta-Evaluator, Memory Curator, or the autonomous-loop workflow. Direct mode is mutation-allowed for this turn via direct-edit:. Destructive-command, protected-path, LLMWiki, permission, Watchdog, and telemetry controls remain active. [/DIRECT_MODE]"))
         direct_task = direct_route(prompt)
         if direct_task is not None:
             config = direct_config(root)
@@ -2500,8 +2526,9 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             config = direct_config(root)
             if agent in ROLES and not config.get("allow_loop_control_roles", False):
                 return emit(deny(name, f"Loop-control role {agent} is not permitted in direct mode."))
-            if mutation and not config.get("allow_mutations", False):
-                return emit(deny(name, "Direct mode is read-only. Use the autonomous loop or explicitly review direct-policy.json before permitting mutations."))
+            turn_allow_mutations = state.get("direct", {}).get("allow_mutations", config.get("allow_mutations", False))
+            if mutation and not turn_allow_mutations:
+                return emit(deny(name, "Direct mode is read-only. Use direct-edit: (if enabled) or the autonomous loop for mutations."))
             return 0
         if state.get("routing_mode") == FRAME_ROUTING_MODE:
             frame = state.get("frame", {}) if isinstance(state.get("frame"), dict) else {}

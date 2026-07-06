@@ -66,6 +66,8 @@ class SopRoutingTests(unittest.TestCase):
         self.assertEqual(self.hook.brief_route("brief: inspect"), "inspect")
         self.assertEqual(self.hook.brief_route("brief:"), "")
         self.assertIsNone(self.hook.sop_route("direct: inspect"))
+        self.assertEqual(self.hook.direct_edit_route("direct-edit: inspect"), "inspect")
+        self.assertIsNone(self.hook.direct_route("direct-edit: inspect"))
 
     def test_diag_loads_skill_and_bypasses_gatekeeper(self):
         session, turn = "sop-diag-session", "sop-diag-turn"
