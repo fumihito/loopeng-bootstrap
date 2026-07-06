@@ -13,6 +13,7 @@ from pathlib import Path
 from tests._helpers import class_requires_go
 
 KIT = Path(__file__).resolve().parents[1]
+AGENT = "." + "agent-loop"
 
 
 def load_module(path: Path, name: str):
@@ -57,7 +58,9 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         event.update({"agent_type": role, "agent_id": f"agent-{role}", "last_assistant_message": json.dumps(body), "stop_hook_active": False})
         return self.call(event)
 
-    def gatekeeper_ready(self, cadence="immediate"):
+    def gatekeeper_ready(self, cadence="immediate", allowed_paths=None, forbidden=None):
+        allowed_paths = allowed_paths or ["local edits", "tests"]
+        forbidden = forbidden or ["push"]
         return {
             "role": "gatekeeper",
             "verdict": "READY",
@@ -77,7 +80,7 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
             "normalized_loop_brief": {
                 "outcome": "repair the regression",
                 "discovery_scope": ["failing tests"],
-                "authority_envelope": {"allowed": ["local edits", "tests"], "forbidden": ["push"]},
+                "authority_envelope": {"allowed": allowed_paths, "forbidden": forbidden},
                 "evaluation_contract": ["targeted and regression tests pass"],
                 "persistence_contract": ["record turn state"],
                 "learning_contract": {"capture": ["failure patterns"], "validation": "meta-evaluator"},
@@ -194,13 +197,23 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         }
 
     def prepare_scheduler_policy(self):
-        policy_path = self.repo / ".agent-loop/scheduler-policy.json"
+        policy_path = self.repo / (AGENT + "/scheduler-policy.json")
         policy = json.loads(policy_path.read_text(encoding="utf-8"))
-        policy["trigger_command"] = [str(self.repo / ".agent-loop/bin/trigger-dryrun.sh")]
-        policy["notification_command"] = [str(self.repo / ".agent-loop/bin/trigger-dryrun.sh")]
+        policy["trigger_command"] = [str(self.repo / (AGENT + "/bin/trigger-dryrun.sh"))]
+        policy["notification_command"] = [str(self.repo / (AGENT + "/bin/trigger-dryrun.sh"))]
         policy["trigger_command_timeout_seconds"] = 10
         policy_path.write_text(json.dumps(policy, indent=2) + "\n", encoding="utf-8")
         return policy_path
+
+    def prepare_carryover_policy(self, enabled: bool) -> None:
+        policy_path = self.repo / (AGENT + "/policy.json")
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["carryover"] = {
+            "enabled": enabled,
+            "max_hops": 3,
+            "invalidating_prefixes": ["stop", "やめ", "中止", "キャンセル", "別の"],
+        }
+        policy_path.write_text(json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     def reset_scheduler_runtime(self):
         scheduler_runtime = self.repo / ".agent-loop/runtime/scheduler"
@@ -337,6 +350,66 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         last_trigger = json.loads((self.repo / ".agent-loop/runtime/scheduler/last-trigger.json").read_text(encoding="utf-8"))
         self.assertEqual(last_trigger["scheduler_action"], "notified")
 
+
+    def test_carryover_reuses_trusted_ready_turn_and_enforces_envelope(self):
+        self.prepare_carryover_policy(True)
+        session, turn_a, turn_b = "loop-e2e-carryover", "turn-a", "turn-b"
+        self.addCleanup(self.cleanup_turn, turn_a)
+        self.addCleanup(self.cleanup_turn, turn_b)
+
+        self.call({**self.event("UserPromptSubmit", session, turn_a), "prompt": "repair the failing loop"})
+        self.report(session, turn_a, "gatekeeper", self.gatekeeper_ready(allowed_paths=[r"tests/test_loop_e2e_two_turns\.py"]))
+        self.report(session, turn_a, "sensemaker", self.sensemaker())
+        self.report(session, turn_a, "state-steward", self.state_steward())
+        self.report(session, turn_a, "meta-evaluator", self.meta_pass())
+        stop = self.event("Stop", session, turn_a)
+        stop.update({"stop_hook_active": False, "background_tasks": []})
+        self.assertEqual(self.call(stop), {})
+
+        turn_b_prompt = self.call({**self.event("UserPromptSubmit", session, turn_b), "prompt": "continue the same work"})
+        self.assertNotIn("Invoke gatekeeper", json.dumps(turn_b_prompt, ensure_ascii=False))
+        turn_b_dir = self.repo / (AGENT + "/runtime/turns") / turn_b
+        gatekeeper_path = turn_b_dir / "gatekeeper.json"
+        sensemaker_path = turn_b_dir / "sensemaker.json"
+        self.assertTrue(gatekeeper_path.is_file())
+        self.assertTrue(sensemaker_path.is_file())
+        gatekeeper = json.loads(gatekeeper_path.read_text(encoding="utf-8"))
+        sensemaker = json.loads(sensemaker_path.read_text(encoding="utf-8"))
+        self.assertTrue(gatekeeper.get("_carryover"))
+        self.assertEqual(gatekeeper.get("_source_turn_id"), turn_a)
+        self.assertEqual(gatekeeper.get("_carryover_hops"), 1)
+        self.assertEqual(sensemaker.get("_brief_scope_hash"), gatekeeper.get("_brief_scope_hash"))
+        self.assertEqual(sensemaker.get("_source_turn_id"), turn_a)
+
+        inside = self.event("PreToolUse", session, turn_b)
+        inside.update({"tool_name": "apply_patch", "tool_input": {"command": "*** Begin Patch\n*** Update File: tests/test_loop_e2e_two_turns.py\n@@\n+print('carryover ok')\n*** End Patch"}})
+        self.assertEqual(self.call(inside), {})
+
+        outside = self.event("PreToolUse", session, turn_b)
+        outside.update({"tool_name": "apply_patch", "tool_input": {"command": "*** Begin Patch\n*** Update File: README.md\n@@\n+print('outside')\n*** End Patch"}})
+        denied = self.call(outside)
+        self.assertIn("carryover-envelope", json.dumps(denied, ensure_ascii=False))
+
+    def test_carryover_disabled_keeps_fresh_gatekeeper_required(self):
+        self.prepare_carryover_policy(False)
+        session, turn_a, turn_b = "loop-e2e-no-carryover", "turn-a", "turn-b"
+        self.addCleanup(self.cleanup_turn, turn_a)
+        self.addCleanup(self.cleanup_turn, turn_b)
+
+        self.call({**self.event("UserPromptSubmit", session, turn_a), "prompt": "repair the failing loop"})
+        self.report(session, turn_a, "gatekeeper", self.gatekeeper_ready())
+        self.report(session, turn_a, "sensemaker", self.sensemaker())
+        self.report(session, turn_a, "state-steward", self.state_steward())
+        self.report(session, turn_a, "meta-evaluator", self.meta_pass())
+        stop = self.event("Stop", session, turn_a)
+        stop.update({"stop_hook_active": False, "background_tasks": []})
+        self.assertEqual(self.call(stop), {})
+
+        turn_b_prompt = self.call({**self.event("UserPromptSubmit", session, turn_b), "prompt": "continue after rotation"})
+        self.assertIn("Gatekeeper", json.dumps(turn_b_prompt, ensure_ascii=False))
+        turn_b_dir = self.repo / (AGENT + "/runtime/turns") / turn_b
+        self.assertFalse((turn_b_dir / "gatekeeper.json").exists())
+        self.assertFalse((turn_b_dir / "sensemaker.json").exists())
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import tempfile
+import unicodedata
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -62,6 +63,7 @@ LOOP_BRIEF_FIELDS = {
     "outcome", "discovery_scope", "authority_envelope", "evaluation_contract",
     "persistence_contract", "learning_contract", "memory_contract", "stop_conditions", "escalation_contract", "trigger_cadence",
 }
+SCOPE_HASH_FIELDS = ("outcome", "discovery_scope", "authority_envelope", "persistence_contract", "stop_conditions")
 SOP_HEADER_PATTERN = re.compile(r"^([a-z][a-z0-9-]{0,31}):(?!//)[ \t]*(.*)$", re.S)
 DIRECT_HEADER_PATTERN = re.compile(r"^direct:[ \t]*(.*)$", re.S)
 BRIEF_HEADER_PATTERN = re.compile(r"^brief:[ \t]*(.*)$", re.S)
@@ -101,10 +103,17 @@ JOURNAL_ALLOWED_KEYS = {
     "active_turn_id",
     "frame_header",
     "gatekeeper_verdict",
+    "brief_scope_hash",
+    "carryover",
+    "carryover_hops",
+    "carryover_reason",
     "invocation_trigger",
     "learning_state_read",
     "mutation",
     "mutation_epoch",
+    "source_turn_id",
+    "source_scope_hash",
+    "target_turn_id",
     "needs_user_turn",
     "paths",
     "report_content_logged",
@@ -254,6 +263,30 @@ def safe_identity(value: Any) -> str | None:
     if "/" in candidate or "\\" in candidate:
         return None
     return candidate if SAFE_NAME.fullmatch(candidate) else None
+
+
+def canonicalize_json_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return unicodedata.normalize("NFC", value)
+    if isinstance(value, list):
+        return [canonicalize_json_value(item) for item in value]
+    if isinstance(value, dict):
+        return {unicodedata.normalize("NFC", str(key)): canonicalize_json_value(item) for key, item in value.items()}
+    return value
+
+
+def canonical_json_bytes(value: Any) -> bytes:
+    normalized = canonicalize_json_value(value)
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def brief_scope_hash(loop_brief: dict[str, Any]) -> str | None:
+    if not isinstance(loop_brief, dict):
+        return None
+    subset = {field: loop_brief.get(field) for field in SCOPE_HASH_FIELDS if field in loop_brief}
+    if len(subset) != len(SCOPE_HASH_FIELDS):
+        return None
+    return hashlib.sha256(canonical_json_bytes(subset)).hexdigest()
 
 
 def session_path(root: Path, event: dict[str, Any]) -> Path:
@@ -504,6 +537,12 @@ def protected_path_drift(root: Path, state: dict[str, Any], policy: dict[str, An
     changed = sorted(path for path, digest in filtered_baseline.items() if path in filtered_current and filtered_current.get(path) != digest)
     drifted = [f"+{path}" for path in added] + [f"-{path}" for path in removed] + [f"~{path}" for path in changed]
     return drifted
+
+
+def carryover_invalidating_prefixes(policy: dict[str, Any]) -> list[str]:
+    carryover = policy.get("carryover", {}) if isinstance(policy.get("carryover"), dict) else {}
+    prefixes = carryover.get("invalidating_prefixes", ["stop", "やめ", "中止", "キャンセル", "別の"])
+    return [str(prefix).strip() for prefix in prefixes if str(prefix).strip()]
 
 
 def matches(patterns: list[str], text: str) -> bool:
@@ -1134,6 +1173,7 @@ def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTI
         "mutation_epoch": 0, "failures": 0, "action_counts": {}, "stop_continuations": 0,
         "watchdog": {"tripped": False, "reasons": []}, "routing_mode": routing_mode,
     }
+    prior_runtime = runtime(root, event) if routing_mode == LOOP_ROUTING_MODE else {}
     prior_gatekeeper = load(gatekeeper_session_path(root, event), {}) if routing_mode == LOOP_ROUTING_MODE else {}
     prior_assistant = load(loop_brief_assistant_session_path(root, event), {}) if routing_mode == LOOP_ROUTING_MODE else {}
     state["prior_gatekeeper_available"] = bool(prior_gatekeeper)
@@ -1156,6 +1196,42 @@ def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTI
         atomic(target / "prior-loop-brief-assistant.json", prior_assistant)
         if isinstance(prior_assistant.get("draft_loop_brief"), dict):
             atomic(target / "prior-loop-brief-draft.json", prior_assistant.get("draft_loop_brief"))
+    policy = load(root / ("." + "agent-loop") / "policy.json", {})
+    carryover_policy = policy.get("carryover", {}) if isinstance(policy.get("carryover"), dict) else {}
+    prompt = str(event.get("prompt", ""))
+    if routing_mode == LOOP_ROUTING_MODE and entry_role_override is None and bool(carryover_policy.get("enabled", False)):
+        invalidating_prefixes = carryover_invalidating_prefixes(policy)
+        strict_route = bool(direct_route(prompt) or brief_route(prompt) or frame_route(prompt) or sop_route(prompt))
+        invalidated = any(prompt.lstrip().startswith(prefix) for prefix in invalidating_prefixes)
+        if not strict_route and not invalidated and not protected_path_drift(root, state, policy):
+            prior_turn_id = str(prior_runtime.get("turn_id") or "").strip()
+            if prior_turn_id:
+                prior_turn_dir = turn_dir(root, {"turn_id": prior_turn_id})
+                gate = load(prior_turn_dir / "gatekeeper.json", {})
+                gate_hash = gate.get("_brief_scope_hash") if isinstance(gate, dict) else None
+                if gate.get("verdict") == "READY" and gate.get("_trusted_subagent") and isinstance(gate_hash, str) and gate_hash:
+                    hops = int(gate.get("_carryover_hops", 0) or 0) + 1
+                    max_hops = int(carryover_policy.get("max_hops", 3) or 3)
+                    if hops <= max_hops:
+                        carried_gate = dict(gate)
+                        carried_gate.update({"_carryover": True, "_source_turn_id": prior_turn_id, "_carryover_hops": hops})
+                        atomic(target / "gatekeeper.json", carried_gate)
+                        sense = load(prior_turn_dir / "sensemaker.json", {})
+                        sense_hash = sense.get("_brief_scope_hash") if isinstance(sense, dict) else None
+                        sense_copied = False
+                        if sense.get("_trusted_subagent") and sense_hash == gate_hash:
+                            carried_sense = dict(sense)
+                            carried_sense.update({"_carryover": True, "_source_turn_id": prior_turn_id, "_carryover_hops": hops})
+                            atomic(target / "sensemaker.json", carried_sense)
+                            sense_copied = True
+                        state["carryover"] = {
+                            "enabled": True,
+                            "source_turn_id": prior_turn_id,
+                            "carryover_hops": hops,
+                            "source_scope_hash": gate_hash,
+                            "sensemaker_copied": sense_copied,
+                        }
+                        journal(target, "ready-carryover", source_turn_id=prior_turn_id, target_turn_id=state.get("turn_id"), brief_scope_hash=gate_hash, carryover_hops=hops, carryover_reason="gatekeeper")
     atomic(target / "turn.json", state)
     return state
 
@@ -2278,6 +2354,9 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
         state = start_turn(root, event, LOOP_ROUTING_MODE)
         if state.get("entry_role") == LOOP_BRIEF_ASSISTANT_ROLE:
             return emit(add_context(name, "This message answers outstanding Loop Brief Assistant questions. Invoke loop-brief-assistant before Gatekeeper, using prior-loop-brief-assistant.json and prior-gatekeeper.json. Merge only explicit user answers. If the draft becomes READY_FOR_REVIEW, return it to Gatekeeper; otherwise ask only the remaining minimal questions. Product mutations remain blocked."))
+        carryover = state.get("carryover") if isinstance(state.get("carryover"), dict) else {}
+        if carryover.get("enabled"):
+            return emit(add_context(name, "This message continues a trusted carryover turn. Use the carried Gatekeeper and Sensemaker reports, stay within the carried authority envelope, and refresh Gatekeeper only if the scope changes or carryover is refused."))
         prior = " A prior Gatekeeper report is available in the current turn directory; use it as context and merge only explicit user-backed information." if state.get("prior_gatekeeper_available") else ""
         return emit(add_context(name, "No direct or SOP header was detected. Treat the user's message as input to Gatekeeper. Invoke the gatekeeper skill before every other control role. Gatekeeper must return READY, NEEDS_INPUT, or REJECT. NEEDS_INPUT must hand off to loop-brief-assistant; the Assistant retrieves reviewed input patterns but may not silently apply them. A READY brief may request PATTERN_CAPTURE before Sensemaker. Durable memory remains write-protected and may be promoted only by memory-curator or brief-pattern-curator through deterministic Go transactions." + prior))
 
@@ -2353,6 +2432,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
 
     if name == "PreToolUse":
         text = tool_text(event)
+        state["last_tool_text"] = text
         mutation = is_mutation(event, policy)
         agent = str(event.get("agent_type") or "")
         tool_name = safe_identity(event.get("tool_name"))
@@ -2604,6 +2684,12 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
                 return emit(block("brief-pattern-curator COMMIT operations must cover every and only accepted pattern proposal."))
             if body.get("status") == "NO_CHANGES" and accepted:
                 return emit(block("brief-pattern-curator cannot return NO_CHANGES when Gatekeeper accepted pattern proposals."))
+        if role == "sensemaker":
+            gatekeeper_report = load(target / "gatekeeper.json", {})
+            if gatekeeper_report.get("_brief_scope_hash"):
+                body["_brief_scope_hash"] = gatekeeper_report.get("_brief_scope_hash")
+        if role == "gatekeeper" and body.get("verdict") == "READY":
+            body["_brief_scope_hash"] = brief_scope_hash(body.get("normalized_loop_brief", {}))
         body.update({"_trusted_subagent": True, "_recorded_at": now(), "_agent_id": event.get("agent_id"), "_agent_type": role, "_mutation_epoch": state.get("mutation_epoch", 0)})
         atomic(target / ROLES[role][1], body)
         agent_registry_update(root, event.get("agent_id"), status="persisted", persisted_into_turn_id=target.name)

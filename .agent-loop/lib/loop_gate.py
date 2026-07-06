@@ -40,6 +40,10 @@ def artifact_summary(path: Path) -> dict[str, Any]:
         "verdict": payload.get("verdict") if isinstance(payload, dict) else None,
         "recorded_at": payload.get("_recorded_at") if isinstance(payload, dict) else None,
         "trusted_subagent": bool(payload.get("_trusted_subagent")) if isinstance(payload, dict) else False,
+        "carryover": bool(payload.get("_carryover")) if isinstance(payload, dict) else False,
+        "source_turn_id": payload.get("_source_turn_id") if isinstance(payload, dict) else None,
+        "carryover_hops": payload.get("_carryover_hops") if isinstance(payload, dict) else None,
+        "brief_scope_hash": payload.get("_brief_scope_hash") if isinstance(payload, dict) else None,
         "path": path,
     }
 
@@ -93,6 +97,47 @@ def agent_registry_entries(root: Path, ttl_seconds: int | None = None) -> list[d
     return entries
 
 
+def extracted_path_tokens(text: str) -> list[str]:
+    normalized = text.replace("\\", "/")
+    tokens = [match.group(0).strip(".,:;\"'`()[]{}<>") for match in re.finditer(r"(?<![A-Za-z0-9_./-])(?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+", normalized)]
+    return [token for token in tokens if token]
+
+
+def carryover_envelope_patterns(envelope: Any) -> tuple[str, list[str]]:
+    if isinstance(envelope, str):
+        pattern = envelope.strip()
+        return ("authority_envelope", [pattern] if pattern else [])
+    if not isinstance(envelope, dict):
+        return ("authority_envelope.allowed", [])
+    for key in ("allowed", "paths", "path_patterns", "include", "includes"):
+        values = envelope.get(key)
+        if isinstance(values, str):
+            patterns = [values.strip()] if values.strip() else []
+        elif isinstance(values, (list, tuple, set)):
+            patterns = [str(item).strip() for item in values if str(item).strip()]
+        else:
+            patterns = []
+        if patterns:
+            return (f"authority_envelope.{key}", patterns)
+    return ("authority_envelope.allowed", [])
+
+
+def carryover_envelope_allows(gate: dict[str, Any], text: str) -> tuple[bool, str | None]:
+    if not isinstance(gate, dict) or not gate.get("_carryover"):
+        return True, None
+    brief = gate.get("normalized_loop_brief") if isinstance(gate.get("normalized_loop_brief"), dict) else {}
+    set_name, patterns = carryover_envelope_patterns(brief.get("authority_envelope"))
+    tokens = extracted_path_tokens(text)
+    if not patterns:
+        return False, set_name
+    if not tokens:
+        return False, set_name
+    for token in tokens:
+        if not any(re.search(pattern, token, re.I | re.M) for pattern in patterns):
+            return False, set_name
+    return True, None
+
+
 def mutation_gate_check(root: Path, state: dict[str, Any], policy: dict[str, Any]) -> dict[str, Any]:
     turn_id = str(state.get("turn_id") or "").strip() or "unknown"
     target = turn_path(root, turn_id)
@@ -123,7 +168,8 @@ def mutation_gate_check(root: Path, state: dict[str, Any], policy: dict[str, Any
         }
     verdict = gate.get("verdict") if isinstance(gate, dict) else None
     trusted = bool(gate.get("_trusted_subagent")) if isinstance(gate, dict) else False
-    if trusted and verdict == "READY":
+    carryover_allowed, carryover_reason = carryover_envelope_allows(gate, str(state.get("last_tool_text") or state.get("tool_text") or ""))
+    if trusted and verdict == "READY" and carryover_allowed:
         return {
             "allowed": True,
             "reason": "PASS",
@@ -139,6 +185,17 @@ def mutation_gate_check(root: Path, state: dict[str, Any], policy: dict[str, Any
         state_bits.append("not trusted")
     if verdict != "READY":
         state_bits.append(f"verdict={verdict or 'missing'}")
+    if trusted and verdict == "READY" and not carryover_allowed and carryover_reason:
+        return {
+            "allowed": False,
+            "reason": f"carryover-envelope:{carryover_reason}",
+            "turn_id": turn_id,
+            "artifact": "gatekeeper.json",
+            "artifact_present": True,
+            "verdict": verdict,
+            "recorded_at": gate.get("_recorded_at") if isinstance(gate, dict) else None,
+            "trusted_subagent": trusted,
+        }
     detail = " and ".join(state_bits) if state_bits else "not READY"
     return {
         "allowed": False,

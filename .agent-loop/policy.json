@@ -85,5 +85,16 @@
       "RUNNING",
       "ACTIVE"
     ]
+  },
+  "carryover": {
+    "enabled": false,
+    "max_hops": 3,
+    "invalidating_prefixes": [
+      "stop",
+      "やめ",
+      "中止",
+      "キャンセル",
+      "別の"
+    ]
   }
 }

@@ -346,7 +346,12 @@ def render_gate_text(model: dict[str, Any]) -> str:
     lines.append(f"entry_role: {model.get('entry_role')}")
     for label in ("gatekeeper", "sensemaker", "prior_gatekeeper"):
         item = model.get(label) if isinstance(model.get(label), dict) else {}
-        lines.append(f"{label}: present={item.get('present')} verdict={item.get('verdict')} recorded_at={item.get('recorded_at')}")
+        line = f"{label}: present={item.get('present')} verdict={item.get('verdict')} recorded_at={item.get('recorded_at')}"
+        if item.get("carryover"):
+            line += f" carryover=True source_turn_id={item.get('source_turn_id')} carryover_hops={item.get('carryover_hops')}"
+            if item.get("brief_scope_hash"):
+                line += f" brief_scope_hash={item.get('brief_scope_hash')}"
+        lines.append(line)
     registry = model.get("registry") if isinstance(model.get("registry"), list) else []
     if registry:
         lines.append("registry pending:")

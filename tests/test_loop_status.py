@@ -149,6 +149,15 @@ def load_gate_helper():
     return module
 
 
+def load_hook_helper():
+    helper_path = KIT / (("." + "agent-loop") + "/hooks/loop_hook.py")
+    spec = importlib.util.spec_from_file_location("loop_hook_test_helper", helper_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def write_session(repo: Path, session_id: str, turn_id: str, *, routing_mode: str = "LOOP", entry_role: str = "gatekeeper") -> None:
     session_dir = repo / (("." + "agent-loop")) / "runtime" / "sessions"
     session_dir.mkdir(parents=True, exist_ok=True)
@@ -313,6 +322,71 @@ class LoopStatusTests(unittest.TestCase):
             self.assertEqual(gate_line2, "mutation gate: PASS")
             self.assertTrue(ready["allowed"])
             self.assertIn("gatekeeper: present=True", result2.stdout)
+
+    def test_carryover_provenance_rendered_in_gate_view(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            copy_policy_files(repo)
+            write_turn(repo, "turn-01", started_at="2026-07-01T00:00:00+00:00", completed_at="2026-07-01T00:10:00+00:00", final_status="PASS", validation_ok=True, handoff_ready=True)
+            turn_dir = repo / ("." + "agent-loop") / "runtime" / "turns" / "turn-01"
+            write_json(turn_dir / "gatekeeper.json", {
+                "role": "gatekeeper",
+                "verdict": "READY",
+                "mode": "AUTONOMOUS_LOOP",
+                "condition_checklist": {
+                    "outcome": True,
+                    "discovery_scope": True,
+                    "authority_envelope": True,
+                    "evaluation_contract": True,
+                    "persistence_contract": True,
+                    "learning_contract": True,
+                    "memory_contract": True,
+                    "stop_conditions": True,
+                    "escalation_contract": True,
+                    "trigger_cadence": True,
+                },
+                "normalized_loop_brief": {
+                    "outcome": "repair",
+                    "discovery_scope": ["tests"],
+                    "authority_envelope": {"allowed": ["tests/test_loop_status.py"], "forbidden": ["push"]},
+                    "evaluation_contract": ["PASS"],
+                    "persistence_contract": ["record"],
+                    "learning_contract": {"capture": ["carryover"]},
+                    "memory_contract": {"format": "OKF 0.1", "bundle": "llmwiki", "eligible": ["carryover"], "excluded": [], "promoter": "memory-curator"},
+                    "stop_conditions": ["PASS"],
+                    "escalation_contract": ["conflict"],
+                    "trigger_cadence": "immediate",
+                },
+                "missing_conditions": [],
+                "ambiguities": [],
+                "questions_to_user": [],
+                "risk_class": "low",
+                "rejection_reasons": [],
+                "handoff_to_loop_brief_assistant": False,
+                "assistant_handoff_reason": "NONE",
+                "handoff_to_sensemaker": "Frame.",
+                "brief_pattern_directive": {"action": "NONE", "reason": "not requested"},
+                "brief_pattern_assessment": {"accepted_proposal_ids": [], "rejected_proposal_ids": [], "challenged_proposal_ids": [], "duplicate_pattern_ids": [], "required_corrections": []},
+                "validation_commands": [],
+                "_trusted_subagent": True,
+                "_recorded_at": "2026-07-01T00:00:01+00:00",
+                "_carryover": True,
+                "_source_turn_id": "turn-source",
+                "_carryover_hops": 2,
+                "_brief_scope_hash": "abc123",
+            })
+            write_session(repo, "session-01", "turn-01")
+            result = subprocess.run([sys.executable, str(SCRIPT), "--repo", str(repo), "--gate"], text=True, capture_output=True, check=True)
+            self.assertIn("carryover=True source_turn_id=turn-source carryover_hops=2", result.stdout)
+            self.assertIn("brief_scope_hash=abc123", result.stdout)
+
+    def test_brief_scope_hash_is_canonicalized(self):
+        helper = load_hook_helper()
+        base = json.loads('{"outcome":"repair","discovery_scope":["tests"],"authority_envelope":{"allowed":["tests/test_loop_status.py"],"forbidden":["push"]},"persistence_contract":["record"],"stop_conditions":["PASS"]}')
+        reordered = json.loads('{"stop_conditions":["PASS"],"authority_envelope":{"forbidden":["push"],"allowed":["tests/test_loop_status.py"]},"persistence_contract":["record"],"discovery_scope":["tests"],"outcome":"repair"}')
+        self.assertEqual(helper.brief_scope_hash(base), helper.brief_scope_hash(reordered))
+        changed = json.loads('{"outcome":"repair","discovery_scope":["tests"],"authority_envelope":{"allowed":["tests/test_loop_status.py"],"forbidden":["push"]},"persistence_contract":["record"],"stop_conditions":["STOP"]}')
+        self.assertNotEqual(helper.brief_scope_hash(base), helper.brief_scope_hash(changed))
 
 if __name__ == "__main__":
     unittest.main()
