@@ -111,6 +111,7 @@ JOURNAL_ALLOWED_KEYS = {
     "learning_state_read",
     "mutation",
     "mutation_epoch",
+    "path_count",
     "source_turn_id",
     "source_scope_hash",
     "target_turn_id",
@@ -1038,6 +1039,50 @@ def extracted_path_tokens(text: str) -> list[str]:
     normalized = text.replace("\\", "/")
     tokens = [match.group(0).strip(".,:;\"'`()[]{}<>") for match in PATH_TOKEN_RE.finditer(normalized)]
     return [token for token in tokens if token]
+
+
+MUTATION_PATH_FIELDS = ("file_path", "path", "notebook_path")
+
+
+def mutation_target_paths(event: dict[str, Any], root: Path) -> list[Path] | None:
+    """Resolve the mutation target path(s) for repo-scope checking.
+
+    Returns None when the tool type has no reliably determinable single target.
+    Returns [] when the tool is path-bearing but no usable path field is present.
+    """
+    name = str(event.get("tool_name") or "")
+    tool_input = event.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return None
+    cwd = Path(event.get("cwd") or os.getcwd())
+
+    if name in {"Write", "Edit", "NotebookEdit"}:
+        raw = next((tool_input[key] for key in MUTATION_PATH_FIELDS if isinstance(tool_input.get(key), str)), None)
+        if not raw:
+            return []
+        candidate = Path(raw)
+        resolved = (candidate if candidate.is_absolute() else cwd / candidate).resolve()
+        return [resolved]
+
+    if name == "apply_patch":
+        raw = tool_input.get("input") if isinstance(tool_input.get("input"), str) else tool_text(event)
+        headers = re.findall(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$", raw, re.M)
+        if not headers:
+            return []
+        resolved: list[Path] = []
+        for header in headers:
+            candidate = Path(header.strip())
+            resolved.append((candidate if candidate.is_absolute() else cwd / candidate).resolve())
+        return resolved
+
+    return None
+
+
+def all_paths_outside_root(paths: list[Path] | None, root: Path) -> bool:
+    if not paths:
+        return False
+    resolved_root = root.resolve()
+    return all(not path.is_relative_to(resolved_root) for path in paths)
 
 
 def protected(policy: dict[str, Any], text: str) -> str | None:
@@ -2487,15 +2532,19 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             return emit(deny(name, "Gatekeeper has not returned READY. Only Gatekeeper or the Gatekeeper-triggered Loop Brief Assistant may inspect the request at this stage."))
         if mutation and agent in ROLES:
             return emit(deny(name, f"Control role {agent} is read-only and may not mutate files or external state."))
-        if mutation and policy.get("require_gatekeeper_before_mutation", True):
+        mutation_paths = mutation_target_paths(event, root)
+        out_of_repo_mutation = mutation and all_paths_outside_root(mutation_paths, root)
+        if out_of_repo_mutation:
+            journal(target, "mutation-out-of-repo-scope", tool_name=tool_name, path_count=len(mutation_paths or []))
+        if mutation and not out_of_repo_mutation and policy.get("require_gatekeeper_before_mutation", True):
             gate_check = mutation_gate_check(root, state, policy)
             if not gate_check["allowed"]:
                 return emit(deny(name, gate_check["reason"]))
-        if mutation and policy.get("require_sensemaker_before_mutation", True):
+        if mutation and not out_of_repo_mutation and policy.get("require_sensemaker_before_mutation", True):
             report = load(target / "sensemaker.json", {})
             if not report.get("_trusted_subagent"):
                 return emit(deny(name, "No trusted Sensemaker report exists for this turn. Invoke the sensemaker skill after Gatekeeper READY."))
-        if mutation and policy.get("require_integrator_before_mutation", False):
+        if mutation and not out_of_repo_mutation and policy.get("require_integrator_before_mutation", False):
             report = load(target / "integrator.json", {})
             if not report.get("_trusted_subagent"):
                 return emit(deny(name, "No trusted Integrator report exists for this turn. Invoke the integrator skill after Sensemaker and before mutation."))

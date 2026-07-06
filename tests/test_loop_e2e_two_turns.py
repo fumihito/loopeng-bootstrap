@@ -411,5 +411,71 @@ class LoopE2ETwoTurnTests(unittest.TestCase):
         self.assertFalse((turn_b_dir / "gatekeeper.json").exists())
         self.assertFalse((turn_b_dir / "sensemaker.json").exists())
 
+    def test_out_of_repo_mutations_bypass_repo_gate_but_keep_global_denials(self):
+        with tempfile.TemporaryDirectory() as td:
+            outside_home = Path(td) / "home"
+            outside_home.mkdir()
+            outside_root = outside_home / "outside.md"
+            outside_root.write_text("outside", encoding="utf-8")
+            gatekeeper_missing = "No trusted READY Gatekeeper report exists for turn scope-turn: gatekeeper.json is missing. Run: python3 " + "." + "agent-loop/bin/loop_status.py --gate"
+
+            session, turn = "scope-session", "scope-turn"
+            self.addCleanup(self.cleanup_turn, turn)
+
+            write_outside = self.event("PreToolUse", session, turn)
+            write_outside.update({"tool_name": "Write", "tool_input": {"file_path": str(outside_root), "content": "changed"}})
+            self.assertEqual(self.call(write_outside), {})
+
+            inside = self.repo / "note.txt"
+            inside.write_text("inside", encoding="utf-8")
+            write_inside = self.event("PreToolUse", session, turn)
+            write_inside.update({"tool_name": "Write", "tool_input": {"file_path": "note.txt", "content": "changed"}})
+            denied = self.call(write_inside)
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecisionReason"], gatekeeper_missing)
+
+            inside_target = self.repo / "linked-target.md"
+            inside_target.write_text("link", encoding="utf-8")
+            external_link = outside_home / "linked-inside.md"
+            if external_link.exists() or external_link.is_symlink():
+                external_link.unlink()
+            external_link.symlink_to(inside_target)
+            symlink_write = self.event("PreToolUse", session, turn)
+            symlink_write.update({"tool_name": "Write", "tool_input": {"file_path": str(external_link), "content": "changed"}})
+            denied = self.call(symlink_write)
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecisionReason"], gatekeeper_missing)
+
+            bash = self.event("PreToolUse", session, turn)
+            bash.update({"tool_name": "Bash", "tool_input": {"command": "echo hi > /tmp/outside.txt"}})
+            denied = self.call(bash)
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecisionReason"], gatekeeper_missing)
+
+            destructive = self.event("PreToolUse", session, turn)
+            destructive.update({"tool_name": "Bash", "tool_input": {"command": "rm -rf /"}})
+            denied = self.call(destructive)
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertIn("Categorically destructive", denied["hookSpecificOutput"]["permissionDecisionReason"])
+
+            mixed = self.event("PreToolUse", session, turn)
+            mixed.update({"tool_name": "apply_patch", "tool_input": {"command": """*** Begin Patch
+*** Update File: note.txt
+@@
++inside
+*** Update File: /tmp/outside-note.txt
+@@
++outside
+*** End Patch"""}})
+            denied = self.call(mixed)
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecisionReason"], gatekeeper_missing)
+
+            missing_path = self.event("PreToolUse", session, turn)
+            missing_path.update({"tool_name": "Write", "tool_input": {"content": "changed"}})
+            denied = self.call(missing_path)
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecisionReason"], gatekeeper_missing)
+
 if __name__ == "__main__":
     unittest.main()
