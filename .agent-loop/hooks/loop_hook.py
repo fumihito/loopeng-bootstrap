@@ -2360,9 +2360,9 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             tool_input_contains(event.get("tool_input"), fragment)
             for fragment in ("state/learning", "learning-index", "learning-health", "learning-observation", "state/learning/turns")
         )
-        if matches(policy.get("deny_command_patterns", []), text):
+        if tool_name == "Bash" and matches(policy.get("deny_command_patterns", []), text):
             return emit(deny(name, "Categorically destructive command denied."))
-        if matches(policy.get("high_risk_command_patterns", []), text):
+        if tool_name == "Bash" and matches(policy.get("high_risk_command_patterns", []), text):
             return emit(deny(name, "High-risk operation denied. Use a human-controlled process for any separately approved operation."))
         if mutation and touches_memory_root(root, text):
             return emit(deny(name, "Direct mutation of the OKF LLMWiki is denied. Durable memory may be changed only by a trusted memory-curator or brief-pattern-curator report through deterministic okfctl apply-report."))
