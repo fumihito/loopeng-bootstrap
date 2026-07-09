@@ -132,7 +132,7 @@ class SopRoutingTests(unittest.TestCase):
         self.assertIn("Required skill: command-route", context)
         self.assertIn("Routing mode: COMMAND_ROUTE", context)
         self.assertIn("candidate_shortlist:", context)
-        self.assertIn("Choose this when you need a phased delivery plan that includes decisions, verification, and the next handoff.", context)
+        self.assertIn("Choose this when the commitment is already made and the work needs phases, verification, and the next handoff.", context)
         state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
         self.assertEqual(state["routing_mode"], "COMMAND_ROUTE")
         self.assertTrue(state["command_route"]["loaded"])
@@ -160,6 +160,39 @@ class SopRoutingTests(unittest.TestCase):
         self.assertTrue(final_state["frame"]["loaded"])
         self.assertEqual(final_state["frame"]["required_skill"], "frame-plandev")
         self.assertEqual(final_state["command_route"]["selected_frame"], "frame-plandev")
+        self.assertTrue(final_state["command_route"]["frame_loaded"])
+
+    def test_route_loads_frame_decision_making_for_commitment_choice(self):
+        session, turn = "route-decision-session", "route-decision-turn"
+        start = self.event("UserPromptSubmit", session, turn)
+        start["prompt"] = "route: decide whether we should commit to the rollout"
+        output = self.call(start, "claude")
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Required skill: command-route", context)
+
+        report = self.event("Stop", session, turn)
+        report.update({
+            "background_tasks": [],
+            "last_assistant_message": json.dumps(self.command_route_body(
+                [
+                    {"frame": "frame-decision-making", "confidence": 0.9, "reason": "commitment needs a decision first"},
+                    {"frame": "frame-plandev", "confidence": 0.5, "reason": "delivery would come later"},
+                ],
+                "frame-decision-making",
+                False,
+                "the prompt asks for a commitment decision",
+                0.9,
+            )),
+        })
+        routed = self.call(report, "claude")
+        routed_context = routed["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Required skill: frame-decision-making", routed_context)
+        self.assertIn("Routing mode: FRAME", routed_context)
+        final_state = json.loads((self.repo / f".agent-loop/runtime/sessions/{session}.json").read_text())
+        self.assertEqual(final_state["routing_mode"], "FRAME")
+        self.assertTrue(final_state["frame"]["loaded"])
+        self.assertEqual(final_state["frame"]["required_skill"], "frame-decision-making")
+        self.assertEqual(final_state["command_route"]["selected_frame"], "frame-decision-making")
         self.assertTrue(final_state["command_route"]["frame_loaded"])
 
     def test_route_needs_user_turn_records_fallback(self):
@@ -373,6 +406,71 @@ weight = 1
             )
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("must avoid one of", proc.stdout)
+
+    def test_routing_hints_lint_flags_planning_commitment_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "frame-decision-making").mkdir(parents=True)
+            (root / "frame-plandev").mkdir(parents=True)
+            (root / "frame-decision-making/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-decision-making"
+priority = 85
+summary = "commitment decisions"
+
+[[prefer]]
+phrase = "commitment decision"
+aliases = ["決定", "コミット"]
+weight = 4
+
+[[avoid]]
+phrase = "phased delivery plan"
+aliases = ["段取り", "フェーズ"]
+weight = -4
+
+[[signals]]
+phrase = "見直し"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            (root / "frame-plandev/routing.md").write_text(
+                """# Routing hints
+
+```route-hints-v1
+schema = "routing-hints/v1"
+frame = "frame-plandev"
+priority = 90
+summary = "phased planning"
+
+[[prefer]]
+phrase = "phased delivery plan"
+aliases = ["段取り", "フェーズ"]
+weight = 4
+
+[[avoid]]
+phrase = "dependency DAG design"
+aliases = ["依存関係"]
+weight = -4
+
+[[signals]]
+phrase = "段取り"
+weight = 1
+```
+""",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, str(KIT / "utils/routing_hints_lint.py"), "--root", str(root)],
+                capture_output=True,
+                text=True,
+            )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("frame-decision-making", proc.stdout)
 
     def test_routing_hints_lint_flags_missing_japanese_term(self):
         with tempfile.TemporaryDirectory() as tmp:

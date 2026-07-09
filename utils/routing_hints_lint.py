@@ -27,6 +27,7 @@ CLUSTERS: dict[str, tuple[str, ...]] = {
         "frame-research-arch",
     ),
     "planning": (
+        "frame-decision-making",
         "frame-plandev",
         "frame-plantask",
         "frame-smeac",
@@ -54,6 +55,8 @@ PAIR_RULES: dict[str, tuple[tuple[str, str], ...]] = {
         ("frame-research", "frame-research-arch"),
     ),
     "planning": (
+        ("frame-decision-making", "frame-plandev"),
+        ("frame-decision-making", "frame-smeac"),
         ("frame-plandev", "frame-plantask"),
         ("frame-plandev", "frame-smeac"),
         ("frame-plantask", "frame-smeac"),
@@ -101,7 +104,10 @@ def iter_routing_files(root: Path) -> list[Path]:
     for path in sorted(root.rglob("routing.md")):
         if not path.is_file():
             continue
-        if ".git" in path.relative_to(root).parts:
+        rel = path.relative_to(root)
+        if ".git" in rel.parts:
+            continue
+        if rel.parts and rel.parts[0] in {"skills", ".agents", ".claude"}:
             continue
         files.append(path)
     return files

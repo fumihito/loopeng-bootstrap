@@ -16,6 +16,11 @@ phrase = "phased delivery plan"
 aliases = ["段取り", "フェーズ", "リリースまで"]
 weight = -4
 
+[[avoid]]
+phrase = "commitment decision"
+aliases = ["決定", "コミット", "見直し"]
+weight = -4
+
 [[good_for]]
 phrase = "source reality summary"
 aliases = ["状況整理", "要点整理"]
@@ -24,6 +29,11 @@ weight = 2
 [[bad_for]]
 phrase = "dependency DAG design"
 aliases = ["依存関係", "順番", "フロー図"]
+weight = -2
+
+[[bad_for]]
+phrase = "phased delivery checkpoint"
+aliases = ["段取り", "フェーズ"]
 weight = -2
 
 [[signals]]

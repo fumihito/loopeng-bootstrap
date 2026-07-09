@@ -10,6 +10,8 @@ Planning frame for multi-step delivery work. It helps a human turn a request int
 
 This is the human-facing replacement for the old plandev orchestration shape. Use it to keep delivery work explicit about scope, phase boundaries, verification, blockers, and handoff.
 
+It assumes the commitment is already chosen. If the work still needs a decision about whether to commit, use `frame-decision-making` first.
+
 ## When to use
 
 - You need to plan a change across multiple steps
@@ -17,6 +19,13 @@ This is the human-facing replacement for the old plandev orchestration shape. Us
 - You need to decide what to do first, what to defer, and what to test
 - A decision is missing and should be called out before work starts
 - You need a plan that can survive interruption and be resumed later
+
+## When NOT to use
+
+- The remaining question is whether to commit at all -> `frame-decision-making`
+- The work is mainly dependency order rather than phased delivery -> `frame-plantask`
+- The input already exists and only needs compression into a brief -> `frame-smeac`
+- The task is to compare architecture choices before choosing -> `frame-research-arch`
 
 ## Workflow
 
@@ -31,6 +40,7 @@ This is the human-facing replacement for the old plandev orchestration shape. Us
 ## Planning rules
 
 - Do not treat planning as implementation
+- Do not use this frame to decide whether to commit; use `frame-decision-making` first
 - Do not skip verification
 - Do not hide unresolved decisions
 - If the work spans design and delivery, keep the design assumptions visible
@@ -58,6 +68,7 @@ Finish when the outcome is defined, every phase has verification, blockers are n
 
 ## Adjacent frames
 
+- Use `frame-decision-making` when the open question is the commitment itself.
 - Use `frame-plantask` when the main work is making dependencies and ordering explicit.
 - Use `frame-smeac` when the plan already exists and needs compression into a handoffable brief.
 - Use `frame-first-principles` when the plan still rests on shaky assumptions that need decomposition first.
