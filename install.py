@@ -216,7 +216,7 @@ class Installer:
             if not path.is_file() or path.is_symlink():
                 continue
             name = path.parent.name
-            if self.profile == PROFILE_ROUTING and name in LOOP_ONLY_SKILLS:
+            if not self.should_install_skill(name):
                 continue
             names.append(name)
         return names
@@ -224,7 +224,7 @@ class Installer:
     def should_install_skill(self, skill_name: str) -> bool:
         if skill_name in {'sop-brief', 'sop-direct-edit'}:
             raise InstallerError(f'reserved skill name is forbidden: {skill_name}')
-        return not (self.profile == PROFILE_ROUTING and skill_name in LOOP_ONLY_SKILLS)
+        return skill_name.startswith('frame-')
 
     def destination_rel(self, path: Path) -> str:
         return path.relative_to(self.repo).as_posix()
@@ -686,21 +686,17 @@ class Installer:
         if self.profile == PROFILE_FULL:
             paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
         paths.extend(self.repo / rel for rel in [
-            '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
-            '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
-            '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
-            '.agent-loop/docs/DIRECT_MODE.md',
-            '.agent-loop/docs/COMMAND_ROUTING.md',
             '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
             '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
-            '.agent-loop/docs/SOP_ROUTING.md',
             '.agent-loop/docs/LLM_ASSISTED_INSTALL.md',
             '.agent-loop/docs/MERGE_RULES.md',
             '.agent-loop/docs/SHARED_LAYOUTS.md',
             '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
             '.agent-loop/docs/ARCHITECTURE.md',
-            '.agent-loop/docs/LEARNING_OBSERVABILITY.md',
             '.agent-loop/docs/OKF_LLMWIKI.md',
+            '.agent-loop/docs/INSTALL.md',
+            '.agent-loop/docs/RELEASE_AUDIT.md',
+            '.agent-loop/docs/RUN_REPORT.md',
             '.agent-loop/templates/LOOP_BRIEF.md',
             '.agent-loop/templates/OKF_CONCEPT.md',
             '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md',
@@ -1462,21 +1458,17 @@ class Installer:
         required_files = [
             *self.runtime_manifest_paths(),
             '.agent-loop/runtime/install-manifest.json',
-            '.agent-loop/docs/GATEKEEPER_PROTOCOL.md',
-            '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md',
-            '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md',
-            '.agent-loop/docs/DIRECT_MODE.md',
-            '.agent-loop/docs/COMMAND_ROUTING.md',
             '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
             '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
-            '.agent-loop/docs/SOP_ROUTING.md',
             '.agent-loop/docs/LLM_ASSISTED_INSTALL.md',
             '.agent-loop/docs/MERGE_RULES.md',
             '.agent-loop/docs/SHARED_LAYOUTS.md',
             '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
             '.agent-loop/docs/ARCHITECTURE.md',
-            '.agent-loop/docs/LEARNING_OBSERVABILITY.md',
             '.agent-loop/docs/OKF_LLMWIKI.md',
+            '.agent-loop/docs/INSTALL.md',
+            '.agent-loop/docs/RELEASE_AUDIT.md',
+            '.agent-loop/docs/RUN_REPORT.md',
             '.agent-loop/templates/LOOP_BRIEF.md',
             '.agent-loop/templates/OKF_CONCEPT.md',
             '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md',
@@ -1494,7 +1486,6 @@ class Installer:
             required_files.extend([
                 '.agent-loop/systemd/agent-loop-scheduler.service',
                 'llmwiki/index.md',
-                'llmwiki/loop-brief-patterns/index.md',
                 'llmwiki/log.md',
             ])
         for rel in required_files:
@@ -1765,23 +1756,17 @@ class Installer:
                 replacements={'__REPO_ROOT__': str(self.repo)},
             )
         for source_rel, destination_rel in [
-            ('docs/GATEKEEPER_PROTOCOL.md', '.agent-loop/docs/GATEKEEPER_PROTOCOL.md'),
-            ('docs/LOOP_BRIEF_ASSISTANT.md', '.agent-loop/docs/LOOP_BRIEF_ASSISTANT.md'),
-            ('docs/LOOP_BRIEF_PATTERN_MEMORY.md', '.agent-loop/docs/LOOP_BRIEF_PATTERN_MEMORY.md'),
-            ('docs/DIRECT_MODE.md', '.agent-loop/docs/DIRECT_MODE.md'),
-            ('docs/COMMAND_ROUTING.md', '.agent-loop/docs/COMMAND_ROUTING.md'),
             ('docs/LOOP_INPUT_GUIDE.md', '.agent-loop/docs/LOOP_INPUT_GUIDE.md'),
-            ('docs/SCHEDULER.md', '.agent-loop/docs/SCHEDULER.md'),
-            ('docs/OBSERVABILITY.md', '.agent-loop/docs/OBSERVABILITY.md'),
             ('docs/HUMAN_SKILL_NAMESPACE.md', '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md'),
-            ('docs/SOP_ROUTING.md', '.agent-loop/docs/SOP_ROUTING.md'),
             ('docs/LLM_ASSISTED_INSTALL.md', '.agent-loop/docs/LLM_ASSISTED_INSTALL.md'),
             ('docs/MERGE_RULES.md', '.agent-loop/docs/MERGE_RULES.md'),
             ('docs/SHARED_LAYOUTS.md', '.agent-loop/docs/SHARED_LAYOUTS.md'),
             ('docs/DESIGN_PHILOSOPHY.md', '.agent-loop/docs/DESIGN_PHILOSOPHY.md'),
             ('docs/ARCHITECTURE.md', '.agent-loop/docs/ARCHITECTURE.md'),
-            ('docs/LEARNING_OBSERVABILITY.md', '.agent-loop/docs/LEARNING_OBSERVABILITY.md'),
             ('docs/OKF_LLMWIKI.md', '.agent-loop/docs/OKF_LLMWIKI.md'),
+            ('docs/INSTALL.md', '.agent-loop/docs/INSTALL.md'),
+            ('docs/RELEASE_AUDIT.md', '.agent-loop/docs/RELEASE_AUDIT.md'),
+            ('docs/RUN_REPORT.md', '.agent-loop/docs/RUN_REPORT.md'),
             ('templates/LOOP_BRIEF.md', '.agent-loop/templates/LOOP_BRIEF.md'),
             ('templates/OKF_CONCEPT.md', '.agent-loop/templates/OKF_CONCEPT.md'),
             ('templates/OKF_LOOP_BRIEF_PATTERN.md', '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md'),
@@ -1946,7 +1931,7 @@ def main() -> int:
         if installer.profile == PROFILE_FULL:
             print('Installed direct routing, SOP routing, Gatekeeper plus Loop Brief Assistant and reusable input-pattern controls, OKF LLMWiki memory governance, learning observability, sanitized OTel telemetry, canonical root-level skills with Codex/Claude symlinks, and LLM-assisted merge guidance.')
         else:
-            print('Installed direct routing, command-route, SOP routing, frame skills, sanitized OTel telemetry, canonical root-level skills with Codex/Claude symlinks, and profile-scoped routing safeguards.')
+            print('Installed frame skills, routing scaffolding, canonical root-level skills with Codex/Claude symlinks, and profile-scoped routing safeguards.')
         if installer.backup_root.exists():
             print(f'Backups: {installer.backup_root}')
     return 0
