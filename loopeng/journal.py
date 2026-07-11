@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,24 @@ def _sanitize_text(text: str) -> str:
     for pattern in SECRET_PATTERNS:
         sanitized = pattern.sub(r"\1=<redacted>", sanitized)
     return sanitized
+
+
+def _git_status_paths(repo: Path) -> list[str]:
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "status", "--porcelain=v1", "--untracked-files=all"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    paths: list[str] = []
+    for line in proc.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:]
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        paths.append(path)
+    return paths
 
 
 def sanitize_event(event: dict[str, Any]) -> dict[str, Any]:
@@ -51,6 +70,8 @@ def append_event(repo: Path, run_id: str, event: dict[str, Any]) -> Path:
     path = journal_path(repo, run_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(sanitize_event(event))
+    if str(payload.get("kind") or "").strip().lower() == "run-start":
+        payload.setdefault("baseline_changed_paths", _git_status_paths(repo))
     payload.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, sort_keys=True) + "\n")

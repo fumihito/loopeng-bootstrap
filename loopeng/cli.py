@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ._paths import agent_root
@@ -27,6 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate = okf_sub.add_parser("validate")
     validate.add_argument("bundle", type=_path)
+
+    init = okf_sub.add_parser("init")
+    init.add_argument("bundle", type=_path)
 
     reindex = okf_sub.add_parser("reindex")
     reindex.add_argument("bundle", type=_path)
@@ -69,6 +73,34 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["ok"] else 1
 
+    if args.command == "okf" and args.okf_command == "init":
+        bundle = args.bundle
+        bundle.mkdir(parents=True, exist_ok=True)
+        for rel in ("concepts", "decisions", "constraints", "failure-patterns", "evaluation-rules", "recovery-patterns", "runbooks", "references", "loop-brief-patterns"):
+            (bundle / rel).mkdir(parents=True, exist_ok=True)
+        index = bundle / "index.md"
+        if not index.exists():
+            index.write_text(
+                "---\n"
+                "okf_version: \"0.1\"\n"
+                "title: \"Project LLMWiki\"\n"
+                "description: \"Curated, version-controlled knowledge for coding agents.\"\n"
+                "---\n\n"
+                "# LLMWiki\n\n"
+                "This bundle contains curated operational knowledge. Use the generated directory sections below for progressive disclosure.\n",
+                encoding="utf-8",
+            )
+        log = bundle / "log.md"
+        if not log.exists():
+            log.write_text(
+                "# Directory Update Log\n\n"
+                f"## {datetime.now(timezone.utc).date().isoformat()}\n"
+                "* **Initialization**: Created the OKF LLMWiki bundle.\n",
+                encoding="utf-8",
+            )
+        reindex_bundle(bundle)
+        return 0
+
     if args.command == "okf" and args.okf_command == "reindex":
         reindex_bundle(args.bundle)
         return 0
@@ -106,4 +138,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

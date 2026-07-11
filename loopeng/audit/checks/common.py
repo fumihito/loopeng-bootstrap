@@ -76,10 +76,18 @@ def collect_context(repo: Path, run_id: str) -> AuditContext:
     learning_root = repo / agent_root("state", "learning")
     report_path = repo / agent_root("state", "reports") / f"{run_id}.md"
     report_rel = report_path.relative_to(repo).as_posix()
+    baseline_paths: set[str] = set()
+    for event in _parse_json_lines(journal_path):
+        if str(event.get("kind") or "").strip().lower() == "run-start":
+            baseline = event.get("baseline_changed_paths")
+            if isinstance(baseline, list):
+                baseline_paths.update(str(item) for item in baseline if isinstance(item, str))
+            break
     status_paths = tuple(
         path
         for path in _git_status_paths(repo)
         if path != report_rel and not path.startswith(agent_root("state", "reports").as_posix())
+        and path not in baseline_paths
     )
     return AuditContext(
         repo=repo,

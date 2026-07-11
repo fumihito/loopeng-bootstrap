@@ -19,8 +19,12 @@ from typing import Iterable
 
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+utils_root = Path(__file__).resolve().parent / 'utils'
+if str(utils_root) not in sys.path:
+    sys.path.insert(0, str(utils_root))
 
 import routing_hints as routing_hints_lib
+from legacy_hook_disarm import disarm_legacy_hooks
 
 SRC = Path(__file__).resolve().parent
 BEGIN = '<!-- LOOP-ENGINEERING:BEGIN -->'
@@ -1823,6 +1827,14 @@ class Installer:
             print('Routing profile selected; okfctl build and validation are out of scope.')
 
         self.write_generated_sidecars()
+        if self.update_mode and not self.dry_run:
+            result = disarm_legacy_hooks(self.repo)
+            if result.removed_entries:
+                print(f'Disarmed legacy hooks in {self.repo}: removed {result.removed_entries} entries')
+                if result.backup_root is not None:
+                    print(f'Backups: {result.backup_root}')
+            for path in result.skipped_paths:
+                print(f'Skipped missing file: {path}')
         if not self.dry_run and not self.maybe_self_mode():
             (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o555)
             if self.profile == PROFILE_FULL:

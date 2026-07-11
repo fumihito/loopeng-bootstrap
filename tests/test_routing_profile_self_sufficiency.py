@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import tempfile
@@ -33,6 +34,32 @@ class RoutingProfileSelfSufficiencyTests(unittest.TestCase):
             self.assertTrue(names)
             self.assertTrue(all(name.startswith("frame-") for name in names))
             self.assertFalse((repo / "bin" / "okfctl.bin").exists())
+
+    def test_routing_profile_update_removes_legacy_hook_registrations(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+
+            self._install_routing_profile(repo)
+            proc = subprocess.run(
+                [sys.executable, str(KIT / "install.py"), "--repo", str(repo), "--profile", "routing", "--update"],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+
+            self.assertIn("Disarmed legacy hooks", proc.stdout)
+            for rel, events in [
+                ((".claude", "settings.json"), ("UserPromptSubmit", "PreToolUse", "Stop", "StopFailure", "SubagentStart", "SubagentStop")),
+                ((".codex", "hooks.json"), ("UserPromptSubmit", "PreToolUse", "Stop", "StopFailure", "SubagentStart", "SubagentStop")),
+            ]:
+                payload = json.loads(Path(repo, *rel).read_text(encoding="utf-8"))
+                hooks = payload.get("hooks", {})
+                self.assertTrue(isinstance(hooks, dict))
+                for event in events:
+                    for group in hooks.get(event, []):
+                        self.assertNotIn("loop_hook.py", json.dumps(group))
 
     def test_routing_profile_does_not_redistribute_legacy_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as td:

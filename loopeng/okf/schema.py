@@ -17,6 +17,18 @@ ALLOWED_TYPES = {
     "Reference",
 }
 
+TYPE_PREFIXES = {
+    "Concept": "concepts",
+    "Decision": "decisions",
+    "Constraint": "constraints",
+    "Failure Pattern": "failure-patterns",
+    "Evaluation Rule": "evaluation-rules",
+    "Recovery Pattern": "recovery-patterns",
+    "Runbook": "runbooks",
+    "Reference": "references",
+    "Loop Brief Pattern": "loop-brief-patterns",
+}
+
 REQUIRED_FRONTMATTER = {
     "type",
     "title",
@@ -79,8 +91,12 @@ def parse_document(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def validate_document(path: Path) -> list[str]:
+    return validate_document_text(path.read_text(encoding="utf-8"))
+
+
+def validate_document_text(text: str) -> list[str]:
     errors: list[str] = []
-    frontmatter, _ = parse_document(path)
+    frontmatter, body = parse_frontmatter(text)
     missing = REQUIRED_FRONTMATTER.difference(frontmatter)
     if missing:
         errors.append(f"missing frontmatter fields: {', '.join(sorted(missing))}")
@@ -89,7 +105,13 @@ def validate_document(path: Path) -> list[str]:
     tags = frontmatter.get("tags")
     if not isinstance(tags, list) or not tags:
         errors.append("tags must be a non-empty list")
+    if body.strip() == "":
+        errors.append("document body must not be empty")
     return errors
+
+
+def concept_prefix_for_type(concept_type: str) -> str:
+    return TYPE_PREFIXES.get(concept_type, "")
 
 
 def validate_bundle(bundle: Path) -> dict[str, Any]:
@@ -135,4 +157,3 @@ def load_report(path: Path) -> dict[str, Any]:
         payload["body"] = body
         return payload
     raise ValueError("unsupported report format")
-
