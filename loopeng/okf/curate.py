@@ -16,7 +16,9 @@ def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_
     """Promote learning once, then apply only the bounded safe subset."""
     repo = repo.resolve()
     run = run_id or "curate"
-    promoted = promote(repo, min(top, AUTONOMOUS_APPLIES_PER_RUN), autonomous=True)
+    # Draft generation may exceed the apply cap so excess candidates remain
+    # visible as pending approval rather than disappearing from the run.
+    promoted = promote(repo, max(0, top), autonomous=True)
     applied: list[str] = []
     pending: list[str] = []
     rejected: list[dict[str, str]] = []
