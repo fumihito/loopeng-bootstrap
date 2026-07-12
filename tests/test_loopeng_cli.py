@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -12,10 +13,12 @@ from loopeng._paths import agent_root
 
 class LoopengCliTests(unittest.TestCase):
     def test_help_explains_top_level_and_nested_commands(self) -> None:
+        japanese_env = {**os.environ, "LANG": "ja_JP.UTF-8"}
         top = subprocess.run(
             [sys.executable, "-m", "loopeng", "--help"],
             text=True,
             capture_output=True,
+            env=japanese_env,
             check=True,
         )
         self.assertIn("監査可能なエージェント運用ループ", top.stdout)
@@ -26,6 +29,7 @@ class LoopengCliTests(unittest.TestCase):
             [sys.executable, "-m", "loopeng", "okf", "--help"],
             text=True,
             capture_output=True,
+            env=japanese_env,
             check=True,
         )
         self.assertIn("OKF 形式の LLMWiki バンドル", okf.stdout)
@@ -35,10 +39,23 @@ class LoopengCliTests(unittest.TestCase):
             [sys.executable, "-m", "loopeng", "review", "--help"],
             text=True,
             capture_output=True,
+            env=japanese_env,
             check=True,
         )
         self.assertIn("未確認項目をトリアージ表示", review.stdout)
         self.assertIn("判断: go / alt / hold", review.stdout)
+
+        english_env = {**os.environ, "LANG": "en_US.UTF-8"}
+        english = subprocess.run(
+            [sys.executable, "-m", "loopeng", "--help"],
+            text=True,
+            capture_output=True,
+            env=english_env,
+            check=True,
+        )
+        self.assertIn("CLI for operating auditable agent loops", english.stdout)
+        self.assertIn("Review past run results", english.stdout)
+        self.assertNotIn("監査可能なエージェント運用ループ", english.stdout)
 
     def test_journal_schedule_and_audit(self) -> None:
         with tempfile.TemporaryDirectory() as td:

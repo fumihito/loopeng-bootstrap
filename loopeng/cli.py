@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,137 +22,143 @@ def _path(value: str) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     formatter = argparse.RawDescriptionHelpFormatter
+    lang = os.environ.get("LANG", "")
+    english = bool(lang) and not lang.lower().startswith("ja")
+
+    def t(japanese: str, english_text: str) -> str:
+        return english_text if english else japanese
+
     parser = argparse.ArgumentParser(
         prog="loopeng",
-        description="監査可能なエージェント運用ループを管理する CLI。",
+        description=t("監査可能なエージェント運用ループを管理する CLI。", "CLI for operating auditable agent loops."),
         epilog=(
-            "例:\n"
-            "  loopeng status\n"
-            "  loopeng okf validate llmwiki\n"
-            "  loopeng review --triage"
+            t(
+                "例:\n  loopeng status\n  loopeng okf validate llmwiki\n  loopeng review --triage",
+                "Examples:\n  loopeng status\n  loopeng okf validate llmwiki\n  loopeng review --triage",
+            )
         ),
         formatter_class=formatter,
     )
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     okf = sub.add_parser(
-        "okf", help="OKF LLMWiki の初期化・検証・更新・索引操作",
-        description="OKF 形式の LLMWiki バンドルを管理します。",
+        "okf", help=t("OKF LLMWiki の初期化・検証・更新・索引操作", "Initialize, validate, update, and index OKF LLMWiki"),
+        description=t("OKF 形式の LLMWiki バンドルを管理します。", "Manage OKF-format LLMWiki bundles."),
         formatter_class=formatter,
     )
     okf_sub = okf.add_subparsers(dest="okf_command", required=True, metavar="COMMAND")
 
     validate = okf_sub.add_parser(
-        "validate", help="LLMWiki の構造と文書を検証",
-        description="LLMWiki バンドルを読み取り専用で検証し、結果を JSON で出力します。",
+        "validate", help=t("LLMWiki の構造と文書を検証", "Validate LLMWiki structure and documents"),
+        description=t("LLMWiki バンドルを読み取り専用で検証し、結果を JSON で出力します。", "Validate an LLMWiki bundle read-only and print the result as JSON."),
         formatter_class=formatter,
     )
-    validate.add_argument("bundle", type=_path, help="検証する LLMWiki ディレクトリ")
+    validate.add_argument("bundle", type=_path, help=t("検証する LLMWiki ディレクトリ", "LLMWiki directory to validate"))
 
     init = okf_sub.add_parser(
-        "init", help="空の LLMWiki バンドルを作成",
-        description="LLMWiki の標準ディレクトリ、index.md、log.md を作成します。",
+        "init", help=t("空の LLMWiki バンドルを作成", "Create an empty LLMWiki bundle"),
+        description=t("LLMWiki の標準ディレクトリ、index.md、log.md を作成します。", "Create the standard LLMWiki directories, index.md, and log.md."),
         formatter_class=formatter,
     )
-    init.add_argument("bundle", type=_path, help="作成する LLMWiki ディレクトリ")
+    init.add_argument("bundle", type=_path, help=t("作成する LLMWiki ディレクトリ", "LLMWiki directory to create"))
 
     reindex = okf_sub.add_parser(
-        "reindex", help="LLMWiki の索引を再生成",
-        description="バンドル内の文書を走査し、index.md のディレクトリ索引を再生成します。",
+        "reindex", help=t("LLMWiki の索引を再生成", "Rebuild the LLMWiki index"),
+        description=t("バンドル内の文書を走査し、index.md のディレクトリ索引を再生成します。", "Scan bundle documents and rebuild the directory index in index.md."),
         formatter_class=formatter,
     )
-    reindex.add_argument("bundle", type=_path, help="索引を再生成する LLMWiki ディレクトリ")
+    reindex.add_argument("bundle", type=_path, help=t("索引を再生成する LLMWiki ディレクトリ", "LLMWiki directory to reindex"))
 
     log = okf_sub.add_parser(
-        "log", help="LLMWiki の更新ログに追記",
-        description="LLMWiki の索引を更新し、log.md に一行追記します。",
+        "log", help=t("LLMWiki の更新ログに追記", "Append to the LLMWiki update log"),
+        description=t("LLMWiki の索引を更新し、log.md に一行追記します。", "Update the LLMWiki index and append one line to log.md."),
         formatter_class=formatter,
     )
-    log.add_argument("bundle", type=_path, help="更新する LLMWiki ディレクトリ")
-    log.add_argument("--message", default="okf log entry", help="log.md に追加するメッセージ")
+    log.add_argument("bundle", type=_path, help=t("更新する LLMWiki ディレクトリ", "LLMWiki directory to update"))
+    log.add_argument("--message", default="okf log entry", help=t("log.md に追加するメッセージ", "Message to append to log.md"))
 
     apply_cmd = okf_sub.add_parser(
-        "apply", help="検証済みレポートを LLMWiki に適用",
-        description="トランザクションレポートを検証し、OKF LLMWiki に安全に適用します。",
+        "apply", help=t("検証済みレポートを LLMWiki に適用", "Apply a validated report to LLMWiki"),
+        description=t("トランザクションレポートを検証し、OKF LLMWiki に安全に適用します。", "Validate a transaction report and safely apply it to an OKF LLMWiki."),
         formatter_class=formatter,
     )
-    apply_cmd.add_argument("report", type=_path, help="適用する JSON レポート")
-    apply_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"), help="更新対象の LLMWiki (既定: llmwiki)")
-    apply_cmd.add_argument("--backup-dir", type=_path, default=Path(agent_root("runtime", "okf-backups")), help="バックアップ先")
-    apply_cmd.add_argument("--run", help="適用イベントを追記する run ID")
+    apply_cmd.add_argument("report", type=_path, help=t("適用する JSON レポート", "JSON report to apply"))
+    apply_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"), help=t("更新対象の LLMWiki (既定: llmwiki)", "LLMWiki to update (default: llmwiki)"))
+    apply_cmd.add_argument("--backup-dir", type=_path, default=Path(agent_root("runtime", "okf-backups")), help=t("バックアップ先", "Backup directory"))
+    apply_cmd.add_argument("--run", help=t("適用イベントを追記する run ID", "Run ID for recording the apply event"))
 
     journal = sub.add_parser(
-        "journal", help="ランのイベントを journal に追記",
-        description="実行中の run-start、intent、mutation、run-end などのイベントを記録します。",
+        "journal", help=t("ランのイベントを journal に追記", "Append run events to the journal"),
+        description=t("実行中の run-start、intent、mutation、run-end などのイベントを記録します。", "Record run-start, intent, mutation, run-end, and other events."),
         formatter_class=formatter,
     )
     journal_sub = journal.add_subparsers(dest="journal_command", required=True, metavar="COMMAND")
     journal_add = journal_sub.add_parser(
-        "add", help="一つのイベントを追記",
-        description="JSON イベントをサニタイズして run の journal に追記します。",
+        "add", help=t("一つのイベントを追記", "Append one event"),
+        description=t("JSON イベントをサニタイズして run の journal に追記します。", "Sanitize a JSON event and append it to a run journal."),
         formatter_class=formatter,
     )
-    journal_add.add_argument("--run", required=True, help="イベントを属させる run ID")
-    journal_add.add_argument("--event", required=True, help="追記する JSON イベント")
-    journal_add.add_argument("--repo", type=_path, default=Path("."), help="対象リポジトリ (既定: .)")
+    journal_add.add_argument("--run", required=True, help=t("イベントを属させる run ID", "Run ID that owns the event"))
+    journal_add.add_argument("--event", required=True, help=t("追記する JSON イベント", "JSON event to append"))
+    journal_add.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
 
     schedule = sub.add_parser(
-        "schedule", help="次ターンの入力を生成",
-        description="前回の handoff と Run Report から次ターン用のプロンプトを生成します。",
+        "schedule", help=t("次ターンの入力を生成", "Generate next-turn input"),
+        description=t("前回の handoff と Run Report から次ターン用のプロンプトを生成します。", "Generate the next-turn prompt from the previous handoff and Run Report."),
         formatter_class=formatter,
     )
     schedule_sub = schedule.add_subparsers(dest="schedule_command", required=True, metavar="COMMAND")
     schedule_next = schedule_sub.add_parser(
-        "next", help="次ターンの handoff を表示",
-        description="対象リポジトリの handoff を読み、次ターンの前文を標準出力へ出します。",
+        "next", help=t("次ターンの handoff を表示", "Show the next-turn handoff"),
+        description=t("対象リポジトリの handoff を読み、次ターンの前文を標準出力へ出します。", "Read the repository handoff and print the next-turn preamble."),
         formatter_class=formatter,
     )
-    schedule_next.add_argument("--repo", type=_path, default=Path("."), help="対象リポジトリ (既定: .)")
+    schedule_next.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
 
     audit = sub.add_parser(
-        "audit", help="Run Report と handoff を生成",
-        description="journal とリポジトリ状態を監査し、Run Report と handoff を書き出します。",
+        "audit", help=t("Run Report と handoff を生成", "Generate a Run Report and handoff"),
+        description=t("journal とリポジトリ状態を監査し、Run Report と handoff を書き出します。", "Audit the journal and repository state, then write a Run Report and handoff."),
         formatter_class=formatter,
     )
     audit_sub = audit.add_subparsers(dest="audit_command", required=True, metavar="COMMAND")
     audit_run = audit_sub.add_parser(
-        "run", help="指定 run の監査を実行",
-        description="指定した run の監査結果を .agent-loop/state/reports に保存します。",
+        "run", help=t("指定 run の監査を実行", "Audit a specified run"),
+        description=t("指定した run の監査結果を .agent-loop/state/reports に保存します。", "Save the audit result for a run under .agent-loop/state/reports."),
         formatter_class=formatter,
     )
-    audit_run.add_argument("--run", required=True, help="監査対象の run ID")
-    audit_run.add_argument("--repo", type=_path, default=Path("."), help="対象リポジトリ (既定: .)")
+    audit_run.add_argument("--run", required=True, help=t("監査対象の run ID", "Run ID to audit"))
+    audit_run.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
 
     review = sub.add_parser(
-        "review", help="過去の run 結果・懸念・前提をレビュー",
-        description="Run Report の結果を一覧・トリアージし、判断や remediation を記録します。",
+        "review", help=t("過去の run 結果・懸念・前提をレビュー", "Review past run results, concerns, and premises"),
+        description=t("Run Report の結果を一覧・トリアージし、判断や remediation を記録します。", "List and triage Run Report results, then record decisions or remediation."),
         formatter_class=formatter,
     )
-    review.add_argument("--runs", type=int, default=5, help="表示対象にする直近 run 数 (既定: 5)")
-    review.add_argument("--repo", type=_path, default=Path("."), help="対象リポジトリ (既定: .)")
-    review.add_argument("--section", choices=("results", "concerns", "premises"), help="表示するセクションだけに絞る")
-    review.add_argument("--run", help="レビュー記録を関連付ける run ID")
-    review.add_argument("--triage", action="store_true", help="未確認項目をトリアージ表示")
-    review.add_argument("--next", dest="next_item", action="store_true", help="次のトリアージ項目だけを表示")
-    review.add_argument("--full", action="store_true", help="完全なレビュー表示を要求")
-    review.add_argument("--go", help="指定したカタログ項目の remediation を実行")
-    review.add_argument("--decision", help="判断 ID を記録")
-    review.add_argument("--choice", choices=("go", "alt", "hold"), help="判断: go / alt / hold")
-    review.add_argument("--format", choices=("text", "json"), default="text", help="出力形式 (既定: text)")
+    review.add_argument("--runs", type=int, default=5, help=t("表示対象にする直近 run 数 (既定: 5)", "Number of recent runs to show (default: 5)"))
+    review.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
+    review.add_argument("--section", choices=("results", "concerns", "premises"), help=t("表示するセクションだけに絞る", "Show only one section"))
+    review.add_argument("--run", help=t("レビュー記録を関連付ける run ID", "Run ID to associate with the review"))
+    review.add_argument("--triage", action="store_true", help=t("未確認項目をトリアージ表示", "Show unreviewed items for triage"))
+    review.add_argument("--next", dest="next_item", action="store_true", help=t("次のトリアージ項目だけを表示", "Show only the next triage item"))
+    review.add_argument("--full", action="store_true", help=t("完全なレビュー表示を要求", "Request the full review"))
+    review.add_argument("--go", help=t("指定したカタログ項目の remediation を実行", "Execute remediation for a catalog item"))
+    review.add_argument("--decision", help=t("判断 ID を記録", "Record a decision ID"))
+    review.add_argument("--choice", choices=("go", "alt", "hold"), help=t("判断: go / alt / hold", "Decision: go / alt / hold"))
+    review.add_argument("--format", choices=("text", "json"), default="text", help=t("出力形式 (既定: text)", "Output format (default: text)"))
 
     status = sub.add_parser(
-        "status", help="直近の Run Report と backlog を要約",
-        description="対象リポジトリの最新状態、アラート、learning backlog を短く表示します。",
+        "status", help=t("直近の Run Report と backlog を要約", "Summarize the latest Run Report and backlog"),
+        description=t("対象リポジトリの最新状態、アラート、learning backlog を短く表示します。", "Briefly show repository state, alerts, and the learning backlog."),
         formatter_class=formatter,
     )
-    status.add_argument("--repo", type=_path, default=Path("."), help="対象リポジトリ (既定: .)")
+    status.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
 
     hook = sub.add_parser(
-        "hook", help="エージェント hook のイベントを処理",
-        description="標準入力の JSON hook イベントを正規化し、対応する hook 応答を JSON で出力します。",
+        "hook", help=t("エージェント hook のイベントを処理", "Process an agent hook event"),
+        description=t("標準入力の JSON hook イベントを正規化し、対応する hook 応答を JSON で出力します。", "Normalize a JSON hook event from stdin and print the hook response as JSON."),
         formatter_class=formatter,
     )
-    hook.add_argument("platform", choices=("claude-code", "codex"), help="イベントを送信したプラットフォーム")
+    hook.add_argument("platform", choices=("claude-code", "codex"), help=t("イベントを送信したプラットフォーム", "Platform that sent the event"))
 
     return parser
 
