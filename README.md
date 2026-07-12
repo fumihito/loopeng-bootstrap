@@ -20,6 +20,7 @@ v0.2 consists of four pillars.
 | `loopeng/` | Python control-layer package (stdlib only). The CLI is `python3 -m loopeng <subcommand>` |
 | `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` / `query` / `draft` — initialize, search, draft, and update LLMWiki bundles |
 | `loopeng learning promote` | Generate validated memory drafts from learning backlog (does not apply them) |
+| `loopeng memory curate` | Apply at most three provisional UPSERTs from autonomous namespaces after audit |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
@@ -97,6 +98,6 @@ none
 <!-- ongoing-end -->
 
 Memory retrieval follows `index.md → okf query → top K (default 5) document reads`; do not bulk-read `llmwiki/`.
-Apply files under `memory-drafts` only when the user explicitly instructs application in the current run.
+Provisional entries are observations; prefer established entries as the basis for constraints and decisions. `memory curate` may apply only bounded provisional UPSERTs in autonomous namespaces; other drafts require explicit user instruction.
 
 Licensed under the MIT License.

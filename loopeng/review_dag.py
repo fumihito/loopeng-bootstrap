@@ -28,6 +28,7 @@ STAGE_MAP = {
     "okf_invalid_apply": "memory",
     "single_author_memory_change": "memory",
     "unreviewed_claim_persisted": "memory",
+    "provisional_stagnation": "memory",
     "hook_failure": "hooks",
     "learning_backlog": "learning",
 }

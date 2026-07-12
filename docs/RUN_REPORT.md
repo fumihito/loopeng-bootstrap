@@ -54,7 +54,8 @@ that tuple requires updating this section in the same run.
 - `review_failure`: a hook could not obtain review context.
 - `hook_failure`: a hook audit or processing failure.
 - `retrieval`: `{"kind":"retrieval","query":"<summary>","read_ids":[...]}`
-- `memory-draft`: `{"kind":"memory-draft","draft":"<path>","proposals":[...]}`
+- `memory-draft`: `{"kind":"memory-draft","draft":"<path>","proposals":[...],"status":"pending-approval|rejected"}`
+- `okf-apply`: includes `tier: provisional` for autonomous applies.
 - `learning-candidate`: a sanitized failure-to-recovery learning capture.
 
 Hooks are the standard automatic capture layer for Claude Code and Codex. `loopeng okf apply --run <id>` and `loopeng journal add` remain CLI paths for explicit/headless use. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.

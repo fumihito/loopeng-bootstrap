@@ -109,6 +109,19 @@ def _audit(repo: Path, run_id: str) -> str | None:
         return f"audit failure: {type(exc).__name__}"
 
 
+def _curate(repo: Path, run_id: str) -> str | None:
+    env = os.environ.copy()
+    root = str(Path(__file__).resolve().parents[2])
+    env["PYTHONPATH"] = root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    try:
+        proc = subprocess.run([sys.executable, "-m", "loopeng", "memory", "curate", "--repo", str(repo), "--run", run_id], cwd=repo, env=env, text=True, capture_output=True, timeout=AUDIT_TIMEOUT_SECONDS, check=False)
+        if proc.returncode == 0:
+            return proc.stdout.strip() or None
+        return f"curate exited {proc.returncode}: {proc.stderr.strip()[:500]}"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"curate failure: {type(exc).__name__}"
+
+
 def _review_context(event: NormalizedEvent, run_id: str) -> tuple[str | None, str | None]:
     prompt = event.payload.get("prompt") or event.payload.get("prompt_text") or event.payload.get("user_prompt")
     if not isinstance(prompt, str) or not prompt.startswith(MODE_PREFIX):
@@ -240,6 +253,16 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
             audit_error = _audit(event.repo, run_id)
             if audit_error:
                 append_event(event.repo, run_id, {"kind": EVENT_HOOK_FAILURE, "error": audit_error})
+            curate_error = _curate(event.repo, run_id)
+            if curate_error and curate_error.startswith(("curate exited", "curate failure")):
+                append_event(event.repo, run_id, {"kind": EVENT_HOOK_FAILURE, "error": curate_error})
+            elif curate_error:
+                # Refresh the report so its Memory section includes the
+                # post-audit autonomous transaction while preserving the
+                # required audit-before-curate ordering.
+                refreshed = _audit(event.repo, run_id)
+                if refreshed:
+                    append_event(event.repo, run_id, {"kind": EVENT_HOOK_FAILURE, "error": refreshed})
             try:
                 _state_path(event.repo).unlink()
             except FileNotFoundError:

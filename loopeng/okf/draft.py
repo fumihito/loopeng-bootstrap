@@ -20,6 +20,15 @@ def _document(type_name: str, title: str, tags: list[str], authority: str, confi
     ])
 
 
+def add_tier(document: str, tier: str = "provisional") -> str:
+    """Add the autonomous tier without changing an existing document."""
+    if tier not in {"provisional", "established"}:
+        raise ValueError("tier must be provisional or established")
+    if document.startswith("---\n"):
+        return document.replace("---\n", f"---\ntier: {tier}\n", 1)
+    return document
+
+
 def make_draft(repo: Path, type_name: str, concept_id: str, title: str, tags: list[str],
                body: str = "", authority: str = "user", confidence: float = 0.7,
                notes: str = "") -> tuple[Path, list[dict[str, Any]]]:

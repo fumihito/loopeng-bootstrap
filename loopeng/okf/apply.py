@@ -7,6 +7,7 @@ import json
 from .backup import backup_tree
 from .index import reindex_bundle
 from .schema import concept_prefix_for_type, load_report, parse_frontmatter, validate_bundle, validate_document_text, validate_report_payload
+from ..audit.policy import AUTONOMOUS_NAMESPACES
 from datetime import datetime, timezone
 
 
@@ -31,7 +32,7 @@ ALLOWED_PREFIXES = {
 }
 
 
-def _validate_operation(bundle: Path, operation: dict[str, object]) -> None:
+def _validate_operation(bundle: Path, operation: dict[str, object], autonomous: bool = False) -> None:
     concept_id = str(operation["concept_id"])
     destination = _bundle_destination(bundle, concept_id)
     prefix = concept_id.split("/", 1)[0]
@@ -55,6 +56,16 @@ def _validate_operation(bundle: Path, operation: dict[str, object]) -> None:
         raise ValueError(f"unsupported type: {type_name!r}")
     if prefix != expected_prefix:
         raise ValueError(f"concept_id must be under {expected_prefix}/ for type {type_name!r}")
+    if autonomous:
+        if operation["action"] != "UPSERT" or prefix not in AUTONOMOUS_NAMESPACES:
+            raise ValueError("autonomous apply is limited to UPSERT in an autonomous namespace")
+        tier = frontmatter.get("tier")
+        if tier != "provisional":
+            raise ValueError("autonomous UPSERT must have tier: provisional")
+        if destination.is_file():
+            existing, _ = parse_frontmatter(destination.read_text(encoding="utf-8"))
+            if str(existing.get("tier") or "established") == "established":
+                raise ValueError("autonomous apply cannot overwrite established knowledge")
     _ = destination
 
 
@@ -85,7 +96,7 @@ def _write_operation(bundle: Path, operation: dict[str, object]) -> Path:
     return destination
 
 
-def apply_report(bundle: Path, report_path: Path, backup_dir: Path) -> dict[str, object]:
+def apply_report(bundle: Path, report_path: Path, backup_dir: Path, autonomous: bool = False) -> dict[str, object]:
     bundle = bundle.resolve()
     backup_dir = backup_dir.resolve()
     bundle_validation = validate_bundle(bundle)
@@ -101,7 +112,7 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path) -> dict[str,
             operation_errors.append(f"operations[{index}] must be an object")
             continue
         try:
-            _validate_operation(bundle, operation)
+            _validate_operation(bundle, operation, autonomous=autonomous)
         except Exception as exc:
             operation_errors.append(f"operations[{index}]: {exc}")
     if operation_errors:

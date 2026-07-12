@@ -46,6 +46,13 @@ AUDIT_TIMEOUT_SECONDS = 60
 RETRIEVAL_VOLUME_THRESHOLD = 10
 LEARNING_CAPTURE_LIMIT = 5
 
+# The single declaration point for unattended durable-memory writes.
+AUTONOMOUS_NAMESPACES = ("failure-patterns", "recovery-patterns", "references")
+AUTONOMOUS_APPLIES_PER_RUN = 3
+AUTO_ESTABLISH = False
+ESTABLISH_CITATIONS = 3
+STAGNATION_DAYS = 30
+
 # Review-mode aggregation thresholds.  Keep these in policy so the digest
 # and its tests share one auditable source of truth.
 REVIEW_RECURRENCE_THRESHOLD = 3
@@ -132,4 +139,5 @@ ALERTS = {
     "retrieval_volume": "info",
     "high_risk_command": "warn",
     "skill_structure_violation": "warn",
+    "provisional_stagnation": "info",
 }

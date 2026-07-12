@@ -167,8 +167,23 @@ def _premises(repo: Path) -> list[str]:
             pending = "pending-decision" in tags
             timestamp = str(frontmatter.get("timestamp") or "9999-12-31")
             entries.append({"path": path, "frontmatter": frontmatter, "body": body, "due": due, "pending": pending, "timestamp": timestamp})
+    # Provisional observations are always visible to the asynchronous approval
+    # path, independently of whether they are normative premises.
+    provisional_root = repo / "llmwiki"
+    for path in provisional_root.rglob("*.md") if provisional_root.is_dir() else ():
+        if path.name in {"index.md", "log.md"} or any(item["path"] == path for item in entries):
+            continue
+        try:
+            frontmatter, body = parse_document(path)
+        except OSError:
+            continue
+        if frontmatter.get("status", "active") == "active" and frontmatter.get("tier", "established") == "provisional":
+            entries.append({"path": path, "frontmatter": frontmatter, "body": body, "due": False, "pending": False, "timestamp": str(frontmatter.get("timestamp") or "9999-12-31"), "provisional": True})
     lines = ["## Premises to revisit"]
     marked: set[Path] = set()
+    for entry in sorted((item for item in entries if item.get("provisional")), key=lambda item: item["timestamp"]):
+        marked.add(entry["path"])
+        lines.append(f"- [PROV] {entry['path'].relative_to(repo).with_suffix('')} — awaiting asynchronous approval")
     for entry in sorted((item for item in entries if item["due"]), key=lambda item: item["timestamp"]):
         marked.add(entry["path"])
         lines.append(f"- [DUE] {entry['path'].relative_to(repo).with_suffix('')} — review_after {entry['frontmatter'].get('review_after')}; invalidation: {_invalidation(entry['body'])}")

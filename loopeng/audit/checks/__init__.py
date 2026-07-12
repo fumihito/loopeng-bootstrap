@@ -14,6 +14,7 @@ from .single_author_memory_change import check_single_author_memory_change
 from .skill_structure_violation import check_skill_structure_violation
 from .unreviewed_claim_persisted import check_unreviewed_claim_persisted
 from .retrieval_volume import check_retrieval_volume
+from .provisional_stagnation import check_provisional_stagnation
 
 
 CHECKS = (
@@ -30,6 +31,7 @@ CHECKS = (
     check_high_risk_command,
     check_skill_structure_violation,
     check_retrieval_volume,
+    check_provisional_stagnation,
 )
 
 

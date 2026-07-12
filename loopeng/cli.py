@@ -15,7 +15,8 @@ from .okf.index import reindex_bundle
 from .okf.schema import validate_bundle
 from .okf.query import query_bundle
 from .okf.draft import make_draft
-from .okf.promote import promote
+from .okf.promote import promote, establish
+from .okf.curate import curate
 from .schedule import build_next_turn_prompt
 
 
@@ -98,6 +99,14 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--status", choices=("active", "deprecated", "all"), default="active")
     query.add_argument("--limit", type=int, default=10)
     query.add_argument("--run")
+    query.add_argument("--tier", choices=("all", "provisional", "established"), default="all")
+
+    memory = sub.add_parser("memory", help=t("自律メモリの起案・適用", "Curate bounded autonomous memory"))
+    memory_sub = memory.add_subparsers(dest="memory_command", required=True)
+    curate_cmd = memory_sub.add_parser("curate", help=t("learning を起案し安全な provisional のみ適用", "Promote learning and apply safe provisional entries"))
+    curate_cmd.add_argument("--repo", type=_path, default=Path("."))
+    curate_cmd.add_argument("--run")
+    curate_cmd.add_argument("--top", type=int, default=3)
 
     learning = sub.add_parser("learning", help=t("learning 起案を管理", "Manage learning proposals"))
     learning_sub = learning.add_subparsers(dest="learning_command", required=True)
@@ -107,6 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     promote_cmd.add_argument("--ids", nargs="*")
     promote_cmd.add_argument("--type", dest="type_name", default="Concept")
     promote_cmd.add_argument("--run")
+    promote_cmd.add_argument("--establish", nargs="*")
 
     draft_cmd = okf_sub.add_parser("draft", help=t("一般知識の draft を生成", "Generate a knowledge draft"))
     draft_cmd.add_argument("--type", dest="type_name", required=True)
@@ -256,15 +266,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "okf" and args.okf_command == "query":
         if args.limit < 0:
             raise SystemExit("--limit must be non-negative")
-        results = query_bundle(args.bundle, args.type_name, args.tag, args.grep, args.status, args.limit)
+        results = query_bundle(args.bundle, args.type_name, args.tag, args.grep, args.status, args.limit, args.tier)
         payload = {"results": results[:args.limit], "total_matched": len(results), "returned": min(len(results), args.limit)}
         if args.run:
             append_event(args.bundle.resolve().parent, args.run, {"kind": EVENT_RETRIEVAL, "query": " ".join(filter(None, [args.type_name, *args.tag, args.grep or ""])), "read_ids": [r["concept_id"] for r in results[:args.limit]]})
         print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
         return 0
 
+    if args.command == "memory" and args.memory_command == "curate":
+        if args.top < 0:
+            raise SystemExit("--top must be non-negative")
+        print(json.dumps(curate(args.repo, args.run, args.top), indent=2, ensure_ascii=False))
+        return 0
+
     if args.command == "learning" and args.learning_command == "promote":
-        result = promote(args.repo.resolve(), args.top, args.ids, args.type_name)
+        result = establish(args.repo.resolve(), args.establish) if args.establish is not None else promote(args.repo.resolve(), args.top, args.ids, args.type_name)
         if args.run:
             append_event(args.repo.resolve(), args.run, {"kind": EVENT_MEMORY_DRAFT, "drafts": [item["draft"] for item in result], "proposals": [item["concept_id"] for item in result]})
         print(json.dumps(result, indent=2, ensure_ascii=False))

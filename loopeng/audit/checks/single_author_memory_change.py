@@ -6,6 +6,7 @@ from .common import AuditContext, AuditFinding, event_actor
 def check_single_author_memory_change(context: AuditContext) -> list[AuditFinding]:
     report_author = ""
     apply_author = ""
+    apply_tier = "established"
     for event in context.events:
         kind = str(event.get("kind", "")).strip().lower()
         actor = event_actor(event)
@@ -13,11 +14,12 @@ def check_single_author_memory_change(context: AuditContext) -> list[AuditFindin
             report_author = actor
         if kind in {"memory_apply", "okf_apply", "apply"} and actor:
             apply_author = actor
+            apply_tier = str(event.get("tier") or "established")
     if report_author and apply_author and report_author == apply_author:
         return [
             AuditFinding(
                 check_id="single_author_memory_change",
-                severity="warn",
+                severity="info" if apply_tier == "provisional" else "warn",
                 message="memory report and apply share the same author",
                 evidence=(report_author,),
             )

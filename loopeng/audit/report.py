@@ -90,6 +90,14 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
             pass
     okf_events = [event for event in context.events if event.get("kind") == EVENT_OKF_APPLY]
     applied = [event for event in okf_events if event.get("ok")]
+    provisional_applied = [event for event in applied if event.get("tier") == "provisional"]
+    curate_path = repo / agent_root("state", "last-curate.json")
+    curate = {}
+    if curate_path.is_file():
+        try:
+            curate = json.loads(curate_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            curate = {}
     rejected = [event for event in okf_events if not event.get("ok")]
     handoff_path = repo / agent_root("state", "handoff.json")
     prior_handoff = json.loads(handoff_path.read_text(encoding="utf-8")) if handoff_path.is_file() else {}
@@ -125,7 +133,7 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
             for finding in findings
         ],
         "undeclared_critical": bool(undeclared),
-        "memory": {"applied": len(applied), "rejected": len(rejected)},
+        "memory": {"applied": len(applied), "provisional": len(provisional_applied), "pending": len(curate.get("pending", [])), "rejected": len(rejected)},
         "handoff_written": True,
         "schema": 2,
     }
@@ -142,7 +150,7 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     report_lines.extend(["", "### Undeclared"])
     report_lines.extend(f"- changed: {path}" for path in sorted(undeclared_paths))
     report_lines.extend(_format_findings(undeclared or [finding for finding in findings if finding.check_id in {"journal_coverage", "out_of_repo_write"}]))
-    report_lines.extend(["", "## Memory", f"- applied OKF reports: {len(applied)}", f"- rejected OKF reports: {len(rejected)}", f"- touched: {', '.join(touched) or 'none'}", "", "## Learning", f"- entries: {len(learning_paths)}", f"- backlog: {learning_backlog}", f"- drafted-unapplied: {drafted_unapplied}", "", "## Alerts"])
+    report_lines.extend(["", "## Memory", f"- applied OKF reports: {len(applied)}", f"- provisional applied: {len(provisional_applied)}", f"- pending approval: {len(curate.get('pending', []))}", f"- rejected OKF reports: {len(rejected)}", f"- touched: {', '.join(touched) or 'none'}", "", "## Learning", f"- entries: {len(learning_paths)}", f"- backlog: {learning_backlog}", f"- drafted-unapplied: {drafted_unapplied}", "", "## Alerts"])
     report_lines.extend(_format_findings(alerts))
     report_lines.extend(["", "## Blocked"])
     report_lines.extend(_format_findings(blocked))

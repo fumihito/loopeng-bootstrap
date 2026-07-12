@@ -20,6 +20,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng/` | 制御層の Python パッケージ(stdlib のみ)。CLI は `python3 -m loopeng <subcommand>` |
 | `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` / `query` / `draft` — LLMWiki の初期化・検索・起案・更新 |
 | `loopeng learning promote` | learning backlog から検証済み draft を生成(適用はしない) |
+| `loopeng memory curate` | 自律名前空間の provisional UPSERT を最大3件まで適用 |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
@@ -97,6 +98,6 @@ none
 <!-- ongoing-end -->
 
 耐久メモリ参照は `index.md → okf query → 上位 K 件(既定 5)の本文読み込み` の順とし、`llmwiki/` の一括読み込みは行いません。
-`memory-drafts` の適用は当該ランでユーザーが明示指示した場合のみ行います。
+provisional エントリは観測記録として扱い、行動の制約・決定の根拠としては established を優先します。自律名前空間の provisional UPSERT は `memory curate` が適用し、それ以外の `memory-drafts` 適用は当該ランでユーザーが明示指示した場合のみ行います。
 
 ライセンスは MIT License です。

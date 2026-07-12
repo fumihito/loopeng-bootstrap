@@ -40,6 +40,7 @@ REQUIRED_FRONTMATTER = {
     "authority",
     "confidence",
 }
+VALID_TIERS = {"provisional", "established"}
 
 
 def _parse_scalar(value: str) -> Any:
@@ -116,6 +117,8 @@ def validate_document_text(text: str) -> list[str]:
                 date.fromisoformat(review_after)
             except ValueError:
                 errors.append("review_after must be an ISO date (YYYY-MM-DD)")
+    if "tier" in frontmatter and frontmatter["tier"] not in VALID_TIERS:
+        errors.append("tier must be provisional or established")
     return errors
 
 
