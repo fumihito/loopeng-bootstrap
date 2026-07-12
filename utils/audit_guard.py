@@ -25,8 +25,8 @@ AUDIT_LINE_PATTERN = r"(?m)^- \d{{4}}-\d{{2}}-\d{{2}} \| audit ({hash}) \|"
 RECORD_FIX_TEMPLATE = (
     "To fix:\n"
     "  1) python3 utils/audit_guard.py record --branch {branch}\n"
-    "  2) git add docs/audit-log.md && git commit -m \"audit: record release gate\"\n"
-    "  3) git push"
+    "     (audit line is committed automatically; amend into HEAD when safe)\n"
+    "  2) git push"
 )
 
 
@@ -444,7 +444,35 @@ def append_audit_line(root: Path, line: str) -> None:
     audit_log.write_text(body, encoding="utf-8")
 
 
-def record(root: Path, branch: str, summary: str | None) -> int:
+def _command_succeeds(root: Path, *args: str) -> bool:
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return completed.returncode == 0
+
+
+def amend_fallback_reason(root: Path, branch: str, *, no_amend: bool) -> str | None:
+    if no_amend:
+        return "forced by --no-amend"
+    if not _command_succeeds(root, "rev-parse", "--verify", "HEAD"):
+        return "HEAD does not exist"
+    if not _command_succeeds(root, "symbolic-ref", "--quiet", "--short", "HEAD"):
+        return "detached HEAD"
+    current_branch = run_git(root, "symbolic-ref", "--quiet", "--short", "HEAD")
+    if current_branch != branch_name(branch):
+        return f"branch mismatch (current: {current_branch}, requested: {branch_name(branch)})"
+    if _command_succeeds(root, "merge-base", "--is-ancestor", "HEAD", f"origin/{branch}"):
+        return "HEAD is already pushed"
+    if len(run_git(root, "rev-list", "--parents", "-n", "1", "HEAD").split()) > 2:
+        return "HEAD is a merge commit"
+    return None
+
+
+def record(root: Path, branch: str, summary: str | None, *, no_amend: bool = False) -> int:
     try:
         parent_hash = run_git(root, "rev-parse", f"origin/{branch}")
     except RuntimeError as exc:
@@ -478,8 +506,42 @@ def record(root: Path, branch: str, summary: str | None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
+    fallback_reason = amend_fallback_reason(root, branch, no_amend=no_amend)
+    mode = "amend"
+    if fallback_reason is None:
+        try:
+            run_git(root, "add", "docs/audit-log.md")
+            run_git(root, "commit", "--amend", "--no-edit")
+        except RuntimeError as exc:
+            print(f"ERROR: amend commit failed: {exc}", file=sys.stderr)
+            return 1
+    else:
+        mode = f"separate ({fallback_reason})"
+        try:
+            run_git(root, "add", "docs/audit-log.md")
+            run_git(root, "commit", "-m", "audit: record release gate")
+        except RuntimeError as exc:
+            print(f"ERROR: separate audit commit failed: {exc}", file=sys.stderr)
+            return 1
+
+    try:
+        head = run_git(root, "rev-parse", "HEAD")
+    except RuntimeError as exc:
+        print(f"ERROR: cannot resolve committed HEAD: {exc}", file=sys.stderr)
+        return 1
+    audit_log = audit_log_text_at_commit(root, head)
+    pattern = AUDIT_LINE_PATTERN.format(hash=re.escape(parent_hash))
+    if audit_log is None or not re.search(pattern, audit_log):
+        print(
+            f"ERROR: self-verification failed: HEAD {head} does not contain the audit line for {parent_hash}",
+            file=sys.stderr,
+        )
+        return 1
+
     print(line)
-    print('次の手順: `git add docs/audit-log.md && git commit` してから push')
+    print(f"HEAD: {head}")
+    print(f"mode: {mode}")
+    print("次の手順: `git push`")
     return 0
 
 
@@ -490,6 +552,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     record_parser = subparsers.add_parser("record", help="Run the release checklist and append an audit log entry.")
     record_parser.add_argument("--branch", default="main", help="Branch whose origin ref supplies the audit hash.")
     record_parser.add_argument("--summary", default=None, help="Optional free-form note appended to the audit summary.")
+    amend_group = record_parser.add_mutually_exclusive_group()
+    amend_group.add_argument("--amend", action="store_true", help="Amend the audit line into HEAD when safe (default).")
+    amend_group.add_argument("--no-amend", action="store_true", help="Always create a separate audit commit.")
     return parser.parse_args(argv)
 
 
@@ -501,7 +566,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     if args.command == "record":
-        return record(root, args.branch, args.summary)
+        return record(root, args.branch, args.summary, no_amend=args.no_amend)
 
     updates = parse_updates(sys.stdin.read())
     if not updates:

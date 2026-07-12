@@ -15,7 +15,7 @@ It is read-only except for the explicit audit log entry created by `record`.
    - `python3 .agent-loop/hooks/loop_hook.py --self-test --platform claude`.
    It appends `- <date> | audit <origin/<branch>-hash> | <deterministic summary>` to `docs/audit-log.md` only when every check passes.
 2. If `record` fails, fix the reported issue and rerun `record`. Do not hand-write a failed audit line.
-3. Commit the generated `docs/audit-log.md` entry together with the relevant change set.
+3. `record` commits the generated entry automatically: it amends HEAD when safe and otherwise creates the separate `audit: record release gate` commit.
 4. Confirm `.git/hooks/pre-push` is installed; if not, run `utils/install-dev-hooks.sh` from the repository root.
 5. Before pushing, simulate the planned push through `python3 utils/audit_guard.py --repo .` with the relevant `refs/heads/<branch> <local-sha> refs/heads/<branch> $(git rev-parse origin/<branch>)` line and confirm exit 0.
 

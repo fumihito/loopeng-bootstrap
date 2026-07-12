@@ -5,7 +5,7 @@
 
 1. 完了宣言の前に `python3 utils/audit_guard.py record` を実行する。
 2. record が失敗したら、修正するまで完了を宣言しない。失敗を記録する行を手書きしない。
-3. 生成された audit 行(`docs/audit-log.md`)を必ずコミットに含める。
+3. `record` が audit 行を安全に HEAD へ amend 吸収、または separate モードで自動コミットする。
 4. 完了宣言に record の出力(または audit 行)を含める。
 5. frame スキルは `adapters/shared/skills` のみを編集し、コミット前に `install.py --self --update` を実行する。
 
