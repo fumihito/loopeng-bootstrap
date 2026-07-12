@@ -1,38 +1,86 @@
 # Loop Engineering Bootstrap
 
-Loop Engineering Bootstrap is a bootstrap kit for running AI-agent work as engineered loops: a deterministic control layer around LLM roles, with humans holding final authority. v0.2 is a redesign line, not a continuation of the v15/v0.1 contract, and the two are intentionally incompatible.
+Loop Engineering Bootstrap is a bootstrap kit for operating autonomous AI coding agents (Codex / Claude Code) as auditable loops. The v0.2 line is implemented in Python only (Golang was used in v0.1 but has been retired), minimizes pre-execution blocking, and instead makes every run's results visible through a deterministic Run Report and alerts. Durable memory is updated only through validated transactions to an OKF-format LLMWiki.
+
+The Bootstrap has been self-applied to this repository.
 
 ## Core concept
 
-v0.2 keeps only the frame-* skill family plus a Python control layer for autonomous execution, auditability, learning extraction, and OKF LLMWiki memory updates. It removes the old role-pipeline gatekeeping model, replaces hook-driven observability with file-based journal and Run Report artifacts, and treats post-run alerts as the primary deviation surface.
+v0.2 consists of four pillars.
+
+1. **Autonomous operation** — Agents can execute runs without sequential human approval. The next turn's input is constructed deterministically from the handoff and Run Report written by the previous run; the model's self-reported memory is not carried forward.
+2. **Auditability** — Each run's operations are recorded in a sanitized, append-only journal, and `audit run` performs inspections in a fixed order to generate a Run Report. A completion claim is made only when the Run Report has been generated.
+3. **alert-not-block** — Pre-execution blocking is limited to an enumerated set of hard blocks (destructive commands, persistent storage of secrets, invalid memory application, and writes outside the repository). Other deviations do not stop the work and are recorded as alerts in the Run Report. A protected-path change is a warn when intent was declared in advance during the run, and critical when undeclared.
+4. **OKF LLMWiki memory** — Durable-memory writes are limited to `okf apply` transactions that pass schema validation, namespace containment, proposal_id, and operation-count and document-size limits. Nothing is deleted; history is retained by reversing status with `DEPRECATE`.
+
+## Components
+
+| Component | What |
+|---|---|
+| `loopeng/` | Python control-layer package (stdlib only). The CLI is `python3 -m loopeng <subcommand>` |
+| `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` — initialize and validate LLMWiki bundles and apply transactions |
+| `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
+| `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
+| `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
+| `loopeng status` | Summarize the latest Run Report and learning backlog |
+| `skills/frame-*` | Thinking-framework skill family (the only distributed skills; edit point: `adapters/shared/skills/`) |
+| `utils/phase1_gate.py` / `utils/phase1_gate_ext.py` | Executable acceptance gates (must not be changed; the sole basis for completion judgment) |
+| `utils/audit_guard.py` | This repository's completion protocol (pre-push audit) |
 
 ## Install
 
-The routing profile installs only the frame-* skills and the shared installer/runtime scaffolding.
+Python 3.10+ is the prerequisite.
 
 ```bash
-python3 install.py --repo /path/to/repository
+# frame-* skill のみ(routing プロファイル)
 python3 install.py --repo /path/to/repository --profile routing
-python3 install.py --repo .
+
+# skill + loopeng 制御層 + state 雛形(full プロファイル)
+python3 install.py --repo /path/to/repository --profile full
+
+# 既存環境の更新。v0.1 の導入痕跡(旧フック・旧ポリシー)を検出した場合は
+# 退避アーカイブへ移して v0.2 へ収束させます(削除はしません)
+python3 install.py --repo /path/to/repository --profile full --update
 ```
 
-Details for mixed Codex / Claude layouts, semantic merge workflows, and LLM-assisted installation live in `docs/INSTALL.md`.
+In environments where v0.1 was installed, the v0.1 materials are archived under `.loop-engineering-backups/<timestamp>/`. The migration is recorded in a migration report under `.agent-loop/state/reports/`. See `docs/INSTALL.md` for details.
 
-## First contact
+## Run cycle
 
-Use a plain prompt when you want the loop runtime to execute under the v0.2 contract. The frame-* skill family remains available for exploratory framing, but the old route:/brief:/Gatekeeper intake flow is removed in this line.
+```bash
+cd /path/to/repository
+python3 -m loopeng okf init llmwiki        # 初回のみ
+
+RUN_ID=$(date +%Y%m%d-%H%M%S)
+python3 -m loopeng journal add --run "$RUN_ID" \
+  --event '{"kind":"run-start","agent":"codex","goal":"..."}'
+# ... エージェント作業。protected path に触れる前に intent を宣言し、
+#     各ステップを journal に追記する ...
+python3 -m loopeng okf apply memory-report.json --bundle llmwiki   # メモリ更新がある場合
+python3 -m loopeng journal add --run "$RUN_ID" --event '{"kind":"run-end"}'
+python3 -m loopeng audit run --run "$RUN_ID"   # Run Report + handoff を生成
+python3 -m loopeng schedule next               # 次ターンの前文
+```
+
+When the Run Report contains critical alerts (such as an undeclared protected-path change or a mutation missing from the journal), it receives a banner requiring human review at the top. The banner does not retroactively invalidate the work, but acceptance of completion should be decided after review.
 
 ## Documentation map
 
-| Doc | What it covers |
+| Doc | What |
 |---|---|
-| `docs/ARCHITECTURE.md` | v0.2 architecture and the remaining Python control layer. |
-| `docs/OKF_LLMWIKI.md` | Durable-memory rules for OKF LLMWiki. |
-| `docs/RUN_REPORT.md` | Run Report schema and completion discipline. |
-| `docs/INSTALL.md` | Full install, routing profile, mixed layouts, and semantic merge. |
-| `docs/RELEASE_AUDIT.md` | Completion protocol, audit guard, and release checks. |
+| `docs/ARCHITECTURE.md` | v0.2 architecture and control policy, including hard-block enforcement points. |
+| `docs/RUN_REPORT.md` | Run Report schema and journal event conventions. |
+| `docs/OKF_LLMWIKI.md` | Durable-memory rules and transactions for OKF LLMWiki. |
+| `docs/INSTALL.md` | Profiles, updates, and convergence migration from v0.1. |
+| `docs/LOOP_INPUT_GUIDE.md` | Human input required for autonomous runs. |
+| `docs/RELEASE_AUDIT.md` | Completion protocol and pre-push audit guard. |
+| `docs/DESIGN_PHILOSOPHY.md` | Design principles (single declaration point, mechanism first, and so on). |
+| `docs/v0.2-phase1/` | v0.2 redesign implementation instructions and audit records (historical materials). |
+
+## Development
+
+Development of this repository follows these disciplines: changes are performed as journaled runs, and completion is claimed through a Run Report. Release-bound changes must pass the audit record from `utils/audit_guard.py record` before being pushed. The acceptance gates (`utils/phase1_gate.py` / `utils/phase1_gate_ext.py`) must remain GREEN, and the gates themselves must not be changed.
 
 ## Status
 
-v0.2 is the redesign line. It is not compatible with the v15/v0.1 role-pipeline contract or its hook-based control flow.
-Licensed under the MIT License.
+v0.2 series (active development). The version restarts from the v15 line (v0.1 design) and is not compatible with v0.1. The v0.1 governance mechanisms (Gatekeeper / Sensemaker / Loop Brief, the `route:` / `brief:` / `direct:` entry points, the Go implementation, and OTel/systemd residency) are retired and replaced by convergence migration with `--update`. Ongoing extensions: a hooks layer shared by both agents (automatic journal capture and pre-execution hard-block enforcement), `okf query` (deterministic memory search), `review:` mode (listing loop results, concerns, and assumptions), and absorption of the audit record into the commit. Licensed under the MIT License.

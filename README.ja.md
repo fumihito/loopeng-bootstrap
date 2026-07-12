@@ -1,59 +1,86 @@
 # Loop Engineering Bootstrap
 
-Loop Engineering Bootstrap は、AI エージェントの作業を engineered loop として運用するための bootstrap kit です。LLM role の外側に deterministic な制御層を置き、人間が最終権限を持ちます。提供する入口は 2 層で、`direct:` / `route:` / `frame-*` による bounded なルーティングと、その上に載る contract-gated な自律ループです。
+Loop Engineering Bootstrap は、AI コーディングエージェント(Codex / Claude Code 両用)の自走を「監査可能なループ」として運用するための bootstrap kit です。v0.2 系は Python のみで実装され(0.1では Golang を用いていましたが破棄)、事前の抑止を最小限に絞り、代わりに全ランの結果を決定論的な Run Report とアラートで可視化します。耐久メモリは OKF 形式の LLMWiki への検証済みトランザクションとしてのみ更新されます。
+
+このリポジトリそのものに Bootstrap が自己適用されています。
 
 ## Core concept
 
-Turn contract は Loop Brief から始まり、Gatekeeper が依頼の正当性・境界・明示性を確認して loop 開始可否を決めます。
-Sensemaker が問題をフレーミングし、State Steward・Meta-Evaluator・関連 role が state、learning、memory を生成系から分離します。
-deterministic hooks は protected path、command boundary、skill loading、sanitized telemetry を強制します。
-各 cycle は budget と stop condition に束縛されます。
-次の cycle は model の自己改変ではなく、handoff state と scheduler から来ます。
-全体像は `docs/loop-structure.svg` と `docs/ARCHITECTURE.md` を参照してください。
+v0.2 は 4 つの柱で構成されます。
+
+1. **自走可能性** — エージェントは人間の逐次承認なしにランを実行できます。次のターンの入力は、前のランが書き出した handoff と Run Report から決定論的に構成され、モデルの自己申告記憶を持ち越しません。
+2. **監査性** — 各ランの操作は journal(append-only・sanitize 済み)に記録され、`audit run` が固定順の検査を実行して Run Report を生成します。完了宣言は Run Report の生成をもってのみ行われます。
+3. **alert-not-block** — 事前に抑止するのは限定列挙された hard block(破壊的コマンド、秘密情報の永続化、不正なメモリ適用、リポジトリ外書き込み)のみです。それ以外の逸脱は作業を止めず、Run Report にアラートとして記録されます。protected path の変更は、ラン内で intent を事前宣言していれば warn、未宣言なら critical になります。
+4. **OKF LLMWiki メモリ** — 耐久メモリの書き込みは、スキーマ検証・名前空間封じ込め・proposal_id・操作数と文書サイズの上限を通過した `okf apply` トランザクションのみです。削除は行わず、`DEPRECATE` による status 反転で履歴を保持します。
+
+## Components
+
+| 対象 | 内容 |
+|---|---|
+| `loopeng/` | 制御層の Python パッケージ(stdlib のみ)。CLI は `python3 -m loopeng <subcommand>` |
+| `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` — LLMWiki バンドルの初期化・検証・トランザクション適用 |
+| `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
+| `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
+| `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
+| `loopeng status` | 直近 Run Report と learning backlog の要約 |
+| `skills/frame-*` | 思考フレーム skill 群(唯一の配布 skill。編集点は `adapters/shared/skills/`) |
+| `utils/phase1_gate.py` / `utils/phase1_gate_ext.py` | 実行可能な受け入れゲート(変更禁止。完了判定の唯一の根拠) |
+| `utils/audit_guard.py` | このリポジトリ自体の completion protocol(pre-push 監査) |
 
 ## Install
 
-full install の前提は Go 1.21+ です。
-routing profile は Go で実装された loop layer を必要としません。
+Python 3.10+ を前提とします。
 
 ```bash
-python3 install.py --repo /path/to/repository
+# frame-* skill のみ(routing プロファイル)
 python3 install.py --repo /path/to/repository --profile routing
-python3 install.py --repo .
+
+# skill + loopeng 制御層 + state 雛形(full プロファイル)
+python3 install.py --repo /path/to/repository --profile full
+
+# 既存環境の更新。v0.1 の導入痕跡(旧フック・旧ポリシー)を検出した場合は
+# 退避アーカイブへ移して v0.2 へ収束させます(削除はしません)
+python3 install.py --repo /path/to/repository --profile full --update
 ```
 
-mixed な Codex / Claude layout、semantic merge workflow、LLM assisted install の詳細は `docs/INSTALL.md` にあります。
+v0.1 を導入していた環境では、`.loop-engineering-backups/<timestamp>/` に待避されます。移行の内容は `.agent-loop/state/reports/` の移行レポートに記録されます。詳細は `docs/INSTALL.md` を参照してください。
 
-## First contact
+## Run cycle
 
-prefix なしで始めると Gatekeeper intake に入ります。Gatekeeper と `loop-brief-assistant` が contract 作成を支援します。
-`route:` は `frame-*` 候補を提案する pre-loop 入口です。`brief:` は最初のメッセージから Loop Brief の対話的な聞き取りを始めるための入口で、生成された草案は Gatekeeper が独立に検証します。`direct:` は autonomous loop を通さない bounded な single-turn です。
+```bash
+cd /path/to/repository
+python3 -m loopeng okf init llmwiki        # 初回のみ
 
-```text
-repair CI failures under this operating contract ...
+RUN_ID=$(date +%Y%m%d-%H%M%S)
+python3 -m loopeng journal add --run "$RUN_ID" \
+  --event '{"kind":"run-start","agent":"codex","goal":"..."}'
+# ... エージェント作業。protected path に触れる前に intent を宣言し、
+#     各ステップを journal に追記する ...
+python3 -m loopeng okf apply memory-report.json --bundle llmwiki   # メモリ更新がある場合
+python3 -m loopeng journal add --run "$RUN_ID" --event '{"kind":"run-end"}'
+python3 -m loopeng audit run --run "$RUN_ID"   # Run Report + handoff を生成
+python3 -m loopeng schedule next               # 次ターンの前文
 ```
 
-詳細は `docs/GATEKEEPER_PROTOCOL.md` と `docs/COMMAND_ROUTING.md` を参照してください。
+Run Report に critical アラート(未宣言の protected path 変更、journal 未記録の変異など)がある場合、冒頭に人間レビュー要のバナーが付きます。バナーは作業を遡って無効化しませんが、完了の受け入れはレビュー後に判断してください。
 
 ## Documentation map
 
 | Doc | 内容 |
 |---|---|
-| `docs/ARCHITECTURE.md` | role 分割の理由と却下した代替案。 |
-| `docs/COMMAND_ROUTING.md` | `route:` の提案フローと `frame-*` 選択規則。 |
-| `docs/DIRECT_MODE.md` | bounded な read-only `direct:` turn。 |
-| `docs/SOP_ROUTING.md` | mandatory な `<header>:` の SOP ルーティング。 |
-| `docs/GATEKEEPER_PROTOCOL.md` | Gatekeeper intake、contract 項目、verdict。 |
-| `docs/LOOP_INPUT_GUIDE.md` | autonomous loop に必要な人間入力。 |
-| `docs/OKF_LLMWIKI.md` | OKF LLMWiki の durable memory ルール。 |
-| `docs/LEARNING_OBSERVABILITY.md` | cross-turn learning 指標と audit flow。 |
-| `docs/OBSERVABILITY.md` | deterministic な loop-status と learning-health 表示。 |
-| `docs/SCHEDULER.md` | scheduler daemon、cadence、handoff。 |
-| `docs/TELEMETRY.md` | sanitized OTel schema と collector 挙動。 |
-| `docs/INSTALL.md` | full install、routing profile、mixed layout、semantic merge。 |
-| `docs/RELEASE_AUDIT.md` | completion protocol、audit guard、release checks。 |
+| `docs/ARCHITECTURE.md` | v0.2 の構成と統制方針(hard block の執行点を含む)。 |
+| `docs/RUN_REPORT.md` | Run Report のスキーマと journal イベント規約。 |
+| `docs/OKF_LLMWIKI.md` | OKF LLMWiki の耐久メモリ規則とトランザクション。 |
+| `docs/INSTALL.md` | プロファイル、更新、v0.1 からの収束移行。 |
+| `docs/LOOP_INPUT_GUIDE.md` | 自走ランに必要な人間側の入力。 |
+| `docs/RELEASE_AUDIT.md` | completion protocol と pre-push audit guard。 |
+| `docs/DESIGN_PHILOSOPHY.md` | 設計原則(単一宣言点、機構優先など)。 |
+| `docs/v0.2-phase1/` | v0.2 再設計の実装指示・監査記録(履歴資料)。 |
+
+## Development
+
+このリポジトリ自体の開発は次の規律に従います: 変更は journal 化されたランとして実施し、完了は Run Report で宣言します。リリース対象の変更は `utils/audit_guard.py record` による監査記録を経てから push します。受け入れゲート(`utils/phase1_gate.py` / `utils/phase1_gate_ext.py`)は GREEN を維持しなければならず、ゲート自体の変更は禁止です。
 
 ## Status
 
-Active development です。loop contract、install flow、routing behavior は今後も変わり得ます。
-ライセンスは MIT License です。
+v0.2 系(active development)。バージョンは v15 系(v0.1 設計)から再出発しており、v0.1 と互換しません。v0.1 の統治機構(Gatekeeper / Sensemaker / Loop Brief、`route:` / `brief:` / `direct:` 入口、Go 実装、OTel/systemd 常駐)は退役し、`--update` による収束移行で置き換えられます。進行中の拡張: 両エージェント共通の hooks 層(journal 自動取得と hard block の事前執行)、`okf query`(決定論的メモリ検索)、`review:` モード(ループリザルト・懸念・前提の一覧)、audit record のコミット吸収。ライセンスは MIT License です。
