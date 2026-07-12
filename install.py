@@ -1112,6 +1112,8 @@ class Installer:
             raise InstallerError(f'LLMWiki root must be a directory: {target_root}')
         for source in sorted(source_root.rglob('*')):
             if source.is_file():
+                if source.relative_to(source_root).parts[:1] == ('loop-brief-patterns',):
+                    continue
                 self.copy_file_if_missing(source, target_root / source.relative_to(source_root))
 
     def merge_json(self, source: Path, destination: Path) -> None:
