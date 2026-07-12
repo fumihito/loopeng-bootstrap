@@ -18,7 +18,8 @@ v0.2 consists of four pillars.
 | Component | What |
 |---|---|
 | `loopeng/` | Python control-layer package (stdlib only). The CLI is `python3 -m loopeng <subcommand>` |
-| `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` — initialize and validate LLMWiki bundles and apply transactions |
+| `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` / `query` / `draft` — initialize, search, draft, and update LLMWiki bundles |
+| `loopeng learning promote` | Generate validated memory drafts from learning backlog (does not apply them) |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
@@ -92,7 +93,10 @@ Development of this repository follows these disciplines: changes are performed 
 v0.2 series (active development). The version restarts from the v15 line (v0.1 design) and is not compatible with v0.1. The v0.1 governance mechanisms (Gatekeeper / Sensemaker / Loop Brief, the `route:` / `brief:` / `direct:` entry points, the Go implementation, and OTel/systemd residency) are retired and replaced by convergence migration with `--update`. Implemented in this release: shared hooks, `review:`/`review dag`, and audit-record absorption. Ongoing extensions:
 
 <!-- ongoing-start -->
-`okf query` (deterministic memory search)
+none
 <!-- ongoing-end -->
+
+Memory retrieval follows `index.md → okf query → top K (default 5) document reads`; do not bulk-read `llmwiki/`.
+Apply files under `memory-drafts` only when the user explicitly instructs application in the current run.
 
 Licensed under the MIT License.

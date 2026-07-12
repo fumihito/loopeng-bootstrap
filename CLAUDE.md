@@ -24,3 +24,6 @@ If a user prompt begins with `review:`, run `python3 -m loopeng review --triage`
 CLI のサブコマンド・review の view・journal のイベント種別・モード語を
 追加/変更するランでは、docs/doc-map.json が指す文書を同一ラン内で
 更新する。整合は record 時の doc_parity_lint が強制する。
+
+耐久メモリ参照は index.md → okf query → 上位 K 件(既定 5)の本文読み込みの順。llmwiki/ の一括読み込みは行わない。
+memory-drafts の適用はユーザーの明示指示があるランでのみ行う。自発的適用は行わず、draft の生成と提示までで停止する。

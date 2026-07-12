@@ -18,7 +18,8 @@ v0.2 は 4 つの柱で構成されます。
 | 対象 | 内容 |
 |---|---|
 | `loopeng/` | 制御層の Python パッケージ(stdlib のみ)。CLI は `python3 -m loopeng <subcommand>` |
-| `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` — LLMWiki バンドルの初期化・検証・トランザクション適用 |
+| `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` / `query` / `draft` — LLMWiki の初期化・検索・起案・更新 |
+| `loopeng learning promote` | learning backlog から検証済み draft を生成(適用はしない) |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
@@ -92,7 +93,10 @@ Run Report に critical アラート(未宣言の protected path 変更、journa
 v0.2 系(active development)。バージョンは v15 系(v0.1 設計)から再出発しており、v0.1 と互換しません。v0.1 の統治機構(Gatekeeper / Sensemaker / Loop Brief、`route:` / `brief:` / `direct:` 入口、Go 実装、OTel/systemd 常駐)は退役し、`--update` による収束移行で置き換えられます。このリリースでは、共通 hooks、`review:`/`review dag`、audit record のコミット吸収を実装済みです。進行中の拡張:
 
 <!-- ongoing-start -->
-`okf query`(決定論的メモリ検索)
+none
 <!-- ongoing-end -->
+
+耐久メモリ参照は `index.md → okf query → 上位 K 件(既定 5)の本文読み込み` の順とし、`llmwiki/` の一括読み込みは行いません。
+`memory-drafts` の適用は当該ランでユーザーが明示指示した場合のみ行います。
 
 ライセンスは MIT License です。

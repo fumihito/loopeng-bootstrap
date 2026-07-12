@@ -7,6 +7,7 @@ import json
 from .backup import backup_tree
 from .index import reindex_bundle
 from .schema import concept_prefix_for_type, load_report, parse_frontmatter, validate_bundle, validate_document_text, validate_report_payload
+from datetime import datetime, timezone
 
 
 def _document_text(document: object) -> str:
@@ -138,4 +139,16 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path) -> dict[str,
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(path, target)
         return {"ok": False, "errors": [str(exc)], "touched": touched}
+    source_learning = report.get("source_learning")
+    if isinstance(source_learning, str):
+        source_path = Path(source_learning)
+        if not source_path.is_absolute():
+            source_path = (bundle.parent / source_path).resolve()
+        try:
+            value = json.loads(source_path.read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                value["applied"] = datetime.now(timezone.utc).isoformat()
+                source_path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except (OSError, json.JSONDecodeError):
+            pass
     return {"ok": True, "touched": touched, "backup": str(backup_root)}

@@ -43,6 +43,8 @@ BUDGET_LIMITS = {
 }
 
 AUDIT_TIMEOUT_SECONDS = 60
+RETRIEVAL_VOLUME_THRESHOLD = 10
+LEARNING_CAPTURE_LIMIT = 5
 
 # Review-mode aggregation thresholds.  Keep these in policy so the digest
 # and its tests share one auditable source of truth.
@@ -127,6 +129,7 @@ ALERTS = {
     "single_author_memory_change": "warn",
     "unreviewed_claim_persisted": "warn",
     "learning_backlog": "info",
+    "retrieval_volume": "info",
     "high_risk_command": "warn",
     "skill_structure_violation": "warn",
 }

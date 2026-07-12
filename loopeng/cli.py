@@ -9,10 +9,13 @@ from pathlib import Path
 
 from ._paths import agent_root
 from .audit.report import run_audit_report
-from .journal import EVENT_OKF_APPLY, append_event
+from .journal import EVENT_OKF_APPLY, EVENT_MEMORY_DRAFT, EVENT_RETRIEVAL, append_event
 from .okf.apply import apply_report
 from .okf.index import reindex_bundle
 from .okf.schema import validate_bundle
+from .okf.query import query_bundle
+from .okf.draft import make_draft
+from .okf.promote import promote
 from .schedule import build_next_turn_prompt
 
 
@@ -86,6 +89,31 @@ def build_parser() -> argparse.ArgumentParser:
     apply_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"), help=t("更新対象の LLMWiki (既定: llmwiki)", "LLMWiki to update (default: llmwiki)"))
     apply_cmd.add_argument("--backup-dir", type=_path, default=Path(agent_root("runtime", "okf-backups")), help=t("バックアップ先", "Backup directory"))
     apply_cmd.add_argument("--run", help=t("適用イベントを追記する run ID", "Run ID for recording the apply event"))
+
+    query = okf_sub.add_parser("query", help=t("決定論的にメモリを検索", "Deterministically query memory"))
+    query.add_argument("bundle", type=_path)
+    query.add_argument("--type", dest="type_name")
+    query.add_argument("--tag", action="append", default=[])
+    query.add_argument("--grep")
+    query.add_argument("--status", choices=("active", "deprecated", "all"), default="active")
+    query.add_argument("--limit", type=int, default=10)
+    query.add_argument("--run")
+
+    learning = sub.add_parser("learning", help=t("learning 起案を管理", "Manage learning proposals"))
+    learning_sub = learning.add_subparsers(dest="learning_command", required=True)
+    promote_cmd = learning_sub.add_parser("promote", help=t("learning から draft を生成", "Generate drafts from learning"))
+    promote_cmd.add_argument("--repo", type=_path, default=Path("."))
+    promote_cmd.add_argument("--top", type=int, default=3)
+    promote_cmd.add_argument("--ids", nargs="*")
+    promote_cmd.add_argument("--type", dest="type_name", default="Concept")
+    promote_cmd.add_argument("--run")
+
+    draft_cmd = okf_sub.add_parser("draft", help=t("一般知識の draft を生成", "Generate a knowledge draft"))
+    draft_cmd.add_argument("--type", dest="type_name", required=True)
+    draft_cmd.add_argument("--concept-id", required=True)
+    draft_cmd.add_argument("--title", required=True)
+    draft_cmd.add_argument("--tags", default="")
+    draft_cmd.add_argument("--body-file", type=_path)
 
     journal = sub.add_parser(
         "journal", help=t("ランのイベントを journal に追記", "Append run events to the journal"),
@@ -224,6 +252,30 @@ def main(argv: list[str] | None = None) -> int:
             })
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["ok"] else 1
+
+    if args.command == "okf" and args.okf_command == "query":
+        if args.limit < 0:
+            raise SystemExit("--limit must be non-negative")
+        results = query_bundle(args.bundle, args.type_name, args.tag, args.grep, args.status, args.limit)
+        payload = {"results": results[:args.limit], "total_matched": len(results), "returned": min(len(results), args.limit)}
+        if args.run:
+            append_event(args.bundle.resolve().parent, args.run, {"kind": EVENT_RETRIEVAL, "query": " ".join(filter(None, [args.type_name, *args.tag, args.grep or ""])), "read_ids": [r["concept_id"] for r in results[:args.limit]]})
+        print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+        return 0
+
+    if args.command == "learning" and args.learning_command == "promote":
+        result = promote(args.repo.resolve(), args.top, args.ids, args.type_name)
+        if args.run:
+            append_event(args.repo.resolve(), args.run, {"kind": EVENT_MEMORY_DRAFT, "drafts": [item["draft"] for item in result], "proposals": [item["concept_id"] for item in result]})
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "okf" and args.okf_command == "draft":
+        body = args.body_file.read_text(encoding="utf-8") if args.body_file else ""
+        tags = [tag.strip() for tag in args.tags.split(",") if tag.strip()]
+        target, matches = make_draft(Path("."), args.type_name, args.concept_id, args.title, tags, body)
+        print(json.dumps({"draft": str(target), "duplicate_candidates": matches}, indent=2, ensure_ascii=False))
+        return 0
 
     if args.command == "journal" and args.journal_command == "add":
         event = json.loads(args.event)

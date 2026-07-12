@@ -412,6 +412,13 @@ def execute_go(repo: Path, item_id: str, run_id: str | None = None) -> str:
         result = f"未知 item-id: {item_id}; 実行せず停止します。"
     elif not item["catalog"]["agent_executable"]:
         result = f"[{item_id}] は起票/ユーザー判断が必要です。実行せず停止します。"
+    elif item_id == "learning-backlog":
+        from .okf.promote import promote
+        proposal = repo / agent_root("state", "review-proposals") / f"{item_id}-{run_id}.md"
+        proposal.parent.mkdir(parents=True, exist_ok=True)
+        proposal.write_text("# Review proposal: learning-backlog\n\nlearning promote --top 3\n", encoding="utf-8")
+        drafts = promote(repo, top=3)
+        result = f"[{item_id}] learning promote を実行しました。適用せず draft を提示します。apply はしていません:\n" + "\n".join(str(entry["draft"]) for entry in drafts)
     else:
         proposal = repo / agent_root("state", "review-proposals") / f"{item_id.replace(':', '-')}-{run_id}.md"
         proposal.parent.mkdir(parents=True, exist_ok=True)

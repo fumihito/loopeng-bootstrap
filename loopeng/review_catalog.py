@@ -20,7 +20,7 @@ REMEDIATION_CATALOG = (
         "id": "learning-backlog",
         "members": ("learning_backlog",),
         "cause": "未処理の learning backlog が残っている",
-        "standard_fix": "backlog 上位を OKF report に起案(適用はレビュー後)",
+        "standard_fix": "loopeng learning promote --top 3 で起案し、draft を提示(適用はユーザー指示後)",
         "alt_fix": "backlog の確認を保留",
         "question": "backlog 上位の OKF report 起案を実行しますか?",
         "agent_executable": True,
@@ -46,4 +46,3 @@ REMEDIATION_CATALOG = (
 )
 
 CATALOG_BY_ID = {entry["id"]: entry for entry in REMEDIATION_CATALOG}
-

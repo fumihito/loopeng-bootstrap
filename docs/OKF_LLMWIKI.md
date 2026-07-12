@@ -42,3 +42,7 @@ The Python CLI is the canonical way to validate and apply OKF reports. The trans
 ## Role separation
 
 The old Sensemaker / State Steward / Meta-Evaluator / Memory Curator split is no longer enforced as a runtime pipeline. Their useful functions survive as deterministic validation, audit, and alert checks instead.
+
+## Draft and approval pipeline
+
+`learning promote` and `okf draft` create validated JSON reports under `.agent-loop/state/memory-drafts/`. They perform duplicate checks through `okf query`, but never modify `llmwiki/`. The pipeline is promote → draft → explicit user approval → `okf apply <draft> --bundle llmwiki --run <id>`. Applying a memory draft is permitted only in a run where the user explicitly instructs it; agents must stop after presenting drafts otherwise. Existing `single_author_memory_change` and `unreviewed_claim_persisted` checks remain active.

@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from .._paths import agent_root
-from ..audit.policy import AUDIT_TIMEOUT_SECONDS, pre_tool_hard_block
+from ..audit.policy import AUDIT_TIMEOUT_SECONDS, LEARNING_CAPTURE_LIMIT, pre_tool_hard_block
 from ..journal import append_event
 from ..review import MODE_PREFIX
-from ..journal import EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_MUTATION, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START
+from ..journal import EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_LEARNING_CANDIDATE, EVENT_MUTATION, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START
 from .events import EventKind, NormalizedEvent
 
 HANDOFF_CONTEXT_LIMIT = 2000
@@ -153,12 +153,48 @@ def _post_tool(event: NormalizedEvent, run_id: str) -> None:
     tool_input = payload.get("tool_input")
     command = tool_input.get("command") if isinstance(tool_input, dict) else None
     kind = EVENT_COMMAND if command or tool.lower() in {"bash", "shell"} else EVENT_MUTATION if tool.lower() in {"apply_patch", "edit", "write"} else EVENT_MUTATION
-    record: dict[str, Any] = {"kind": kind, "tool_name": tool, "tool_success": payload.get("tool_success", True)}
+    success = payload.get("tool_success", payload.get("success", True))
+    if "exit_code" in payload:
+        success = payload.get("exit_code") == 0
+    record: dict[str, Any] = {"kind": kind, "tool_name": tool, "tool_success": bool(success)}
     if command:
         record["command"] = command
     if isinstance(tool_input, dict):
         record["path"] = tool_input.get("path") or tool_input.get("file_path")
     append_event(event.repo, run_id, record)
+    if command:
+        _capture_recovery(event.repo, run_id, str(command), bool(success))
+
+
+def _capture_recovery(repo: Path, run_id: str, command: str, success: bool) -> None:
+    """Capture only a same-token failure followed by recovery."""
+    path = repo / agent_root("state", "journal") / f"{run_id}.jsonl"
+    try:
+        events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, json.JSONDecodeError):
+        return
+    candidates = [event for event in events if event.get("kind") == EVENT_LEARNING_CANDIDATE]
+    if len(candidates) >= LEARNING_CAPTURE_LIMIT:
+        return
+    token = command.strip().split(None, 1)[0] if command.strip() else "unknown"
+    previous = None
+    for event in reversed(events[:-1]):
+        if event.get("kind") == EVENT_COMMAND and not event.get("tool_success", True):
+            prior = str(event.get("command") or "").strip().split(None, 1)
+            if prior and prior[0] == token:
+                previous = str(event.get("command")); break
+    if success and previous:
+        summary = {"source": "hook-capture", "command_token": token,
+                   "failed": previous, "recovered": command}
+        candidate = {"kind": EVENT_LEARNING_CANDIDATE, **summary}
+        append_event(repo, run_id, candidate)
+        learning = repo / agent_root("state", "learning")
+        learning.mkdir(parents=True, exist_ok=True)
+        target = learning / f"{run_id}-hook-{len(candidates)+1}.json"
+        target.write_text(json.dumps({"source": "hook-capture", "source_run_id": run_id,
+                                      "summary": f"{token}: failure recovered by subsequent command",
+                                      "failed_command": previous, "recovery_command": command},
+                                     indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def handle(event: NormalizedEvent) -> dict[str, Any]:

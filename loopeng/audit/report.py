@@ -66,7 +66,18 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / f"{run_id}.md"
     learning_paths = save_learning_entries(repo, run_id)
-    learning_backlog = len(list(context.learning_root.glob("*.json"))) if context.learning_root.is_dir() else 0
+    learning_files = list(context.learning_root.glob("*.json")) if context.learning_root.is_dir() else []
+    learning_backlog = 0
+    drafted_unapplied = 0
+    for learning_file in learning_files:
+        try:
+            value = json.loads(learning_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            value = {}
+        if isinstance(value, dict) and value.get("drafted") and not value.get("applied"):
+            drafted_unapplied += 1
+        elif learning_file.name not in {"learning-health.json", "learning-index.json"}:
+            learning_backlog += 1
     starts = [event for event in context.events if event.get("kind") == EVENT_RUN_START]
     ends = [event for event in context.events if event.get("kind") == EVENT_RUN_END]
     agent = str(starts[-1].get("agent") or "unknown") if starts else "unknown"
@@ -94,6 +105,10 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         "alerts_summary": alert_summary,
         "generated_at": datetime.now().astimezone().isoformat(),
     }
+    captured = sum(1 for event in context.events if event.get("kind") == "learning-candidate")
+    if captured:
+        unpromoted = sum(1 for path in context.learning_root.glob("*.json") if path.is_file()) if context.learning_root.is_dir() else 0
+        handoff["notes"] = f"learning: +{captured} captured, {unpromoted} unpromoted"
     declared_paths = {finding.evidence[0] for finding in declared if finding.evidence}
     undeclared_paths = {finding.evidence[0] for finding in undeclared if finding.evidence}
 
@@ -127,7 +142,7 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     report_lines.extend(["", "### Undeclared"])
     report_lines.extend(f"- changed: {path}" for path in sorted(undeclared_paths))
     report_lines.extend(_format_findings(undeclared or [finding for finding in findings if finding.check_id in {"journal_coverage", "out_of_repo_write"}]))
-    report_lines.extend(["", "## Memory", f"- applied OKF reports: {len(applied)}", f"- rejected OKF reports: {len(rejected)}", f"- touched: {', '.join(touched) or 'none'}", "", "## Learning", f"- entries: {len(learning_paths)}", f"- backlog: {learning_backlog}", "", "## Alerts"])
+    report_lines.extend(["", "## Memory", f"- applied OKF reports: {len(applied)}", f"- rejected OKF reports: {len(rejected)}", f"- touched: {', '.join(touched) or 'none'}", "", "## Learning", f"- entries: {len(learning_paths)}", f"- backlog: {learning_backlog}", f"- drafted-unapplied: {drafted_unapplied}", "", "## Alerts"])
     report_lines.extend(_format_findings(alerts))
     report_lines.extend(["", "## Blocked"])
     report_lines.extend(_format_findings(blocked))
@@ -139,6 +154,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         f"- alerts_summary: {handoff['alerts_summary']}",
         f"- generated_at: {handoff['generated_at']}", "",
     ])
+    if handoff.get("notes"):
+        report_lines.insert(-1, f"- notes: {handoff['notes']}")
     if any(finding.severity == "critical" for finding in findings):
         report_lines.insert(0, "CRITICAL ALERTS PRESENT: human review required.")
         report_lines.insert(1, "")
