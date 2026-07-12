@@ -39,6 +39,20 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError("loop_gate.py is required; install.py must copy .agent-loop/lib/loop_gate.py") from None
 
+
+HOOK_COMPONENT_ID = "loop_hook/v0.1-legacy"
+
+
+def _repo_version() -> str:
+    try:
+        root = Path(__file__).resolve().parents[2]
+        return (root / "VERSION").read_text(encoding="utf-8").strip().splitlines()[0]
+    except OSError:
+        return "unknown"
+
+
+def _banner(event: str) -> str:
+    return f"[loopeng-bootstrap v{_repo_version()} | {HOOK_COMPONENT_ID} | {event}] "
 ROLES = {
     "gatekeeper": ({"role","verdict","mode","condition_checklist","normalized_loop_brief","missing_conditions","ambiguities","questions_to_user","risk_class","rejection_reasons","handoff_to_loop_brief_assistant","assistant_handoff_reason","handoff_to_sensemaker","brief_pattern_directive","brief_pattern_assessment","validation_commands"}, "gatekeeper.json"),
     "loop-brief-assistant": ({"role","status","interaction_mode","problem_restatement","draft_loop_brief","resolved_conditions","remaining_conditions","assumptions","questions_to_user","conflicts","handoff_to_gatekeeper","pattern_retrieval","pattern_application","pattern_proposals"}, "loop-brief-assistant.json"),
@@ -1290,11 +1304,11 @@ def start_turn(root: Path, event: dict[str, Any], routing_mode: str = LOOP_ROUTI
 
 
 def deny(event: str, reason: str) -> dict[str, Any]:
-    return {"hookSpecificOutput": {"hookEventName": event, "permissionDecision": "deny", "permissionDecisionReason": reason}}
+    return {"hookSpecificOutput": {"hookEventName": event, "permissionDecision": "deny", "permissionDecisionReason": _banner(event) + reason}}
 
 
 def add_context(event: str, text: str) -> dict[str, Any]:
-    return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}}
+    return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": _banner(event) + text}}
 
 
 def block(reason: str) -> dict[str, Any]:
@@ -2589,7 +2603,7 @@ def handle(event: dict[str, Any], platform: str = "unknown") -> int:
             if protected_hit:
                 display_hit = protected_hit if "." in Path(protected_hit).name else f"{protected_hit}/"
                 message = f"Denied by loop-control policy: protected path fragment {display_hit}."
-            return emit({"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "deny", "message": message}}})
+            return emit({"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "deny", "message": _banner("PermissionRequest") + message}}})
         return 0
 
     if name in {"PostToolUse", "PostToolUseFailure"}:

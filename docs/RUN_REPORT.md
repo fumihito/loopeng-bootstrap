@@ -32,3 +32,5 @@ Run Report is the completion artifact for v0.2. A run is not considered auditabl
 Run Report is descriptive, not justificatory. It reports what happened and what was detected; it does not relabel an alert-free run as proof of correctness.
 
 The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report.
+
+将来、v0.2 側で任意接続の PreToolUse アダプタ等を実装する場合、エージェント可視メッセージには `[loopeng-bootstrap v{VERSION} | loopeng/v0.2 | {EVENT}]` 形式のバナーを付ける。バナー生成は `loopeng/_paths.py` 近傍に単一関数として置き、loop_hook の形式と一致させる。
