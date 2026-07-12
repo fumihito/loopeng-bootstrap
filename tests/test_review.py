@@ -10,7 +10,7 @@ from pathlib import Path
 from loopeng._paths import agent_root
 from loopeng.okf.schema import validate_document_text
 from loopeng.review import execute_go, record_decision, render_review, render_triage
-from loopeng.review_dag import STAGE_MAP, render_dag, write_dag
+from loopeng.review_dag import STAGE_MAP, _badge, render_dag, render_summary, write_dag
 
 
 def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[dict] | None = None, undeclared: bool = False, ended: str | None = None) -> None:
@@ -36,18 +36,20 @@ class ReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             sidecar(root, "r1", alerts=[
-                *([{"check_id": "protected_path_mutation", "severity": "critical", "declared": False}] * 15),
+                {"check_id": "protected_path_mutation", "severity": "critical", "declared": False},
                 {"check_id": "protected_path_mutation", "severity": "critical", "declared": True},
-                *([{"check_id": "journal_coverage", "severity": "critical", "declared": True}] * 18),
+                {"check_id": "journal_coverage", "severity": "critical"},
+                {"check_id": "secret_persistence", "severity": "critical", "declared": True},
                 *([{"check_id": "learning_backlog", "severity": "warn", "declared": True}] * 19),
             ])
             (root / agent_root("state", "handoff.json")).parent.mkdir(parents=True, exist_ok=True)
             (root / agent_root("state", "handoff.json")).write_text('{"source_turn_id":"r1"}', encoding="utf-8")
             text = render_dag(root, fmt="mermaid")
-            self.assertIn('act["act<br/>✖ 15 / ⚠ 1"]', text)
-            self.assertIn('record["record<br/>⚠ 18"]', text)
+            self.assertIn('act["act<br/>✖ 1 / ⚠ 1"]', text)
+            self.assertIn('record["record<br/>✖ 2"]', text)
             self.assertIn('learning["learning<br/>⚠ 19"]', text)
             self.assertIn('handoff["handoff<br/>⚠ unconsumed"]', text)
+            self.assertIn("class act,record crit;", text)
 
     def test_dag_is_deterministic_and_svg_is_xml(self) -> None:
         import xml.etree.ElementTree as ET
@@ -59,7 +61,9 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(first, second)
             svg = render_dag(root, fmt="svg")
             ET.fromstring(svg)
-            self.assertIn("Legend:", svg)
+            self.assertIn("Legend: ✖ critical (undeclared)  /  ⚠ warn or declared  /  ✔ no alert", svg)
+            self.assertIn('marker id="arrowhead"', svg)
+            self.assertIn('stroke-dasharray="6 4"', svg)
             write_dag(root, svg, "svg")
             self.assertEqual((root / agent_root("state", "reports") / "loop-dag.svg").read_text(encoding="utf-8"), svg)
 
@@ -75,6 +79,60 @@ class ReviewTests(unittest.TestCase):
             self.assertIn('event2["3: run-end"]', text)
             self.assertNotIn('event3[', text)
             self.assertIn("unmapped", text)
+
+            sidecar(root, "r2", alerts=[
+                {"check_id": "new_check", "severity": "warn"},
+                {"check_id": "another_new_check", "severity": "critical"},
+            ])
+            self.assertIn('unmapped["unmapped<br/>⚠ 3:', render_dag(root))
+
+    def test_dag_render_is_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "journal_coverage", "severity": "critical"}])
+            snapshot = sorted(
+                (path.relative_to(root), path.read_bytes())
+                for path in root.rglob("*")
+                if path.is_file()
+            )
+            render_dag(root)
+            self.assertEqual(
+                snapshot,
+                sorted(
+                    (path.relative_to(root), path.read_bytes())
+                    for path in root.rglob("*")
+                    if path.is_file()
+                ),
+            )
+
+    def test_dag_run_truncates_after_sixty_events(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1")
+            journal = root / agent_root("state", "journal")
+            journal.mkdir(parents=True)
+            journal.joinpath("r1.jsonl").write_text(
+                "\n".join(json.dumps({"kind": f"event-{index}"}) for index in range(61)) + "\n",
+                encoding="utf-8",
+            )
+            text = render_dag(root, run_id="r1")
+            self.assertIn("events: 61", text)
+            self.assertIn('truncated["… truncated after 60 events"]', text)
+            self.assertIn('event59["60: event-59"]', text)
+            self.assertNotIn('event60["61: event-60"]', text)
+
+    def test_dag_summary_is_explicit_when_alert_free(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(render_summary(Path(td)), "DAG alerts: none")
+
+    def test_dag_handoff_does_not_hide_critical(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "hook_failure", "severity": "critical"}])
+            handoff = root / agent_root("state", "handoff.json")
+            handoff.parent.mkdir(parents=True, exist_ok=True)
+            handoff.write_text('{"source_turn_id":"r1"}', encoding="utf-8")
+            self.assertEqual(_badge("handoff", {"handoff": 1}, {"handoff": 1}, handoff_unconsumed=True), "✖ 1 / ⚠ unconsumed")
 
     def test_stage_map_covers_registered_checks(self) -> None:
         from loopeng.audit.checks import CHECKS

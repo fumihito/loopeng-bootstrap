@@ -31,7 +31,7 @@ Run Report is the completion artifact for v0.2. A run is not considered auditabl
 
 Run Report is descriptive, not justificatory. It reports what happened and what was detected; it does not relabel an alert-free run as proof of correctness.
 
-`python3 -m loopeng review dag` is the deterministic visual review companion. It reads the same JSON sidecars, writes Mermaid/SVG artifacts under `.agent-loop/state/reports` (the `--out` path must remain there), and is an explicit read-only-review exception because those artifacts are audit outputs alongside the Run Report.
+`python3 -m loopeng review dag` is the deterministic visual review companion. It reads the same JSON sidecars, writes the `loop-dag.mmd` / `loop-dag.svg` Mermaid/SVG artifacts under `.agent-loop/state/reports` (the `--out` path must remain there), and is an explicit read-only-review exception because those artifacts are audit outputs alongside the Run Report.
 
 The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report.
 

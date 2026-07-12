@@ -40,13 +40,15 @@ _COLORS = {"crit": "#7f1d1d", "warn": "#78350f", "ok": "#1f2937"}
 
 
 def _alert_bucket(alert: dict[str, Any]) -> tuple[str, str]:
-    """Return (check_id, bucket), preserving protected-path discrimination."""
+    """Return (check_id, bucket) using the review DAG alert semantics."""
     check_id = str(alert.get("check_id") or "unknown")
     severity = str(alert.get("severity") or "info")
-    declared = alert.get("declared", True)
-    if check_id == "protected_path_mutation" and severity == "critical" and declared is False:
+    declared = bool(alert.get("declared", False))
+    if severity == "critical":
+        if check_id == "protected_path_mutation" and declared:
+            return check_id, "warn"
         return check_id, "critical"
-    if severity in {"critical", "warn"}:
+    if severity == "warn":
         return check_id, "warn"
     return check_id, "none"
 
@@ -81,14 +83,22 @@ def _counts(repo: Path, runs: list[dict[str, Any]]) -> tuple[Counter[str], Count
     return critical, warns, unmapped, sum(critical.values()) + sum(warns.values()) + sum(unmapped.values())
 
 
-def _badge(stage: str, critical: Counter[str], warns: Counter[str], *, handoff: bool = False) -> str:
+def _badge(
+    stage: str,
+    critical: Counter[str],
+    warns: Counter[str],
+    *,
+    handoff_unconsumed: bool = False,
+) -> str:
     parts: list[str] = []
     if critical[stage]:
         parts.append(f"{CRIT} {critical[stage]}")
-    if warns[stage]:
-        parts.append(f"{WARN} {warns[stage]}")
-    if handoff and warns[stage]:
-        return f"{WARN} unconsumed"
+    handoff_count = 1 if stage == "handoff" and handoff_unconsumed else 0
+    alert_warns = warns[stage] - handoff_count
+    if alert_warns:
+        parts.append(f"{WARN} {alert_warns}")
+    if handoff_unconsumed:
+        parts.append(f"{WARN} unconsumed")
     return " / ".join(parts) if parts else OK
 
 
@@ -103,9 +113,10 @@ def _run_label(runs: list[dict[str, Any]]) -> str:
 
 def _mermaid(repo: Path, runs: list[dict[str, Any]]) -> str:
     critical, warns, unmapped, total = _counts(repo, runs)
+    handoff_unconsumed = _handoff_unconsumed(repo)
     label = _run_label(runs)
     lines = ["flowchart LR", f'  subgraph cycle["Loop cycle (runs: {label}, findings: {total})"]']
-    lines += [f'    {stage}["{stage}<br/>{_badge(stage, critical, warns, handoff=stage == "handoff")}"]' for stage in STAGES[:7]]
+    lines += [f'    {stage}["{stage}<br/>{_badge(stage, critical, warns, handoff_unconsumed=handoff_unconsumed and stage == "handoff")}"]' for stage in STAGES[:7]]
     lines += [
         "    intake --> retrieve", "    retrieve --> act", "    act --> record", "    record --> memory",
         "    memory --> audit", "    audit --> handoff", "    handoff --> intake", "  end",
@@ -132,19 +143,28 @@ def _svg(repo: Path, runs: list[dict[str, Any]]) -> str:
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">',
         '<style>text{font-family:monospace;fill:#f3f4f6;font-size:16px}.node{stroke:#9ca3af;stroke-width:1}.legend{font-size:14px}</style>',
-        f'<rect width="1200" height="620" fill="#111827"/><text x="30" y=" thirty">Loop cycle (runs: {label}, findings: {total})</text>'.replace('y=" thirty"', 'y="30"'),
+        '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af"/></marker></defs>',
+        f'<rect width="1200" height="620" fill="#111827"/><text x="30" y="30">Loop cycle (runs: {label}, findings: {total})</text>',
     ]
     positions = {stage: (40 + (index % 7) * 160, 90 if index < 7 else 300) for index, stage in enumerate(STAGES)}
     for left, right in zip(STAGES[:7], STAGES[1:7]):
         x1, y1 = positions[left]; x2, y2 = positions[right]
-        parts.append(f'<path d="M{x1 + 130},{y1 + 35} L{x2},{y2 + 35}" stroke="#9ca3af" fill="none"/>')
-    parts.append(f'<path d="M{positions["handoff"][0] + 65},125 C1120,180 1120,55 40,55" stroke="#9ca3af" fill="none"/>')
+        parts.append(f'<path d="M{x1 + 130},{y1 + 35} L{x2},{y2 + 35}" stroke="#9ca3af" fill="none" marker-end="url(#arrowhead)"/>')
+    handoff_x, handoff_y = positions["handoff"]
+    intake_x, intake_y = positions["intake"]
+    parts.append(f'<path d="M{handoff_x + 65},{handoff_y} C{handoff_x + 65},250 {handoff_x + 65},55 {intake_x + 65},55 L{intake_x + 65},{intake_y}" stroke="#9ca3af" fill="none" marker-end="url(#arrowhead)"/>')
+    learning_x, learning_y = positions["learning"]
+    audit_x, audit_y = positions["audit"]
+    hooks_x, hooks_y = positions["hooks"]
+    act_x, act_y = positions["act"]
+    parts.append(f'<path d="M{audit_x + 65},{audit_y + 70} C{audit_x + 65},{audit_y + 120} {learning_x + 65},{learning_y - 20} {learning_x + 65},{learning_y}" stroke="#9ca3af" fill="none" stroke-dasharray="6 4" marker-end="url(#arrowhead)"/>')
+    parts.append(f'<path d="M{hooks_x + 130},{hooks_y + 35} C{hooks_x + 180},{hooks_y + 35} {act_x - 30},{act_y + 35} {act_x},{act_y + 35}" stroke="#9ca3af" fill="none" stroke-dasharray="6 4" marker-end="url(#arrowhead)"/>')
     for stage in STAGES:
         x, y = positions[stage]
         color = _COLORS[_class(stage, critical, warns)]
-        badge = _badge(stage, critical, warns, handoff=stage == "handoff")
+        badge = _badge(stage, critical, warns, handoff_unconsumed=_handoff_unconsumed(repo) and stage == "handoff")
         parts += [f'<rect class="node" x="{x}" y="{y}" width="130" height="70" rx="8" fill="{color}"/>', f'<text x="{x + 10}" y="{y + 27}">{stage}</text>', f'<text x="{x + 10}" y="{y + 52}">{html.escape(badge)}</text>']
-    parts += ['<text class="legend" x="40" y="400">Legend: ✖ undeclared critical  /  ⚠ declared warn or critical  /  ✔ no alert</text>']
+    parts += ['<text class="legend" x="40" y="400">Legend: ✖ critical (undeclared)  /  ⚠ warn or declared  /  ✔ no alert</text>']
     if unmapped:
         parts.append(f'<text class="legend" x="40" y="430">unmapped: {html.escape(", ".join(f"{k}={v}" for k, v in sorted(unmapped.items())))}</text>')
     parts.append("</svg>")
@@ -209,4 +229,5 @@ def write_dag(repo: Path, content: str, fmt: str, out: str | Path | None = None)
 def render_summary(repo: Path, runs: int = DEFAULT_RUNS) -> str:
     selected = _reports(repo)[:max(0, runs)]
     critical, warns, _, _ = _counts(repo.resolve(), selected)
-    return "DAG alerts: " + ", ".join(f"{stage} {CRIT} {critical[stage]} / {WARN} {warns[stage]}" for stage in STAGES if critical[stage] or warns[stage]) or "DAG alerts: none"
+    joined = ", ".join(f"{stage} {CRIT} {critical[stage]} / {WARN} {warns[stage]}" for stage in STAGES if critical[stage] or warns[stage])
+    return f"DAG alerts: {joined}" if joined else "DAG alerts: none"
