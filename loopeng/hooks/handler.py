@@ -1,0 +1,170 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from .._paths import agent_root
+from ..audit.policy import AUDIT_TIMEOUT_SECONDS, pre_tool_hard_block
+from ..journal import append_event
+from .events import EventKind, NormalizedEvent
+
+HANDOFF_CONTEXT_LIMIT = 2000
+VERSION = "unknown"
+try:
+    VERSION = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
+except OSError:
+    pass
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _banner(event: NormalizedEvent) -> str:
+    return f"[loopeng-bootstrap v{VERSION} | loopeng/v0.2 | {event.event_name}] "
+
+
+def _state_path(repo: Path) -> Path:
+    return repo / agent_root("state", "active-run.json")
+
+
+def _run_id(event: NormalizedEvent) -> str:
+    explicit = event.run_id
+    if explicit:
+        return explicit
+    session = str(event.payload.get("session_id") or "")
+    if session:
+        return "run-" + hashlib.sha256(session.encode()).hexdigest()[:20]
+    return "run-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+
+
+def _load_active(repo: Path) -> dict[str, Any] | None:
+    path = _state_path(repo)
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) and value.get("run_id") else None
+    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
+        return None
+
+
+def _save_active(repo: Path, value: dict[str, Any]) -> None:
+    path = _state_path(repo)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _consume_handoff(repo: Path, event: NormalizedEvent) -> str | None:
+    path = repo / agent_root("state", "handoff.json")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict) or value.get("consumed_at"):
+            return None
+        summary = str(value.get("summary") or "")
+        if len(summary) > HANDOFF_CONTEXT_LIMIT:
+            summary = summary[:HANDOFF_CONTEXT_LIMIT] + " (see Run Report)"
+        value["consumed_at"] = _now()
+        value["consumed_by"] = event.platform
+        path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        return summary or None
+    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
+        return None
+
+
+def _start_if_needed(event: NormalizedEvent) -> tuple[str, str | None]:
+    active = _load_active(event.repo)
+    if active:
+        return str(active["run_id"]), None
+    run_id = _run_id(event)
+    append_event(event.repo, run_id, {
+        "kind": "run-start", "agent": event.platform,
+        "goal": str(event.payload.get("prompt") or event.payload.get("goal") or ""),
+        "session_id": event.payload.get("session_id"),
+    })
+    _save_active(event.repo, {"run_id": run_id, "session_id": event.payload.get("session_id"), "started_at": _now()})
+    return run_id, _consume_handoff(event.repo, event)
+
+
+def _audit(repo: Path, run_id: str) -> str | None:
+    env = os.environ.copy()
+    root = str(Path(__file__).resolve().parents[2])
+    env["PYTHONPATH"] = root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "loopeng", "audit", "run", "--run", run_id, "--repo", str(repo)],
+            cwd=repo, env=env, text=True, capture_output=True, timeout=AUDIT_TIMEOUT_SECONDS, check=False,
+        )
+        if proc.returncode == 0:
+            return proc.stdout.strip() or None
+        return f"audit exited {proc.returncode}: {proc.stderr.strip()[:500]}"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"audit failure: {type(exc).__name__}"
+
+
+def _post_tool(event: NormalizedEvent, run_id: str) -> None:
+    payload = event.payload
+    tool = str(payload.get("tool_name") or payload.get("tool") or "unknown")
+    tool_input = payload.get("tool_input")
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    kind = "command" if command or tool.lower() in {"bash", "shell"} else "mutation" if tool.lower() in {"apply_patch", "edit", "write"} else "mutation"
+    record: dict[str, Any] = {"kind": kind, "tool_name": tool, "tool_success": payload.get("tool_success", True)}
+    if command:
+        record["command"] = command
+    if isinstance(tool_input, dict):
+        record["path"] = tool_input.get("path") or tool_input.get("file_path")
+    append_event(event.repo, run_id, record)
+
+
+def handle(event: NormalizedEvent) -> dict[str, Any]:
+    """Apply the shared lifecycle policy and return a platform-neutral result.
+
+    Exceptions are deliberately fail-open.  The only deny path is the
+    imported HARD_BLOCK classifier during PRE_TOOL.
+    """
+    result: dict[str, Any] = {"run_id": None, "response": {}}
+    try:
+        if event.kind in {EventKind.SESSION_START, EventKind.PROMPT_SUBMIT}:
+            run_id, handoff = _start_if_needed(event)
+            result["run_id"] = run_id
+            if handoff:
+                result["response"] = {"hookSpecificOutput": {"additionalContext": _banner(event) + handoff}}
+            return result
+        active = _load_active(event.repo)
+        run_id = str(active.get("run_id")) if active else _run_id(event)
+        result["run_id"] = run_id
+        if event.kind is EventKind.PRE_TOOL:
+            reason = pre_tool_hard_block(event.payload, event.repo)
+            if reason:
+                result["response"] = {"hookSpecificOutput": {"permissionDecision": "deny", "permissionDecisionReason": _banner(event) + reason}}
+            else:
+                result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}
+            return result
+        if event.kind is EventKind.POST_TOOL:
+            _post_tool(event, run_id)
+            return result
+        if event.kind is EventKind.RUN_STOP:
+            append_event(event.repo, run_id, {"kind": "run-end", "agent": event.platform})
+            audit_error = _audit(event.repo, run_id)
+            if audit_error:
+                append_event(event.repo, run_id, {"kind": "hook_failure", "error": audit_error})
+            try:
+                _state_path(event.repo).unlink()
+            except FileNotFoundError:
+                pass
+            # Stop is observation/generation only: never return a block/deny.
+            result["response"] = {"continue": True}
+            return result
+        return result
+    except Exception as exc:  # fail-open, including corrupt state files
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        if event.kind is EventKind.RUN_STOP:
+            result["response"] = {"continue": True}
+        elif event.kind is EventKind.PRE_TOOL:
+            result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}
+        return result

@@ -40,6 +40,6 @@ The canonical generator is `python3 -m loopeng audit run --run <id>`, which cons
 - `okf-apply`: `{"kind":"okf-apply","report":"<path>","ok":true|false,"touched":[...]}`
 - `intent`: `{"kind":"intent","paths":["<relative path or directory>"],"reason":"<reason>"}`
 
-`loopeng okf apply --run <id>` appends the `okf-apply` event automatically. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.
+Hooks are the standard automatic capture layer for Claude Code and Codex. `loopeng okf apply --run <id>` and `loopeng journal add` remain CLI paths for explicit/headless use. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.
 
-将来、v0.2 側で任意接続の PreToolUse アダプタ等を実装する場合、エージェント可視メッセージには `[loopeng-bootstrap v{VERSION} | loopeng/v0.2 | {EVENT}]` 形式のバナーを付ける。バナー生成は `loopeng/_paths.py` 近傍に単一関数として置き、loop_hook の形式と一致させる。
+フックから注入するエージェント可視メッセージには `[loopeng-bootstrap v{VERSION} | loopeng/v0.2 | {EVENT}]` 形式のバナーを付ける。

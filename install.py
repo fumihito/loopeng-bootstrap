@@ -85,6 +85,14 @@ RUNTIME_MANIFEST = [
     {'path': 'loopeng/learning.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/schedule.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/status.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/hooks/__init__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/hooks/events.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/hooks/handler.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/hooks/claude_code.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/hooks/codex.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/__init__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/policy.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/report.py', 'profiles': {PROFILE_FULL}},
 ]
 CONFIG_JSON_RELS = {
     '.agent-loop/policy.json',
@@ -312,11 +320,23 @@ class Installer:
         moved = self.migration_report.get('moved', [])
         unknown = self.migration_report.get('unknown_artifact', [])
         alerts = self.migration_report.get('llmwiki_alerts', [])
+        registered_hooks: list[str] = []
+        for rel in ('.claude/settings.json', '.codex/hooks.json'):
+            config = self.repo / rel
+            try:
+                payload = json.loads(config.read_text(encoding='utf-8'))
+            except (OSError, json.JSONDecodeError):
+                continue
+            hooks = payload.get('hooks', {}) if isinstance(payload, dict) else {}
+            if isinstance(hooks, dict):
+                for event, groups in hooks.items():
+                    if 'loopeng hook ' in json.dumps(groups, sort_keys=True):
+                        registered_hooks.append(f'{rel}:{event}')
         def section(title: str, values: object) -> list[str]:
             items = values if isinstance(values, list) else []
             return [f'## {title}'] + ([f'- `{item}`' for item in items] if items else ['- none'])
         lines = ['# v0.1 to v0.2 migration report', '', f'- timestamp: `{self.run_stamp}`', f'- profile: `{self.profile}`', f'- convergence: `{self.migration_report.get("status", "no-op")}`', f'- retired path: `{self.migration_retired_root()}`', f'- retired path count: `{len(moved) if isinstance(moved, list) else 0}`', f'- removed hook registrations: `{self.migration_report.get("removed_hook_registrations", 0)}`', '']
-        lines += section('Retired paths', moved) + [''] + section('systemd', self.migration_report.get('systemd')) + [''] + section('llmwiki_alerts', alerts) + [''] + section('unknown_artifact', unknown) + [''] + section('loop-brief-patterns retired entries', self.migration_report.get('retired_loop_brief_patterns'))
+        lines += section('Registered v0.2 hooks', sorted(registered_hooks)) + [''] + section('Retired paths', moved) + [''] + section('systemd', self.migration_report.get('systemd')) + [''] + section('llmwiki_alerts', alerts) + [''] + section('unknown_artifact', unknown) + [''] + section('loop-brief-patterns retired entries', self.migration_report.get('retired_loop_brief_patterns'))
         path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
         self.migration_report['report_path'] = str(path)
         print(f'Migration {self.migration_report.get("status", "no-op")}; report: {path}')
@@ -1990,9 +2010,11 @@ class Installer:
                 self.repo / ('.' + 'codex') / 'hooks.json',
                 self.repo / ('.' + 'claude') / 'settings.json',
             )
+            # Preserve the v0.2 hook registrations produced by merge_json.
+            # Sidecar regeneration must not erase the standard hook layer.
             for sidecar in generated_hook_files:
-                self.atomic_write_text(sidecar, json.dumps({'hooks': {}}, indent=2) + '\n')
-                self.record_manifest_entry(sidecar, source=None, classification='config')
+                if sidecar.is_file():
+                    self.record_manifest_entry(sidecar, source=None, classification='config')
 
         if self.profile == PROFILE_ROUTING and not self.dry_run:
             print('Routing profile selected; okfctl build and validation are out of scope.')

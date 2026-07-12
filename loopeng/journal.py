@@ -56,7 +56,7 @@ def sanitize_event(event: dict[str, Any]) -> dict[str, Any]:
         elif isinstance(value, dict):
             result[key] = sanitize_event(value)
         elif isinstance(value, list):
-            result[key] = [sanitize_event(item) if isinstance(item, dict) else item for item in value]
+            result[key] = [sanitize_event(item) if isinstance(item, dict) else _sanitize_text(item) if isinstance(item, str) else item for item in value]
         else:
             result[key] = value
     return result

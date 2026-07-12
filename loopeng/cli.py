@@ -66,6 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status")
     status.add_argument("--repo", type=_path, default=Path("."))
 
+    hook = sub.add_parser("hook")
+    hook.add_argument("platform", choices=("claude-code", "codex"))
+
     return parser
 
 
@@ -145,6 +148,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "status":
         from .status import render_status
         print(render_status(args.repo))
+        return 0
+
+    if args.command == "hook":
+        raw = sys.stdin.read()
+        try:
+            payload = json.loads(raw) if raw.strip() else {}
+        except json.JSONDecodeError:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+        if args.platform == "codex":
+            from .hooks.codex import normalize, render
+        else:
+            from .hooks.claude_code import normalize, render
+        event = normalize(payload)
+        result = __import__("loopeng.hooks.handler", fromlist=["handle"]).handle(event)
+        sys.stdout.write(json.dumps(render(result, event), ensure_ascii=False))
         return 0
 
     raise SystemExit("unhandled command")

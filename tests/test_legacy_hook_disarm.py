@@ -89,3 +89,4 @@ class LegacyHookDisarmTests(unittest.TestCase):
                 self.assertFalse(any(_has_legacy_hook(event) for event in _target_events(payload)))
                 hooks = payload["hooks"]["PreToolUse"]
                 self.assertTrue(any(group["hooks"][0]["command"] == "echo custom" for group in hooks))
+                self.assertIn("loopeng hook", json.dumps(payload))

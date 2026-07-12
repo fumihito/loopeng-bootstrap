@@ -11,3 +11,10 @@
 
 詳細: `docs/RELEASE_AUDIT.md`
 <!-- completion-protocol:end -->
+
+## Run discipline
+
+Hooks are the standard journal/audit capture layer for Claude Code and Codex.
+Use `python3 -m loopeng journal add` only for headless or script-driven runs;
+hooks-disabled operation is a supported degraded mode and may raise
+`journal_coverage`.

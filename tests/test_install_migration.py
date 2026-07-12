@@ -58,6 +58,8 @@ class InstallMigrationTests(unittest.TestCase):
             body = report.read_text(encoding='utf-8')
             self.assertIn('invalid.md:', body)
             self.assertIn('unknown.txt', body)
+            self.assertIn('Registered v0.2 hooks', body)
+            self.assertIn('loopeng hook', (repo / '.codex/hooks.json').read_text(encoding='utf-8'))
             second = self.run_install(repo)
             self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
             reports = sorted((repo / AL / 'state' / 'reports').glob('migration-*.md'))
