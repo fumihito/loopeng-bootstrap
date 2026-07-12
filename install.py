@@ -404,7 +404,7 @@ class Installer:
         return message
 
     def lock_read_only(self, path: Path) -> None:
-        if self.dry_run or not path.exists():
+        if self.dry_run or self.is_self_install() or not path.exists():
             return
         current = path.stat().st_mode
         os.chmod(path, current & ~0o222)
@@ -417,7 +417,7 @@ class Installer:
             os.chmod(destination, current | 0o111)
 
     def unlock_for_update(self, path: Path) -> None:
-        if self.dry_run or not path.exists():
+        if self.dry_run or self.is_self_install() or not path.exists():
             return
         current = path.stat().st_mode
         os.chmod(path, current | stat.S_IWUSR)
@@ -492,7 +492,10 @@ class Installer:
             sidecar.parent.mkdir(parents=True, exist_ok=True)
             self.unlock_for_update(sidecar)
             self.unlock_for_update(sidecar.parent)
-            sidecar.write_text(text, encoding='utf-8')
+            if self.is_self_install():
+                self.atomic_write_text(sidecar, text)
+            else:
+                sidecar.write_text(text, encoding='utf-8')
             self.record_manifest_entry(sidecar, source=None, classification='generated')
             self.lock_read_only(sidecar)
 
@@ -1842,7 +1845,7 @@ class Installer:
         self.record_manifest_entry(path, source=SRC / '.agent-loop/memory-policy.json', classification='config')
 
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
-        if self.update_mode:
+        if self.update_mode and not self.is_self_install():
             self.run_legacy_migration()
         conflicts, migrations = self.analyze_layout()
         if self.update_mode and self.manifest is None and self.maybe_self_mode():
@@ -1913,7 +1916,8 @@ class Installer:
                 self.repo / '.agent-loop/systemd/agent-loop-scheduler.service',
                 replacements={'__REPO_ROOT__': str(self.repo)},
             )
-        for source_rel, destination_rel in [
+        if self.profile == PROFILE_FULL:
+            for source_rel, destination_rel in [
             ('docs/LOOP_INPUT_GUIDE.md', '.agent-loop/docs/LOOP_INPUT_GUIDE.md'),
             ('docs/HUMAN_SKILL_NAMESPACE.md', '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md'),
             ('docs/LLM_ASSISTED_INSTALL.md', '.agent-loop/docs/LLM_ASSISTED_INSTALL.md'),
@@ -1930,13 +1934,23 @@ class Installer:
             ('templates/OKF_LOOP_BRIEF_PATTERN.md', '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md'),
             ('templates/SOP_SKILL_TEMPLATE.md', '.agent-loop/templates/SOP_SKILL_TEMPLATE.md'),
             ('templates/INSTALL_MERGE_REPORT.md', '.agent-loop/templates/INSTALL_MERGE_REPORT.md'),
-        ]:
-            self.copy_file(SRC / source_rel, self.repo / destination_rel)
+            ]:
+                self.copy_file(SRC / source_rel, self.repo / destination_rel)
 
         if self.profile == PROFILE_FULL and not self.maybe_self_mode():
             self.install_llmwiki_skeleton()
         if self.update_mode:
             self.validate_migration_memory()
+
+        # Retire legacy hook registrations before generated sidecars are locked read-only.
+        if self.update_mode and not self.dry_run:
+            result = disarm_legacy_hooks(self.repo)
+            if result.removed_entries:
+                print(f'Disarmed legacy hooks in {self.repo}: removed {result.removed_entries} entries')
+                if result.backup_root is not None:
+                    print(f'Backups: {result.backup_root}')
+            for path in result.skipped_paths:
+                print(f'Skipped missing file: {path}')
 
         self.merge_json(SRC / 'adapters/codex/.codex/hooks.json', self.repo / '.codex/hooks.json')
         self.merge_json(SRC / 'adapters/claude/.claude/settings.json', self.repo / '.claude/settings.json')
@@ -1984,14 +1998,6 @@ class Installer:
             print('Routing profile selected; okfctl build and validation are out of scope.')
 
         self.write_generated_sidecars()
-        if self.update_mode and not self.dry_run:
-            result = disarm_legacy_hooks(self.repo)
-            if result.removed_entries:
-                print(f'Disarmed legacy hooks in {self.repo}: removed {result.removed_entries} entries')
-                if result.backup_root is not None:
-                    print(f'Backups: {result.backup_root}')
-            for path in result.skipped_paths:
-                print(f'Skipped missing file: {path}')
         if False:  # legacy executable artifacts are not part of the v0.2 manifest
             (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o555)
             if self.profile == PROFILE_FULL:
