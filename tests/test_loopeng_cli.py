@@ -11,6 +11,35 @@ from loopeng._paths import agent_root
 
 
 class LoopengCliTests(unittest.TestCase):
+    def test_help_explains_top_level_and_nested_commands(self) -> None:
+        top = subprocess.run(
+            [sys.executable, "-m", "loopeng", "--help"],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertIn("監査可能なエージェント運用ループ", top.stdout)
+        self.assertIn("okf       OKF LLMWiki", top.stdout)
+        self.assertIn("review    過去の run 結果", top.stdout)
+
+        okf = subprocess.run(
+            [sys.executable, "-m", "loopeng", "okf", "--help"],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertIn("OKF 形式の LLMWiki バンドル", okf.stdout)
+        self.assertIn("apply     検証済みレポート", okf.stdout)
+
+        review = subprocess.run(
+            [sys.executable, "-m", "loopeng", "review", "--help"],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertIn("未確認項目をトリアージ表示", review.stdout)
+        self.assertIn("判断: go / alt / hold", review.stdout)
+
     def test_journal_schedule_and_audit(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td)
@@ -49,4 +78,3 @@ class LoopengCliTests(unittest.TestCase):
             report_path = Path(report.stdout.strip())
             self.assertTrue(report_path.is_file())
             self.assertIn("Run Report run-1", report_path.read_text(encoding="utf-8"))
-
