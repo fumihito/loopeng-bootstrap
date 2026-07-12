@@ -13,6 +13,7 @@ from typing import Any
 from .._paths import agent_root
 from ..audit.policy import AUDIT_TIMEOUT_SECONDS, pre_tool_hard_block
 from ..journal import append_event
+from ..review import MODE_PREFIX
 from .events import EventKind, NormalizedEvent
 
 HANDOFF_CONTEXT_LIMIT = 2000
@@ -107,6 +108,28 @@ def _audit(repo: Path, run_id: str) -> str | None:
         return f"audit failure: {type(exc).__name__}"
 
 
+def _review_context(event: NormalizedEvent, run_id: str) -> tuple[str | None, str | None]:
+    prompt = event.payload.get("prompt") or event.payload.get("prompt_text") or event.payload.get("user_prompt")
+    if not isinstance(prompt, str) or not prompt.startswith(MODE_PREFIX):
+        return None, None
+    remainder = prompt[len(MODE_PREFIX):].lstrip()
+    if not remainder:
+        remainder = "digest を要約し、次の一手の選択肢を示せ"
+    env = os.environ.copy()
+    root = str(Path(__file__).resolve().parents[2])
+    env["PYTHONPATH"] = root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "loopeng", "review", "--repo", str(event.repo)],
+            cwd=event.repo, env=env, text=True, capture_output=True, timeout=AUDIT_TIMEOUT_SECONDS, check=False,
+        )
+        if proc.returncode == 0:
+            return proc.stdout.strip(), remainder
+        return None, f"review exited {proc.returncode}: {proc.stderr.strip()[:500]}"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"review failure: {type(exc).__name__}"
+
+
 def _post_tool(event: NormalizedEvent, run_id: str) -> None:
     payload = event.payload
     tool = str(payload.get("tool_name") or payload.get("tool") or "unknown")
@@ -132,8 +155,19 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
         if event.kind in {EventKind.SESSION_START, EventKind.PROMPT_SUBMIT}:
             run_id, handoff = _start_if_needed(event)
             result["run_id"] = run_id
+            review, review_instruction = _review_context(event, run_id)
+            review_error = review_instruction if review is None and review_instruction and review_instruction.startswith(("review exited", "review failure")) else None
+            if review_error:
+                append_event(event.repo, run_id, {"kind": "review_failure", "error": review_error})
+            contexts = []
             if handoff:
-                result["response"] = {"hookSpecificOutput": {"additionalContext": _banner(event) + handoff}}
+                contexts.append(handoff)
+            if review:
+                contexts.append(review)
+            if contexts:
+                result["response"] = {"hookSpecificOutput": {"additionalContext": _banner(event) + "\n\n".join(contexts)}}
+            if review is not None and review_instruction:
+                result["response"]["hookSpecificOutput"]["additionalContext"] += "\n\n" + review_instruction
             return result
         active = _load_active(event.repo)
         run_id = str(active.get("run_id")) if active else _run_id(event)

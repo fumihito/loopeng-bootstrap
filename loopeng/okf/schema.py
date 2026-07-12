@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -106,6 +107,15 @@ def validate_document_text(text: str) -> list[str]:
         errors.append("tags must be a non-empty list")
     if body.strip() == "":
         errors.append("document body must not be empty")
+    if "review_after" in frontmatter:
+        review_after = frontmatter["review_after"]
+        if not isinstance(review_after, str):
+            errors.append("review_after must be an ISO date (YYYY-MM-DD)")
+        else:
+            try:
+                date.fromisoformat(review_after)
+            except ValueError:
+                errors.append("review_after must be an ISO date (YYYY-MM-DD)")
     return errors
 
 

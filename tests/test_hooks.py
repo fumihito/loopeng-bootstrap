@@ -62,6 +62,19 @@ class HookTests(unittest.TestCase):
             self.assertEqual(result["response"], {"continue": True})
             self.assertNotIn("block", json.dumps(result).lower())
 
+    def test_review_prefix_injects_digest_and_preserves_instruction(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            result = handler.handle(normalize_codex({
+                "hook_event_name": "UserPromptSubmit",
+                "cwd": str(repo),
+                "session_id": "review-session",
+                "prompt": "review: 前提だけ深掘りして",
+            }))
+            context = result["response"]["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("Loop Review", context)
+            self.assertTrue(context.endswith("前提だけ深掘りして"))
+
     def test_cli_uses_requested_platform(self) -> None:
         proc = subprocess.run([sys.executable, "-m", "loopeng", "hook", "claude-code"], input=json.dumps({"hook_event_name": "Stop", "cwd": str(ROOT), "run_id": "cli"}), text=True, capture_output=True, cwd=ROOT)
         self.assertEqual(proc.returncode, 0, proc.stderr)

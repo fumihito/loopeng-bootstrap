@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "role": "migration-proposer",
+  "source": "docs/v0.2-phase1",
+  "review_request": "Hito: please review whether any additional unresolved Phase 1 item should be promoted to llmwiki/decisions before applying this report. The scanned documents contain no explicit unresolved-item section, so no decision is fabricated.",
+  "operations": []
+}

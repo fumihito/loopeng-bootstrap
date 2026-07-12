@@ -44,6 +44,11 @@ BUDGET_LIMITS = {
 
 AUDIT_TIMEOUT_SECONDS = 60
 
+# Review-mode aggregation thresholds.  Keep these in policy so the digest
+# and its tests share one auditable source of truth.
+REVIEW_RECURRENCE_THRESHOLD = 3
+REVIEW_OLDEST_COUNT = 3
+
 HARD_BLOCKS = {
     "destructive_command": "Categorically destructive command patterns",
     "secret_persistence": "Secrets or tokens written to durable artifacts",

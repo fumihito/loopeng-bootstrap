@@ -63,6 +63,28 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     declared_paths = {finding.evidence[0] for finding in declared if finding.evidence}
     undeclared_paths = {finding.evidence[0] for finding in undeclared if finding.evidence}
 
+    started_at = starts[-1].get("timestamp") if starts else None
+    ended_at = ends[-1].get("timestamp") if ends else None
+    sidecar = {
+        "run_id": run_id,
+        "agent": agent,
+        "goal": str(starts[-1].get("goal") or "") if starts else "",
+        "started_at": started_at,
+        "ended_at": ended_at,
+        "alerts": [
+            {
+                "check_id": finding.check_id,
+                "severity": finding.severity,
+                "declared": not (finding.check_id == "protected_path_mutation" and finding.severity == "critical"),
+            }
+            for finding in alerts
+        ],
+        "undeclared_critical": bool(undeclared),
+        "memory": {"applied": len(applied), "rejected": len(rejected)},
+        "handoff_written": True,
+        "schema": 1,
+    }
+
     report_lines = [
         f"# Run Report {run_id}", "", "## What ran", f"- run-id: {run_id}",
         f"- agent-type: {agent}", f"- duration: {duration}",
@@ -91,6 +113,9 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         report_lines.insert(0, "CRITICAL ALERTS PRESENT: human review required.")
         report_lines.insert(1, "")
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
+    (report_dir / f"{run_id}.json").write_text(
+        json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     handoff_path.parent.mkdir(parents=True, exist_ok=True)
     handoff_path.write_text(json.dumps(handoff, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return report_path

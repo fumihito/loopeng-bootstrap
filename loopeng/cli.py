@@ -63,6 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
     audit_run.add_argument("--run", required=True)
     audit_run.add_argument("--repo", type=_path, default=Path("."))
 
+    review = sub.add_parser("review")
+    review.add_argument("--runs", type=int, default=5)
+    review.add_argument("--repo", type=_path, default=Path("."))
+    review.add_argument("--section", choices=("results", "concerns", "premises"))
+    review.add_argument("--run")
+
     status = sub.add_parser("status")
     status.add_argument("--repo", type=_path, default=Path("."))
 
@@ -143,6 +149,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "audit" and args.audit_command == "run":
         report_path = run_audit_report(args.repo, args.run)
         print(str(report_path))
+        return 0
+
+    if args.command == "review":
+        from .review import render_review, record_review
+        if args.runs < 0:
+            raise SystemExit("--runs must be non-negative")
+        print(render_review(args.repo.resolve(), args.runs, args.section), end="")
+        if args.run:
+            record_review(args.repo.resolve(), args.run, [args.section] if args.section else ["results", "concerns", "premises"])
         return 0
 
     if args.command == "status":

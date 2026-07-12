@@ -18,3 +18,4 @@ Hooks are the standard journal/audit capture layer for Claude Code and Codex.
 Use `python3 -m loopeng journal add` only for headless or script-driven runs;
 hooks-disabled operation is a supported degraded mode and may raise
 `journal_coverage`.
+If a user prompt begins with `review:`, run `python3 -m loopeng review` before responding.
