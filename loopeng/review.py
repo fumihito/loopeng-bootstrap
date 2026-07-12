@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import html
 import os
 import subprocess
 from collections import Counter, defaultdict
@@ -190,6 +191,25 @@ def render_review(repo: Path, runs: int = DEFAULT_RUNS, section: str | None = No
     return f"[{_banner()}]\n# Loop Review (last {runs} runs)\n\n" + "\n\n".join("\n".join(part) for part in chosen) + "\n"
 
 
+def _html_document(title: str, body: str) -> str:
+    escaped = html.escape(body)
+    return (
+        "<!doctype html>\n"
+        '<html lang="ja">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f"  <title>{html.escape(title)}</title>\n"
+        "  <style>body{margin:2rem;background:#111827;color:#f3f4f6;font:16px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto}pre{white-space:pre-wrap;background:#1f2937;padding:1.25rem;border-radius:.5rem;overflow:auto}</style>\n"
+        "</head>\n"
+        f"<body><main><pre>{escaped}</pre></main></body>\n"
+        "</html>\n"
+    )
+
+
+def render_review_html(repo: Path, runs: int = DEFAULT_RUNS, section: str | None = None) -> str:
+    return _html_document("Loop Review", render_review(repo, runs, section))
+
+
 def _member_occurrences(repo: Path, runs: list[dict[str, Any]]) -> dict[str, set[str]]:
     occurrences: dict[str, set[str]] = defaultdict(set)
     for run in runs:
@@ -376,6 +396,10 @@ def render_triage(repo: Path, runs: int = DEFAULT_RUNS, *, next_item: bool = Fal
         if remaining:
             lines.extend(["", f"(残り {remaining} 項目 — `review: next` で表示)"])
     return "\n".join(lines) + "\n"
+
+
+def render_triage_html(repo: Path, runs: int = DEFAULT_RUNS, *, next_item: bool = False) -> str:
+    return _html_document("Loop Review Triage", render_triage(repo, runs, next_item=next_item))
 
 
 def execute_go(repo: Path, item_id: str, run_id: str | None = None) -> str:

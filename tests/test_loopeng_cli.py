@@ -95,3 +95,22 @@ class LoopengCliTests(unittest.TestCase):
             report_path = Path(report.stdout.strip())
             self.assertTrue(report_path.is_file())
             self.assertIn("Run Report run-1", report_path.read_text(encoding="utf-8"))
+
+            review_html = subprocess.run(
+                [sys.executable, "-m", "loopeng", "review", "--format", "html", "--repo", str(repo)],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            self.assertTrue(review_html.stdout.startswith("<!doctype html>"))
+            self.assertIn("Loop Review", review_html.stdout)
+
+            dag_html = subprocess.run(
+                [sys.executable, "-m", "loopeng", "review", "dag", "--format", "html", "--repo", str(repo)],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            self.assertTrue(dag_html.stdout.startswith("<!doctype html>"))
+            self.assertIn("<svg", dag_html.stdout)
+            self.assertTrue((repo / agent_root("state", "reports") / "loop-dag.html").is_file())

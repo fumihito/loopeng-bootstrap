@@ -145,7 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--go", help=t("指定したカタログ項目の remediation を実行", "Execute remediation for a catalog item"))
     review.add_argument("--decision", help=t("判断 ID を記録", "Record a decision ID"))
     review.add_argument("--choice", choices=("go", "alt", "hold"), help=t("判断: go / alt / hold", "Decision: go / alt / hold"))
-    review.add_argument("--format", choices=("text", "json", "mermaid", "svg"), default="text", help=t("出力形式 (既定: text; dag は mermaid)", "Output format (default: text; mermaid for dag)"))
+    review.add_argument("--format", choices=("text", "html", "json", "mermaid", "svg"), default="text", help=t("出力形式 (既定: text; dag は mermaid)", "Output format (default: text; mermaid for dag)"))
     review.add_argument("--out", help=t("dag 成果物の出力先 (reports 配下)", "dag output path (under reports)"))
 
     status = sub.add_parser(
@@ -239,15 +239,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "review":
-        from .review import execute_go, record_decision, render_review, render_triage, record_review
+        from .review import execute_go, record_decision, render_review, render_review_html, render_triage, render_triage_html, record_review
         if args.runs < 0:
             raise SystemExit("--runs must be non-negative")
         if args.review_view == "dag":
             from .review_dag import render_dag, render_summary, write_dag
-            fmt = args.format if args.format in {"mermaid", "svg"} else "mermaid"
+            fmt = args.format if args.format in {"mermaid", "svg", "html"} else "mermaid"
             content = render_dag(args.repo.resolve(), args.runs, run_id=args.run, fmt=fmt)
-            write_dag(args.repo.resolve(), content, "mmd" if fmt == "mermaid" else "svg", args.out)
-            if fmt == "mermaid":
+            write_dag(args.repo.resolve(), content, "mmd" if fmt == "mermaid" else fmt, args.out)
+            if fmt in {"mermaid", "html"}:
                 sys.stdout.write(content)
             else:
                 print(str((args.repo.resolve() / agent_root("state", "reports") / (args.out or "loop-dag.svg")).resolve()))
@@ -261,9 +261,13 @@ def main(argv: list[str] | None = None) -> int:
             print(record_decision(args.repo.resolve(), args.decision, args.choice, args.run), end="")
             return 0
         if args.triage or args.next_item:
-            print(render_triage(args.repo.resolve(), args.runs, next_item=args.next_item, as_json=args.format == "json"), end="")
+            if args.format == "html":
+                print(render_triage_html(args.repo.resolve(), args.runs, next_item=args.next_item), end="")
+            else:
+                print(render_triage(args.repo.resolve(), args.runs, next_item=args.next_item, as_json=args.format == "json"), end="")
             return 0
-        print(render_review(args.repo.resolve(), args.runs, args.section), end="")
+        output = render_review_html(args.repo.resolve(), args.runs, args.section) if args.format == "html" else render_review(args.repo.resolve(), args.runs, args.section)
+        print(output, end="")
         if args.run:
             record_review(args.repo.resolve(), args.run, [args.section] if args.section else ["results", "concerns", "premises"])
         return 0

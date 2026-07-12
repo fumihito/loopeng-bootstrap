@@ -211,9 +211,23 @@ def _run_mermaid(repo: Path, run_id: str) -> str:
 def render_dag(repo: Path, runs: int = DEFAULT_RUNS, *, run_id: str | None = None, fmt: str = "mermaid") -> str:
     repo = repo.resolve()
     if run_id:
-        return _run_mermaid(repo, run_id) if fmt == "mermaid" else _svg(repo, [next((item for item in _reports(repo) if str(item.get("run_id")) == run_id), {"run_id": run_id, "alerts": []})])
+        mermaid = _run_mermaid(repo, run_id)
+        svg = _svg(repo, [next((item for item in _reports(repo) if str(item.get("run_id")) == run_id), {"run_id": run_id, "alerts": []})])
+        return mermaid if fmt == "mermaid" else _dag_html(svg) if fmt == "html" else svg
     selected = _reports(repo)[:max(0, runs)]
-    return _mermaid(repo, selected) if fmt == "mermaid" else _svg(repo, selected)
+    mermaid = _mermaid(repo, selected)
+    svg = _svg(repo, selected)
+    return mermaid if fmt == "mermaid" else _dag_html(svg) if fmt == "html" else svg
+
+
+def _dag_html(svg: str) -> str:
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+        "<title>Loop DAG</title>\n"
+        "<style>body{margin:0;background:#111827}svg{display:block;margin:auto;max-width:100%;height:auto}</style>\n"
+        f"</head>\n<body>{svg}</body>\n</html>\n"
+    )
 
 
 def write_dag(repo: Path, content: str, fmt: str, out: str | Path | None = None) -> Path:
