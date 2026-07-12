@@ -180,6 +180,8 @@ class Installer:
         self.manifest: dict[str, object] | None = self.load_existing_manifest()
         self.manifest_entries_by_rel: dict[str, dict[str, object]] = {}
         self.obsolete_manifest_paths: list[str] = []
+        self.migration_detected = False
+        self.migration_report: dict[str, object] = {}
 
     @staticmethod
     def kit_commit() -> str:
@@ -192,6 +194,132 @@ class Installer:
             except (InstallerError, FileNotFoundError, RuntimeError):
                 self.source_commit = 'unknown'
         return self.source_commit
+
+    def legacy_migration_present(self) -> bool:
+        root = self.repo / ('.' + 'agent-loop')
+        markers = (root / 'hooks/loop_hook.py', root / 'policy.json', root / 'otel.json')
+        if any(path.exists() or path.is_symlink() for path in markers):
+            return True
+        for name in ('claude', 'codex'):
+            path = self.repo / ('.' + name) / ('settings.json' if name == 'claude' else 'hooks.json')
+            if path.is_file() and 'loop_hook.py' in path.read_text(encoding='utf-8'):
+                return True
+        return False
+
+    def migration_retired_root(self) -> Path:
+        return self.backup_root / 'v0.1-retired'
+
+    def _migration_archive(self, source: Path, retired: Path, moved: list[str]) -> None:
+        if not (source.exists() or source.is_symlink()):
+            return
+        destination = retired / source.relative_to(self.repo)
+        if self.dry_run:
+            print(f'[dry-run] retire {source.relative_to(self.repo)} -> {destination.relative_to(self.repo)}')
+            moved.append(source.relative_to(self.repo).as_posix())
+            return
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(source), str(destination))
+        moved.append(source.relative_to(self.repo).as_posix())
+
+    def _legacy_unknown_artifacts(self) -> list[str]:
+        root = self.repo / ('.' + 'agent-loop')
+        if not root.is_dir():
+            return []
+        prefixes = ('hooks/', 'lib/', 'bin/', 'cmd/', 'docs/', 'templates/', 'state/', 'runtime/', 'systemd/')
+        names = {'otel.json', 'otel-collector.yaml', 'policy.json', 'sop-policy.json', 'direct-policy.json', 'memory-policy.json', 'scheduler-policy.json', 'learning-policy.json', 'brief-pattern-policy.json'}
+        return sorted(path.relative_to(root).as_posix() for path in root.rglob('*') if (path.is_file() or path.is_symlink()) and path.relative_to(root).as_posix() not in names and not path.relative_to(root).as_posix().startswith(prefixes))
+
+    def _retire_legacy_skills(self, retired: Path, moved: list[str]) -> None:
+        names = {'gatekeeper', 'sensemaker', 'governor', 'integrator', 'state-steward', 'meta-evaluator', 'memory-curator', 'learning-auditor', 'watchdog-recovery', 'loop-brief-assistant', 'brief-pattern-curator', 'command-route'}
+        roots = (self.repo / 'skills', self.repo / ('.' + 'claude') / 'skills', self.repo / ('.' + 'agents') / 'skills')
+        for root in roots:
+            if root.is_symlink() or not root.is_dir():
+                continue
+            for name in sorted(names):
+                self._migration_archive(root / name, retired, moved)
+            for path in sorted(root.glob('sop-*')):
+                self._migration_archive(path, retired, moved)
+
+    def run_legacy_migration(self) -> None:
+        detected = self.legacy_migration_present()
+        self.migration_detected = detected
+        moved: list[str] = []
+        retired = self.migration_retired_root()
+        unknown = self._legacy_unknown_artifacts()
+        if detected:
+            if not self.dry_run:
+                result = disarm_legacy_hooks(self.repo)
+                self.migration_report['removed_hook_registrations'] = result.removed_entries
+            else:
+                self.migration_report['removed_hook_registrations'] = 0
+            legacy_root = '.' + 'agent-loop'
+            rels = (f'{legacy_root}/hooks', f'{legacy_root}/lib', f'{legacy_root}/bin', f'{legacy_root}/cmd', f'{legacy_root}/otel.json', f'{legacy_root}/otel-collector.yaml', f'{legacy_root}/policy.json', f'{legacy_root}/sop-policy.json', f'{legacy_root}/direct-policy.json', f'{legacy_root}/memory-policy.json', f'{legacy_root}/scheduler-policy.json', f'{legacy_root}/learning-policy.json', f'{legacy_root}/brief-pattern-policy.json', f'{legacy_root}/docs', f'{legacy_root}/templates', 'routing_hints.py')
+            for rel in rels:
+                self._migration_archive(self.repo / rel, retired, moved)
+            for policy in sorted((self.repo / legacy_root).glob('*-policy.json')):
+                self._migration_archive(policy, retired, moved)
+            self._retire_legacy_skills(retired, moved)
+            for rel in (f'{legacy_root}/state', f'{legacy_root}/runtime'):
+                self._migration_archive(self.repo / rel, retired, moved)
+            patterns = self.repo / 'llmwiki/loop-brief-patterns'
+            pattern_names = sorted(path.name for path in patterns.iterdir()) if patterns.is_dir() else []
+            self._migration_archive(patterns, retired, moved)
+        else:
+            self.migration_report['removed_hook_registrations'] = 0
+            pattern_names = []
+        units = sorted(path.name for path in (SRC / 'systemd').glob('*') if path.is_file())
+        results: list[str] = []
+        if units and detected and not self.dry_run:
+            systemctl = shutil.which('systemctl')
+            if systemctl is None:
+                results = [f'{unit}: systemctl unavailable' for unit in units]
+            else:
+                for unit in units:
+                    proc = subprocess.run([systemctl, '--user', 'disable', '--now', unit], text=True, capture_output=True, check=False)
+                    stderr = (proc.stderr or '').lower()
+                    results.append(f'{unit}: disabled and stopped' if proc.returncode == 0 else f'{unit}: target absent' if 'not found' in stderr or 'not loaded' in stderr else f'{unit}: failed (continued)')
+        elif units and detected:
+            results = [f'{unit}: planned' for unit in units]
+        self.migration_report.update({'systemd': results, 'moved': moved, 'unknown_artifact': unknown, 'retired_loop_brief_patterns': pattern_names, 'status': 'initial-convergence' if detected else 'no-op'})
+
+    def validate_migration_memory(self) -> None:
+        bundle = self.repo / 'llmwiki'
+        if not bundle.exists() and not self.dry_run:
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(SRC) + os.pathsep + env.get('PYTHONPATH', '')
+            subprocess.run([sys.executable, '-m', 'loopeng', 'okf', 'init', str(bundle)], cwd=self.repo, env=env, text=True, capture_output=True, check=False)
+        alerts: list[str] = []
+        if bundle.is_dir():
+            from loopeng.okf.schema import validate_document
+            for document in sorted(bundle.rglob('*.md')):
+                if document.name in {'index.md', 'log.md'}:
+                    continue
+                try:
+                    alerts.extend(f'{document.relative_to(self.repo)}: {error}' for error in validate_document(document))
+                except OSError as exc:
+                    alerts.append(f'{document.relative_to(self.repo)}: {type(exc).__name__}: {exc}')
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(SRC) + os.pathsep + env.get('PYTHONPATH', '')
+            subprocess.run([sys.executable, '-m', 'loopeng', 'okf', 'validate', str(bundle)], cwd=self.repo, env=env, text=True, capture_output=True, check=False)
+        self.migration_report['llmwiki_alerts'] = alerts
+
+    def write_migration_report(self) -> None:
+        if self.dry_run or not self.update_mode:
+            return
+        root = self.repo / ('.' + 'agent-loop') / 'state/reports'
+        root.mkdir(parents=True, exist_ok=True)
+        path = root / f'migration-{self.run_stamp}.md'
+        moved = self.migration_report.get('moved', [])
+        unknown = self.migration_report.get('unknown_artifact', [])
+        alerts = self.migration_report.get('llmwiki_alerts', [])
+        def section(title: str, values: object) -> list[str]:
+            items = values if isinstance(values, list) else []
+            return [f'## {title}'] + ([f'- `{item}`' for item in items] if items else ['- none'])
+        lines = ['# v0.1 to v0.2 migration report', '', f'- timestamp: `{self.run_stamp}`', f'- profile: `{self.profile}`', f'- convergence: `{self.migration_report.get("status", "no-op")}`', f'- retired path: `{self.migration_retired_root()}`', f'- retired path count: `{len(moved) if isinstance(moved, list) else 0}`', f'- removed hook registrations: `{self.migration_report.get("removed_hook_registrations", 0)}`', '']
+        lines += section('Retired paths', moved) + [''] + section('systemd', self.migration_report.get('systemd')) + [''] + section('llmwiki_alerts', alerts) + [''] + section('unknown_artifact', unknown) + [''] + section('loop-brief-patterns retired entries', self.migration_report.get('retired_loop_brief_patterns'))
+        path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        self.migration_report['report_path'] = str(path)
+        print(f'Migration {self.migration_report.get("status", "no-op")}; report: {path}')
 
     def load_existing_manifest(self) -> dict[str, object] | None:
         if not self.manifest_path.is_file():
@@ -1714,12 +1842,16 @@ class Installer:
         self.record_manifest_entry(path, source=SRC / '.agent-loop/memory-policy.json', classification='config')
 
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
+        if self.update_mode:
+            self.run_legacy_migration()
         conflicts, migrations = self.analyze_layout()
         if self.update_mode and self.manifest is None and self.maybe_self_mode():
             self.manifest = {'entries': []}
         if self.maybe_self_mode() and not self.dry_run:
             (self.repo / '.agent-loop/runtime/llmwiki-live').mkdir(parents=True, exist_ok=True)
         if self.update_mode:
+            if self.manifest is None and self.migration_detected:
+                self.manifest = {'entries': []}
             if self.manifest is None:
                 raise InstallerError('update mode requires .agent-loop/runtime/install-manifest.json')
             current_rels = {self.destination_rel(path) for path in self.destination_paths()}
@@ -1803,6 +1935,8 @@ class Installer:
 
         if self.profile == PROFILE_FULL and not self.maybe_self_mode():
             self.install_llmwiki_skeleton()
+        if self.update_mode:
+            self.validate_migration_memory()
 
         self.merge_json(SRC / 'adapters/codex/.codex/hooks.json', self.repo / '.codex/hooks.json')
         self.merge_json(SRC / 'adapters/claude/.claude/settings.json', self.repo / '.claude/settings.json')
@@ -1877,6 +2011,7 @@ class Installer:
                 elif path.is_dir():
                     shutil.rmtree(path)
         self.write_install_manifest()
+        self.write_migration_report()
 
 
 def main() -> int:
