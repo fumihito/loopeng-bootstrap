@@ -68,6 +68,13 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--repo", type=_path, default=Path("."))
     review.add_argument("--section", choices=("results", "concerns", "premises"))
     review.add_argument("--run")
+    review.add_argument("--triage", action="store_true")
+    review.add_argument("--next", dest="next_item", action="store_true")
+    review.add_argument("--full", action="store_true")
+    review.add_argument("--go")
+    review.add_argument("--decision")
+    review.add_argument("--choice", choices=("go", "alt", "hold"))
+    review.add_argument("--format", choices=("text", "json"), default="text")
 
     status = sub.add_parser("status")
     status.add_argument("--repo", type=_path, default=Path("."))
@@ -152,9 +159,20 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "review":
-        from .review import render_review, record_review
+        from .review import execute_go, record_decision, render_review, render_triage, record_review
         if args.runs < 0:
             raise SystemExit("--runs must be non-negative")
+        if args.go:
+            print(execute_go(args.repo.resolve(), args.go, args.run), end="")
+            return 0
+        if args.decision:
+            if not args.choice:
+                raise SystemExit("--decision requires --choice")
+            print(record_decision(args.repo.resolve(), args.decision, args.choice, args.run), end="")
+            return 0
+        if args.triage or args.next_item:
+            print(render_triage(args.repo.resolve(), args.runs, next_item=args.next_item, as_json=args.format == "json"), end="")
+            return 0
         print(render_review(args.repo.resolve(), args.runs, args.section), end="")
         if args.run:
             record_review(args.repo.resolve(), args.run, [args.section] if args.section else ["results", "concerns", "premises"])

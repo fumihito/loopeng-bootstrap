@@ -62,7 +62,7 @@ class HookTests(unittest.TestCase):
             self.assertEqual(result["response"], {"continue": True})
             self.assertNotIn("block", json.dumps(result).lower())
 
-    def test_review_prefix_injects_digest_and_preserves_instruction(self) -> None:
+    def test_review_prefix_injects_triage_and_preserves_instruction(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td)
             result = handler.handle(normalize_codex({
@@ -72,7 +72,7 @@ class HookTests(unittest.TestCase):
                 "prompt": "review: 前提だけ深掘りして",
             }))
             context = result["response"]["hookSpecificOutput"]["additionalContext"]
-            self.assertIn("Loop Review", context)
+            self.assertIn("review-triage", context)
             self.assertTrue(context.endswith("前提だけ深掘りして"))
 
     def test_cli_uses_requested_platform(self) -> None:

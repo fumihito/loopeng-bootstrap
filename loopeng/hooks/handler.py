@@ -112,19 +112,29 @@ def _review_context(event: NormalizedEvent, run_id: str) -> tuple[str | None, st
     prompt = event.payload.get("prompt") or event.payload.get("prompt_text") or event.payload.get("user_prompt")
     if not isinstance(prompt, str) or not prompt.startswith(MODE_PREFIX):
         return None, None
-    remainder = prompt[len(MODE_PREFIX):].lstrip()
-    if not remainder:
-        remainder = "digest を要約し、次の一手の選択肢を示せ"
+    remainder = prompt[len(MODE_PREFIX):].strip()
+    args = ["--triage"]
+    if remainder == "next":
+        args = ["--triage", "--next"]
+    elif remainder == "full":
+        args = []
+    elif remainder.startswith("go "):
+        args = ["--go", remainder[3:].strip()]
+    elif remainder and remainder not in {"next", "full"}:
+        # Focus text is preserved for the agent, while triage remains the
+        # deterministic injected context.
+        remainder = remainder
     env = os.environ.copy()
     root = str(Path(__file__).resolve().parents[2])
     env["PYTHONPATH"] = root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     try:
         proc = subprocess.run(
-            [sys.executable, "-m", "loopeng", "review", "--repo", str(event.repo)],
+            [sys.executable, "-m", "loopeng", "review", "--repo", str(event.repo), *args],
             cwd=event.repo, env=env, text=True, capture_output=True, timeout=AUDIT_TIMEOUT_SECONDS, check=False,
         )
         if proc.returncode == 0:
-            return proc.stdout.strip(), remainder
+            instruction = remainder or "出力末尾の質問を提示したら応答を終え、ユーザーの指示を待つ"
+            return proc.stdout.strip(), instruction
         return None, f"review exited {proc.returncode}: {proc.stderr.strip()[:500]}"
     except (OSError, subprocess.TimeoutExpired) as exc:
         return None, f"review failure: {type(exc).__name__}"

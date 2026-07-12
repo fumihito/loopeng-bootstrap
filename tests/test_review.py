@@ -9,10 +9,10 @@ from pathlib import Path
 
 from loopeng._paths import agent_root
 from loopeng.okf.schema import validate_document_text
-from loopeng.review import render_review
+from loopeng.review import execute_go, record_decision, render_review, render_triage
 
 
-def sidecar(root: Path, run_id: str, *, check: str | None = None, ended: str | None = None) -> None:
+def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[dict] | None = None, undeclared: bool = False, ended: str | None = None) -> None:
     report_dir = root / agent_root("state", "reports")
     report_dir.mkdir(parents=True, exist_ok=True)
     report = {
@@ -21,8 +21,8 @@ def sidecar(root: Path, run_id: str, *, check: str | None = None, ended: str | N
         "goal": run_id,
         "started_at": ended or "2026-07-12T00:00:00+00:00",
         "ended_at": ended or "2026-07-12T00:01:00+00:00",
-        "alerts": ([{"check_id": check, "severity": "warn", "declared": True}] if check else []),
-        "undeclared_critical": False,
+        "alerts": alerts if alerts is not None else ([{"check_id": check, "severity": "warn", "declared": True}] if check else []),
+        "undeclared_critical": undeclared,
         "memory": {"applied": 1, "rejected": 0},
         "handoff_written": True,
         "schema": 1,
@@ -115,3 +115,59 @@ review_after: "2026-07-01"
             self.assertEqual(payload["schema"], 1)
             self.assertEqual(payload["goal"], "test")
 
+    def test_triage_groups_cooccurring_known_members(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for index in range(3):
+                sidecar(root, f"r{index}", alerts=[{"check_id": "journal_coverage", "severity": "critical"}, {"check_id": "protected_path_mutation", "severity": "critical"}], undeclared=True)
+            text = render_triage(root)
+            self.assertIn("hooks-absence", text)
+            self.assertIn("grouped into 1 items", text)
+
+    def test_triage_does_not_group_independent_members(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "journal_coverage", "severity": "critical"}], undeclared=False)
+            sidecar(root, "r2", alerts=[{"check_id": "protected_path_mutation", "severity": "critical"}], undeclared=True)
+            text = render_triage(root)
+            self.assertNotIn("hooks-absence", text)
+            self.assertIn("review: next", text)
+            self.assertIn("grouped into 2 items", text)
+            self.assertIn("journal_coverage", render_triage(root, next_item=True))
+
+    def test_triage_cursor_and_digest_reset(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "budget_exceeded", "severity": "warn"}])
+            sidecar(root, "r2", alerts=[{"check_id": "intent_overdeclaration", "severity": "warn"}])
+            first = render_triage(root)
+            second = render_triage(root, next_item=True)
+            self.assertIn("budget-recurrence", first)
+            self.assertIn("intent-overdeclaration", second)
+            sidecar(root, "r3", alerts=[{"check_id": "budget_exceeded", "severity": "warn"}])
+            reset = render_triage(root)
+            self.assertIn("budget-recurrence", reset)
+
+    def test_catalog_miss_and_non_executable_go(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "new_check", "severity": "critical"}])
+            self.assertIn("catalog-miss:new_check", render_triage(root))
+            result = execute_go(root, "catalog-miss:new_check")
+            self.assertIn("実行せず停止", result)
+            journal = next((root / agent_root("state", "journal")).glob("review-go-*.jsonl"))
+            self.assertIn('"kind": "decision"', journal.read_text(encoding="utf-8"))
+
+    def test_learning_go_writes_proposal_without_apply_and_hold_is_visible(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            learning = root / agent_root("state", "learning")
+            learning.mkdir(parents=True)
+            (learning / "one.json").write_text("{}", encoding="utf-8")
+            sidecar(root, "r1", alerts=[{"check_id": "learning_backlog", "severity": "info"}])
+            result = execute_go(root, "learning-backlog")
+            self.assertIn("apply はしていません", result)
+            self.assertTrue(list((root / agent_root("state", "review-proposals")).glob("*.md")))
+            self.assertEqual(list((root / agent_root("state", "review-proposals")).glob("*.md"))[0].read_text(encoding="utf-8").count("apply"), 0)
+            record_decision(root, "learning-backlog", "hold")
+            self.assertIn("[HELD]", render_triage(root))

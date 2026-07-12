@@ -18,4 +18,4 @@ Hooks are the standard journal/audit capture layer for Claude Code and Codex.
 Use `python3 -m loopeng journal add` only for headless or script-driven runs;
 hooks-disabled operation is a supported degraded mode and may raise
 `journal_coverage`.
-If a user prompt begins with `review:`, run `python3 -m loopeng review` before responding.
+If a user prompt begins with `review:`, run `python3 -m loopeng review --triage` and present its output as-is (no summary, elaboration, or additional analysis). End the response after presenting the trailing question and wait for the user. Use `--next` for `review: next`, omit `--triage` for `review: full`, and use `--go <item-id>` for `review: go <item-id>`. Execute standard remediation only for catalog entries marked `agent_executable`; otherwise report that user judgment or proposal is required and stop.
