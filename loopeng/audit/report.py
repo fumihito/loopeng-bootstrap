@@ -7,6 +7,8 @@ from pathlib import Path
 from .._paths import agent_root
 from ..learning import save_learning_entries
 from .checks import collect_context, run_checks
+from .policy import DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
+from ..journal import sanitize_event
 
 
 def _summarize_findings(findings):
@@ -21,6 +23,38 @@ def _format_findings(findings) -> list[str]:
         evidence = "; ".join(finding.evidence) if finding.evidence else "none"
         lines.append(f"- {finding.check_id} [{finding.severity}]: {finding.message} ({evidence})")
     return lines or ["- none"]
+
+
+_PATH_FINDINGS = {
+    "journal_coverage",
+    "protected_path_mutation",
+    "out_of_repo_write",
+    "skill_structure_violation",
+    "unreviewed_claim_persisted",
+}
+
+
+def _finding_paths(finding) -> list[str]:
+    paths = list(getattr(finding, "paths", ()) or ())
+    if not paths and finding.check_id in _PATH_FINDINGS and finding.evidence:
+        paths = [str(finding.evidence[0])]
+    return paths
+
+
+def _sidecar_alert(finding) -> dict:
+    message = sanitize_event({"message": str(finding.message)}).get("message", "")
+    raw_paths = [str(path) for path in _finding_paths(finding)]
+    sanitized_paths = [sanitize_event({"path": path}).get("path", "") for path in raw_paths]
+    alert = {
+        "check_id": finding.check_id,
+        "severity": finding.severity,
+        "declared": not (finding.check_id == "protected_path_mutation" and finding.severity == "critical"),
+        "message": str(message)[:DETAIL_MESSAGE_MAX],
+    }
+    if sanitized_paths:
+        alert["paths"] = sanitized_paths[:DETAIL_PATHS_MAX]
+        alert["paths_total"] = len(sanitized_paths)
+    return alert
 
 
 def run_audit_report(repo: Path, run_id: str) -> Path:
@@ -72,17 +106,13 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         "started_at": started_at,
         "ended_at": ended_at,
         "alerts": [
-            {
-                "check_id": finding.check_id,
-                "severity": finding.severity,
-                "declared": not (finding.check_id == "protected_path_mutation" and finding.severity == "critical"),
-            }
-            for finding in alerts
+            _sidecar_alert(finding)
+            for finding in findings
         ],
         "undeclared_critical": bool(undeclared),
         "memory": {"applied": len(applied), "rejected": len(rejected)},
         "handoff_written": True,
-        "schema": 1,
+        "schema": 2,
     }
 
     report_lines = [

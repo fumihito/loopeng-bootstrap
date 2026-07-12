@@ -33,6 +33,8 @@ Run Report is descriptive, not justificatory. It reports what happened and what 
 
 `python3 -m loopeng review dag` is the deterministic visual review companion. It reads the same JSON sidecars, writes the `loop-dag.mmd` / `loop-dag.svg` Mermaid/SVG artifacts under `.agent-loop/state/reports` (the `--out` path must remain there), and is an explicit read-only-review exception because those artifacts are audit outputs alongside the Run Report.
 
+Use `python3 -m loopeng review dag --stage <stage>` to inspect finding details from schema 2 sidecars; schema 1 sidecars remain readable and are marked as detail unavailable. The detail view is text/JSON only and does not alter the overview diagrams.
+
 The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report.
 
 ## Journal event contract

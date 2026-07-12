@@ -147,6 +147,8 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--choice", choices=("go", "alt", "hold"), help=t("判断: go / alt / hold", "Decision: go / alt / hold"))
     review.add_argument("--format", choices=("text", "html", "json", "mermaid", "svg"), default="text", help=t("出力形式 (既定: text; dag は mermaid)", "Output format (default: text; mermaid for dag)"))
     review.add_argument("--out", help=t("dag 成果物の出力先 (reports 配下)", "dag output path (under reports)"))
+    review.add_argument("--stage", choices=("intake", "retrieve", "act", "record", "memory", "audit", "handoff", "hooks", "learning"), help=t("dag 明細のステージ", "DAG detail stage"))
+    review.add_argument("--check", help=t("dag 明細を検査 ID で絞り込み", "Filter DAG details by check ID"))
 
     status = sub.add_parser(
         "status", help=t("直近の Run Report と backlog を要約", "Summarize the latest Run Report and backlog"),
@@ -242,13 +244,24 @@ def main(argv: list[str] | None = None) -> int:
         from .review import execute_go, record_decision, render_review, render_review_html, render_triage, render_triage_html, record_review
         if args.runs < 0:
             raise SystemExit("--runs must be non-negative")
+        if args.stage and args.review_view != "dag":
+            raise SystemExit("--stage requires review dag")
+        if args.check and not args.stage:
+            raise SystemExit("--check requires --stage")
         if args.review_view == "dag":
-            from .review_dag import render_dag, render_summary, write_dag
+            from .review_dag import DETAIL_GUIDE, render_dag, render_detail, render_summary, write_dag
+            if args.stage:
+                if args.format not in {"text", "json"}:
+                    raise SystemExit("--stage supports only --format text or json")
+                print(render_detail(args.repo.resolve(), args.stage, args.runs, check=args.check, as_json=args.format == "json"), end="")
+                return 0
             fmt = args.format if args.format in {"mermaid", "svg", "html"} else "mermaid"
             content = render_dag(args.repo.resolve(), args.runs, run_id=args.run, fmt=fmt)
             write_dag(args.repo.resolve(), content, "mmd" if fmt == "mermaid" else fmt, args.out)
             if fmt in {"mermaid", "html"}:
                 sys.stdout.write(content)
+                if fmt == "mermaid":
+                    sys.stdout.write(DETAIL_GUIDE + "\n")
             else:
                 print(str((args.repo.resolve() / agent_root("state", "reports") / (args.out or "loop-dag.svg")).resolve()))
             return 0

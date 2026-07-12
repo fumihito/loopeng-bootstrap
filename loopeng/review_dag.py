@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ._paths import agent_root
+from .audit.policy import DETAIL_FINDINGS_MAX, DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
 from .journal import journal_path
 from .review import DEFAULT_RUNS, _reports
 
@@ -35,6 +36,7 @@ CRIT = "✖"
 WARN = "⚠"
 OK = "✔"
 MAX_EVENTS = 60
+DETAIL_GUIDE = "details: review dag --stage <intake|retrieve|act|record|memory|audit|handoff|hooks|learning>"
 
 _COLORS = {"crit": "#7f1d1d", "warn": "#78350f", "ok": "#1f2937"}
 
@@ -245,3 +247,129 @@ def render_summary(repo: Path, runs: int = DEFAULT_RUNS) -> str:
     critical, warns, _, _ = _counts(repo.resolve(), selected)
     joined = ", ".join(f"{stage} {CRIT} {critical[stage]} / {WARN} {warns[stage]}" for stage in STAGES if critical[stage] or warns[stage])
     return f"DAG alerts: {joined}" if joined else "DAG alerts: none"
+
+
+def _detail_entry(run: dict[str, Any], alert: dict[str, Any]) -> dict[str, Any]:
+    check_id, bucket = _alert_bucket(alert)
+    message = str(alert.get("message") or "")
+    paths = [str(path) for path in alert.get("paths", []) if isinstance(path, str)]
+    paths_total = int(alert.get("paths_total", len(paths)) or len(paths))
+    return {
+        "run_id": str(run.get("run_id") or "unknown"),
+        "check_id": check_id,
+        "bucket": bucket,
+        "severity": "critical" if bucket == "critical" else "warn" if bucket == "warn" else "none",
+        "message": message,
+        "paths": paths,
+        "paths_total": max(paths_total, len(paths)),
+        "schema": int(run.get("schema", 1) or 1),
+        "detail_available": int(run.get("schema", 1) or 1) >= 2,
+    }
+
+
+def _detail_entries(repo: Path, stage: str, runs: int, check: str | None) -> list[dict[str, Any]]:
+    selected = _reports(repo)[:max(0, runs)]
+    entries: list[dict[str, Any]] = []
+    for run in selected:
+        alerts = run.get("alerts") if isinstance(run.get("alerts"), list) else []
+        for alert in alerts:
+            if not isinstance(alert, dict):
+                continue
+            check_id = str(alert.get("check_id") or "unknown")
+            if check and check_id != check:
+                continue
+            if STAGE_MAP.get(check_id) == stage and _alert_bucket(alert)[1] != "none":
+                entries.append(_detail_entry(run, alert))
+    if stage == "handoff" and _handoff_unconsumed(repo) and (not check or check == "handoff:unconsumed"):
+        path = repo / agent_root("state", "handoff.json")
+        try:
+            handoff = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            handoff = {}
+        if isinstance(handoff, dict):
+            entries.append({
+                "run_id": str(handoff.get("source_turn_id") or "unknown"),
+                "check_id": "handoff:unconsumed",
+                "bucket": "warn",
+                "severity": "warn",
+                "message": f"unconsumed handoff generated_at {handoff.get('generated_at', 'unknown')}",
+                "paths": [],
+                "paths_total": 0,
+                "schema": 2,
+                "detail_available": True,
+            })
+    return sorted(entries, key=lambda item: (-1 if item["run_id"] else 0, item["run_id"], item["check_id"]), reverse=True)
+
+
+def _truncate_detail_message(message: str) -> str:
+    if len(message) <= DETAIL_MESSAGE_MAX:
+        return message
+    return f"{message[:DETAIL_MESSAGE_MAX]} (+{len(message) - DETAIL_MESSAGE_MAX} more)"
+
+
+def _detail_item_lines(item: dict[str, Any]) -> list[str]:
+    item = _normalized_detail_item(item)
+    bucket = item["bucket"]
+    symbol = CRIT if bucket == "critical" else WARN
+    severity = "critical" if bucket == "critical" else "warn"
+    lines = [f"run {item['run_id']}  {item['check_id']}  {symbol} {severity}"]
+    if item["schema"] == 1:
+        lines.append("  (schema 1 sidecar — detail unavailable)")
+        return lines
+    lines.append(f"  message: {item['message'] or '(empty)'}")
+    paths = item["paths"][:DETAIL_PATHS_MAX]
+    if paths:
+        extra = max(0, item["paths_total"] - len(paths))
+        suffix = f" (+{extra} more)" if extra else ""
+        lines.append(f"  paths: {', '.join(paths)}{suffix}")
+    return lines
+
+
+def _normalized_detail_item(item: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(item)
+    normalized["message"] = _truncate_detail_message(str(item.get("message") or ""))
+    normalized["paths"] = list(item.get("paths", []))[:DETAIL_PATHS_MAX]
+    normalized["paths_total"] = max(int(item.get("paths_total", len(item.get("paths", []))) or 0), len(item.get("paths", [])))
+    if not normalized.get("detail_available", True):
+        normalized["detail"] = "schema 1 sidecar — detail unavailable"
+    return normalized
+
+
+def render_detail(repo: Path, stage: str, runs: int = DEFAULT_RUNS, *, check: str | None = None, as_json: bool = False) -> str:
+    if stage not in STAGES:
+        valid = "|".join(STAGES)
+        raise ValueError(f"invalid stage {stage!r}; valid stages: {valid}")
+    entries = _detail_entries(repo.resolve(), stage, runs, check)
+    total = len(entries)
+    visible = entries[:DETAIL_FINDINGS_MAX]
+    critical = sum(item["bucket"] == "critical" for item in entries)
+    warns = sum(item["bucket"] == "warn" for item in entries)
+    run_count = len({item["run_id"] for item in entries})
+    if as_json:
+        payload = {
+            "banner": "[loopeng-bootstrap v0.2.0 | loopeng/v0.2 | review-dag-detail]",
+            "stage": stage,
+            "check": check,
+            "findings": total,
+            "critical": critical,
+            "warn": warns,
+            "runs": run_count,
+            "items": [_normalized_detail_item(item) for item in visible],
+            "truncated": total > DETAIL_FINDINGS_MAX,
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    lines = [
+        "[loopeng-bootstrap v0.2.0 | loopeng/v0.2 | review-dag-detail]",
+        f"stage: {stage} — findings: {total} ({CRIT} {critical})" + (f" / {WARN} {warns}" if warns else "") + f" across {run_count} runs",
+        "",
+    ]
+    if not visible:
+        lines.append("(no findings)")
+    else:
+        for index, item in enumerate(visible):
+            if index:
+                lines.append("")
+            lines.extend(_detail_item_lines(item))
+    if total > DETAIL_FINDINGS_MAX:
+        lines.extend(["", f"(showing first {DETAIL_FINDINGS_MAX} of {total}; use --check or --runs to narrow the result)"])
+    return "\n".join(lines) + "\n"

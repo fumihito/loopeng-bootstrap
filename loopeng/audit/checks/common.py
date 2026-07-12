@@ -17,6 +17,7 @@ class AuditFinding:
     message: str
     evidence: tuple[str, ...] = ()
     category: str = "alert"
+    paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -8,12 +8,14 @@ import unittest
 from pathlib import Path
 
 from loopeng._paths import agent_root
+from loopeng.audit.report import run_audit_report
+from loopeng.journal import append_event
 from loopeng.okf.schema import validate_document_text
 from loopeng.review import execute_go, record_decision, render_review, render_triage
-from loopeng.review_dag import STAGE_MAP, _badge, render_dag, render_summary, write_dag
+from loopeng.review_dag import STAGE_MAP, _badge, render_dag, render_detail, render_summary, write_dag
 
 
-def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[dict] | None = None, undeclared: bool = False, ended: str | None = None) -> None:
+def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[dict] | None = None, undeclared: bool = False, ended: str | None = None, schema: int = 1) -> None:
     report_dir = root / agent_root("state", "reports")
     report_dir.mkdir(parents=True, exist_ok=True)
     report = {
@@ -26,7 +28,7 @@ def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[d
         "undeclared_critical": undeclared,
         "memory": {"applied": 1, "rejected": 0},
         "handoff_written": True,
-        "schema": 1,
+        "schema": schema,
     }
     (report_dir / f"{run_id}.json").write_text(json.dumps(report), encoding="utf-8")
 
@@ -104,6 +106,84 @@ class ReviewTests(unittest.TestCase):
                     if path.is_file()
                 ),
             )
+
+    def test_dag_detail_schema_two_is_sorted_and_uses_correct_buckets(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            long_message = "m" * 205
+            sidecar(root, "20260711-1802", schema=2, alerts=[
+                {"check_id": "protected_path_mutation", "severity": "critical", "declared": True, "message": "declared", "paths": ["a.py"]},
+                {"check_id": "journal_coverage", "severity": "critical", "message": long_message, "paths": [f"path-{i}.py" for i in range(12)], "paths_total": 12},
+            ])
+            sidecar(root, "20260712-0930", schema=2, alerts=[
+                {"check_id": "journal_coverage", "severity": "critical", "message": "latest", "paths": ["latest.py"]},
+            ])
+            text = render_detail(root, "record")
+            self.assertIn("stage: record — findings: 2 (✖ 2) across 2 runs", text)
+            self.assertLess(text.index("20260712-0930"), text.index("20260711-1802"))
+            self.assertIn("✖ critical", text)
+            self.assertNotIn("⚠ critical", text)
+            self.assertIn("(+5 more)", text)
+            self.assertIn("(+2 more)", text)
+
+            act = render_detail(root, "act")
+            self.assertIn("⚠ warn", act)
+
+    def test_dag_detail_accepts_schema_one_with_unavailable_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "journal_coverage", "severity": "critical"}])
+            text = render_detail(root, "record")
+            self.assertIn("(schema 1 sidecar — detail unavailable)", text)
+
+    def test_dag_detail_limits_findings_and_supports_check_filter(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", schema=2, alerts=[
+                {"check_id": "journal_coverage", "severity": "critical", "message": str(index)}
+                for index in range(31)
+            ])
+            text = render_detail(root, "record", check="journal_coverage")
+            self.assertIn("findings: 31", text)
+            self.assertIn("showing first 30 of 31", text)
+            self.assertEqual(text.count("run r1"), 30)
+            self.assertIn("(no findings)", render_detail(root, "record", check="secret_persistence"))
+
+    def test_dag_detail_handoff_entry_and_json_are_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            handoff = root / agent_root("state", "handoff.json")
+            handoff.parent.mkdir(parents=True, exist_ok=True)
+            handoff.write_text(json.dumps({"source_turn_id": "r1", "generated_at": "2026-07-12T00:00:00Z"}), encoding="utf-8")
+            first = render_detail(root, "handoff", as_json=True)
+            second = render_detail(root, "handoff", as_json=True)
+            self.assertEqual(first, second)
+            payload = json.loads(first)
+            self.assertEqual(payload["items"][0]["run_id"], "r1")
+            self.assertIn("generated_at", payload["items"][0]["message"])
+
+    def test_dag_detail_is_read_only_and_invalid_stage_is_explicit(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            before = sorted((p.relative_to(root), p.read_bytes()) for p in root.rglob("*") if p.is_file())
+            self.assertEqual(render_detail(root, "act"), render_detail(root, "act"))
+            after = sorted((p.relative_to(root), p.read_bytes()) for p in root.rglob("*") if p.is_file())
+            self.assertEqual(before, after)
+            with self.assertRaisesRegex(ValueError, r"valid stages: intake\|retrieve\|act"):
+                render_detail(root, "invalid")
+
+    def test_audit_schema_two_secret_message_is_sanitized(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            append_event(root, "r1", {"kind": "run-start", "agent": "test", "goal": "secret test"})
+            append_event(root, "r1", {"kind": "note", "message": "password=SUPER-SECRET-VALUE"})
+            append_event(root, "r1", {"kind": "run-end"})
+            run_audit_report(root, "r1")
+            payload = json.loads((root / agent_root("state", "reports") / "r1.json").read_text(encoding="utf-8"))
+            encoded = json.dumps(payload, ensure_ascii=False)
+            self.assertNotIn("SUPER-SECRET-VALUE", encoded)
+            self.assertEqual(payload["schema"], 2)
+            self.assertTrue(any(alert["check_id"] == "secret_persistence" for alert in payload["alerts"]))
 
     def test_dag_run_truncates_after_sixty_events(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -221,7 +301,7 @@ review_after: "2026-07-01"
             (journal / "r1.jsonl").write_text("\n".join(json.dumps(item) for item in events) + "\n", encoding="utf-8")
             subprocess.run([sys.executable, "-m", "loopeng", "audit", "run", "--run", "r1", "--repo", str(root)], check=True, capture_output=True, text=True)
             payload = json.loads((root / agent_root("state", "reports") / "r1.json").read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema"], 1)
+            self.assertEqual(payload["schema"], 2)
             self.assertEqual(payload["goal"], "test")
 
     def test_triage_groups_cooccurring_known_members(self) -> None:

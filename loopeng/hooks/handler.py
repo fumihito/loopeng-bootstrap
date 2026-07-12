@@ -116,6 +116,8 @@ def _review_context(event: NormalizedEvent, run_id: str) -> tuple[str | None, st
     args = ["--triage"]
     if remainder == "dag":
         args = ["dag"]
+    elif remainder.startswith("dag "):
+        args = ["dag", "--stage", remainder[4:].strip()]
     elif remainder == "next":
         args = ["--triage", "--next"]
     elif remainder == "full":
@@ -136,7 +138,8 @@ def _review_context(event: NormalizedEvent, run_id: str) -> tuple[str | None, st
         )
         if proc.returncode == 0:
             instruction = ("生成された Mermaid コードブロックをそのまま提示し、応答を終える"
-                           if remainder == "dag" else remainder or "出力末尾の質問を提示したら応答を終え、ユーザーの指示を待つ")
+                           if remainder == "dag" else "生成された dag 明細をそのまま提示し、応答を終える"
+                           if remainder.startswith("dag ") else remainder or "出力末尾の質問を提示したら応答を終え、ユーザーの指示を待つ")
             return proc.stdout.strip(), instruction
         return None, f"review exited {proc.returncode}: {proc.stderr.strip()[:500]}"
     except (OSError, subprocess.TimeoutExpired) as exc:

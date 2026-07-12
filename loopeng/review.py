@@ -38,7 +38,7 @@ def _reports(repo: Path) -> list[dict[str, Any]]:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        if isinstance(value, dict) and value.get("schema") == 1 and value.get("run_id"):
+        if isinstance(value, dict) and value.get("schema") in {1, 2} and value.get("run_id"):
             value["_path"] = path
             values.append(value)
     values.sort(key=lambda item: str(item.get("ended_at") or item.get("started_at") or item["_path"].stat().st_mtime), reverse=True)

@@ -44,6 +44,7 @@ class LoopengCliTests(unittest.TestCase):
         )
         self.assertIn("未確認項目をトリアージ表示", review.stdout)
         self.assertIn("判断: go / alt / hold", review.stdout)
+        self.assertIn("{text,html,json,mermaid,svg}", review.stdout)
 
         english_env = {**os.environ, "LANG": "en_US.UTF-8"}
         english = subprocess.run(
@@ -104,6 +105,23 @@ class LoopengCliTests(unittest.TestCase):
             )
             self.assertTrue(review_html.stdout.startswith("<!doctype html>"))
             self.assertIn("Loop Review", review_html.stdout)
+
+            dag = subprocess.run(
+                [sys.executable, "-m", "loopeng", "review", "dag", "--repo", str(repo)],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            self.assertIn("details: review dag --stage", dag.stdout)
+
+            invalid_stage = subprocess.run(
+                [sys.executable, "-m", "loopeng", "review", "dag", "--stage", "invalid", "--repo", str(repo)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(invalid_stage.returncode, 0)
+            self.assertIn("invalid choice", invalid_stage.stderr)
+            self.assertIn("intake", invalid_stage.stderr)
 
             dag_html = subprocess.run(
                 [sys.executable, "-m", "loopeng", "review", "dag", "--format", "html", "--repo", str(repo)],

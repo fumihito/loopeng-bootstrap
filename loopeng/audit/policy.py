@@ -49,6 +49,12 @@ AUDIT_TIMEOUT_SECONDS = 60
 REVIEW_RECURRENCE_THRESHOLD = 3
 REVIEW_OLDEST_COUNT = 3
 
+# Finding drill-down bounds.  These are shared by audit sidecar production
+# and review-dag detail rendering so stored and displayed data agree.
+DETAIL_MESSAGE_MAX = 200
+DETAIL_PATHS_MAX = 10
+DETAIL_FINDINGS_MAX = 30
+
 HARD_BLOCKS = {
     "destructive_command": "Categorically destructive command patterns",
     "secret_persistence": "Secrets or tokens written to durable artifacts",
