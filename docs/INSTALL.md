@@ -41,3 +41,11 @@ Use the self-update flow from the repository root when you are updating the kit 
 ## Layout rule
 
 `adapters/shared/skills/` is the source of truth for shared skills. `install.py --self --update` is the distribution path. In v0.2, only frame-* skills remain in the shared skill set.
+
+## Hooks
+
+Installation registers the managed hook entry points for Claude Code and Codex
+under their respective repository configuration. With hooks enabled, events
+are journaled automatically and hard blocks are enforced before execution;
+hooks-disabled operation remains a supported degraded mode. The invariants
+and platform boundaries are defined in `docs/ARCHITECTURE.md`.

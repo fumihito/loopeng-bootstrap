@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ._paths import agent_root
-from .journal import append_event
+from .journal import EVENT_DECISION, EVENT_GO_RESULT, EVENT_REVIEW, EVENT_RUN_END, EVENT_RUN_START, append_event
 from .okf.schema import parse_document
 from .audit.policy import REVIEW_OLDEST_COUNT, REVIEW_RECURRENCE_THRESHOLD
 from .review_catalog import CATALOG_BY_ID, REMEDIATION_CATALOG
@@ -251,7 +251,7 @@ def _held(repo: Path) -> set[str]:
         try:
             for line in path.read_text(encoding="utf-8").splitlines():
                 event = json.loads(line)
-                if event.get("kind") == "decision" and event.get("choice") == "hold" and event.get("item"):
+                if event.get("kind") == EVENT_DECISION and event.get("choice") == "hold" and event.get("item"):
                     result.add(str(event["item"]))
         except (OSError, json.JSONDecodeError):
             continue
@@ -406,8 +406,8 @@ def execute_go(repo: Path, item_id: str, run_id: str | None = None) -> str:
     items = _triage_items(repo, _reports(repo)[:DEFAULT_RUNS])
     item = next((candidate for candidate in items if candidate["id"] == item_id), None)
     run_id = run_id or "review-go-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    append_event(repo, run_id, {"kind": "run-start", "agent": "review", "goal": f"review: go {item_id}"})
-    append_event(repo, run_id, {"kind": "decision", "item": item_id, "choice": "go"})
+    append_event(repo, run_id, {"kind": EVENT_RUN_START, "agent": "review", "goal": f"review: go {item_id}"})
+    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": item_id, "choice": "go"})
     if item is None:
         result = f"未知 item-id: {item_id}; 実行せず停止します。"
     elif not item["catalog"]["agent_executable"]:
@@ -417,8 +417,8 @@ def execute_go(repo: Path, item_id: str, run_id: str | None = None) -> str:
         proposal.parent.mkdir(parents=True, exist_ok=True)
         proposal.write_text(f"# Review proposal: {item_id}\n\n{item['catalog']['standard_fix']}\n\n対象: {', '.join(item['members'])}\n", encoding="utf-8")
         result = f"[{item_id}] 起案を生成しました: {proposal.relative_to(repo)}。apply はしていません。"
-    append_event(repo, run_id, {"kind": "go-result", "item": item_id, "result": result})
-    append_event(repo, run_id, {"kind": "run-end", "agent": "review"})
+    append_event(repo, run_id, {"kind": EVENT_GO_RESULT, "item": item_id, "result": result})
+    append_event(repo, run_id, {"kind": EVENT_RUN_END, "agent": "review"})
     return result + "\n"
 
 
@@ -426,9 +426,9 @@ def record_decision(repo: Path, item_id: str, choice: str, run_id: str | None = 
     if choice not in {"go", "alt", "hold"}:
         raise ValueError("choice must be go, alt, or hold")
     run_id = run_id or "review-decision-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    append_event(repo, run_id, {"kind": "run-start", "agent": "review", "goal": f"review: {choice} {item_id}"})
-    append_event(repo, run_id, {"kind": "decision", "item": item_id, "choice": choice})
-    append_event(repo, run_id, {"kind": "run-end", "agent": "review"})
+    append_event(repo, run_id, {"kind": EVENT_RUN_START, "agent": "review", "goal": f"review: {choice} {item_id}"})
+    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": item_id, "choice": choice})
+    append_event(repo, run_id, {"kind": EVENT_RUN_END, "agent": "review"})
     return f"[{item_id}] choice={choice} を記録しました。停止します。\n"
 
 
@@ -441,7 +441,7 @@ def _scope(runs: list[dict[str, Any]], requested: int) -> list[str]:
 
 
 def record_review(repo: Path, run_id: str, sections: list[str]) -> None:
-    append_event(repo, run_id, {"kind": MODE, "sections": sections})
+    append_event(repo, run_id, {"kind": EVENT_REVIEW, "sections": sections})
 
 
 def main(argv: list[str] | None = None) -> int:

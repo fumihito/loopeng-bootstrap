@@ -50,8 +50,9 @@ class AuditGuardRecordTests(unittest.TestCase):
         git(self.repo, "add", "utils/change.txt")
         git(self.repo, "commit", "-m", "work")
 
-    def run_record(self, *, branch: str = "main", no_amend: bool = False) -> tuple[int, str, str]:
-        with patch.object(audit_guard, "run_record_checks", return_value=audit_guard.CheckResult("fixture checks ok")):
+    def run_record(self, *, branch: str = "main", no_amend: bool = False, check_result=None) -> tuple[int, str, str]:
+        result = check_result or audit_guard.CheckResult("fixture checks ok")
+        with patch.object(audit_guard, "run_record_checks", return_value=result):
             from contextlib import redirect_stderr, redirect_stdout
             from io import StringIO
 
@@ -103,6 +104,15 @@ class AuditGuardRecordTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(stdout, "")
         self.assertIn("requires a clean worktree", stderr)
+
+    def test_failed_check_does_not_write_audit_line(self) -> None:
+        self.add_work_commit()
+        before = (self.repo / "docs/audit-log.md").read_text(encoding="utf-8")
+        code, stdout, stderr = self.run_record(check_result=audit_guard.CheckResult("", "ERROR: doc parity lint failed"))
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("doc parity lint failed", stderr)
+        self.assertEqual((self.repo / "docs/audit-log.md").read_text(encoding="utf-8"), before)
 
     def test_self_verification_failure_is_nonzero(self) -> None:
         self.add_work_commit()

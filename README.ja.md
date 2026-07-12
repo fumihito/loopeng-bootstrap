@@ -23,11 +23,16 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
 | `loopeng status` | 直近 Run Report と learning backlog の要約 |
+| `loopeng review` | 直近ランの結果・懸念・前提をレビュー。`--triage` で誘導し、`dag` で Mermaid/SVG のループ図を生成 |
+| `loopeng hook` | Claude Code / Codex の hook 入口。journal 自動取得と hard block の事前執行を担う |
+| `./loopeng.py` | `python3 -m loopeng` と同等の短縮ランチャ |
 | `skills/frame-*` | 思考フレーム skill 群(唯一の配布 skill。編集点は `adapters/shared/skills/`) |
 | `utils/phase1_gate.py` / `utils/phase1_gate_ext.py` | 実行可能な受け入れゲート(変更禁止。完了判定の唯一の根拠) |
 | `utils/audit_guard.py` | このリポジトリ自体の completion protocol(pre-push 監査) |
 
 ## Install
+
+`LANG` でヘルプ言語を選べます。未設定または `ja` で始まる場合は日本語、それ以外は英語です。
 
 Python 3.10+ を前提とします。
 
@@ -84,4 +89,10 @@ Run Report に critical アラート(未宣言の protected path 変更、journa
 
 ## Status
 
-v0.2 系(active development)。バージョンは v15 系(v0.1 設計)から再出発しており、v0.1 と互換しません。v0.1 の統治機構(Gatekeeper / Sensemaker / Loop Brief、`route:` / `brief:` / `direct:` 入口、Go 実装、OTel/systemd 常駐)は退役し、`--update` による収束移行で置き換えられます。進行中の拡張: 両エージェント共通の hooks 層(journal 自動取得と hard block の事前執行)、`okf query`(決定論的メモリ検索)、`review:` モード(ループリザルト・懸念・前提の一覧)、audit record のコミット吸収。ライセンスは MIT License です。
+v0.2 系(active development)。バージョンは v15 系(v0.1 設計)から再出発しており、v0.1 と互換しません。v0.1 の統治機構(Gatekeeper / Sensemaker / Loop Brief、`route:` / `brief:` / `direct:` 入口、Go 実装、OTel/systemd 常駐)は退役し、`--update` による収束移行で置き換えられます。このリリースでは、共通 hooks、`review:`/`review dag`、audit record のコミット吸収を実装済みです。進行中の拡張:
+
+<!-- ongoing-start -->
+`okf query`(決定論的メモリ検索)
+<!-- ongoing-end -->
+
+ライセンスは MIT License です。

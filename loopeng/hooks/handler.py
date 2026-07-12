@@ -14,6 +14,7 @@ from .._paths import agent_root
 from ..audit.policy import AUDIT_TIMEOUT_SECONDS, pre_tool_hard_block
 from ..journal import append_event
 from ..review import MODE_PREFIX
+from ..journal import EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_MUTATION, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START
 from .events import EventKind, NormalizedEvent
 
 HANDOFF_CONTEXT_LIMIT = 2000
@@ -84,7 +85,7 @@ def _start_if_needed(event: NormalizedEvent) -> tuple[str, str | None]:
         return str(active["run_id"]), None
     run_id = _run_id(event)
     append_event(event.repo, run_id, {
-        "kind": "run-start", "agent": event.platform,
+        "kind": EVENT_RUN_START, "agent": event.platform,
         "goal": str(event.payload.get("prompt") or event.payload.get("goal") or ""),
         "session_id": event.payload.get("session_id"),
     })
@@ -151,7 +152,7 @@ def _post_tool(event: NormalizedEvent, run_id: str) -> None:
     tool = str(payload.get("tool_name") or payload.get("tool") or "unknown")
     tool_input = payload.get("tool_input")
     command = tool_input.get("command") if isinstance(tool_input, dict) else None
-    kind = "command" if command or tool.lower() in {"bash", "shell"} else "mutation" if tool.lower() in {"apply_patch", "edit", "write"} else "mutation"
+    kind = EVENT_COMMAND if command or tool.lower() in {"bash", "shell"} else EVENT_MUTATION if tool.lower() in {"apply_patch", "edit", "write"} else EVENT_MUTATION
     record: dict[str, Any] = {"kind": kind, "tool_name": tool, "tool_success": payload.get("tool_success", True)}
     if command:
         record["command"] = command
@@ -174,7 +175,7 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
             review, review_instruction = _review_context(event, run_id)
             review_error = review_instruction if review is None and review_instruction and review_instruction.startswith(("review exited", "review failure")) else None
             if review_error:
-                append_event(event.repo, run_id, {"kind": "review_failure", "error": review_error})
+                append_event(event.repo, run_id, {"kind": EVENT_REVIEW_FAILURE, "error": review_error})
             contexts = []
             if handoff:
                 contexts.append(handoff)
@@ -199,10 +200,10 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
             _post_tool(event, run_id)
             return result
         if event.kind is EventKind.RUN_STOP:
-            append_event(event.repo, run_id, {"kind": "run-end", "agent": event.platform})
+            append_event(event.repo, run_id, {"kind": EVENT_RUN_END, "agent": event.platform})
             audit_error = _audit(event.repo, run_id)
             if audit_error:
-                append_event(event.repo, run_id, {"kind": "hook_failure", "error": audit_error})
+                append_event(event.repo, run_id, {"kind": EVENT_HOOK_FAILURE, "error": audit_error})
             try:
                 _state_path(event.repo).unlink()
             except FileNotFoundError:

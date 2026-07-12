@@ -23,11 +23,16 @@ v0.2 consists of four pillars.
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
 | `loopeng status` | Summarize the latest Run Report and learning backlog |
+| `loopeng review` | Review recent run results, concerns, and premises; `--triage` guides review and `dag` renders a Mermaid/SVG loop view |
+| `loopeng hook` | Claude Code / Codex hook entry point for automatic journal capture and pre-execution hard-block enforcement |
+| `./loopeng.py` | Short launcher equivalent to `python3 -m loopeng` |
 | `skills/frame-*` | Thinking-framework skill family (the only distributed skills; edit point: `adapters/shared/skills/`) |
 | `utils/phase1_gate.py` / `utils/phase1_gate_ext.py` | Executable acceptance gates (must not be changed; the sole basis for completion judgment) |
 | `utils/audit_guard.py` | This repository's completion protocol (pre-push audit) |
 
 ## Install
+
+Set `LANG` to choose English help; Japanese is used when `LANG` is unset or starts with `ja`.
 
 Python 3.10+ is the prerequisite.
 
@@ -84,4 +89,10 @@ Development of this repository follows these disciplines: changes are performed 
 
 ## Status
 
-v0.2 series (active development). The version restarts from the v15 line (v0.1 design) and is not compatible with v0.1. The v0.1 governance mechanisms (Gatekeeper / Sensemaker / Loop Brief, the `route:` / `brief:` / `direct:` entry points, the Go implementation, and OTel/systemd residency) are retired and replaced by convergence migration with `--update`. Ongoing extensions: a hooks layer shared by both agents (automatic journal capture and pre-execution hard-block enforcement), `okf query` (deterministic memory search), `review:` mode (listing loop results, concerns, and assumptions; `review dag` adds a deterministic Mermaid/SVG cycle view), and absorption of the audit record into the commit. Licensed under the MIT License.
+v0.2 series (active development). The version restarts from the v15 line (v0.1 design) and is not compatible with v0.1. The v0.1 governance mechanisms (Gatekeeper / Sensemaker / Loop Brief, the `route:` / `brief:` / `direct:` entry points, the Go implementation, and OTel/systemd residency) are retired and replaced by convergence migration with `--update`. Implemented in this release: shared hooks, `review:`/`review dag`, and audit-record absorption. Ongoing extensions:
+
+<!-- ongoing-start -->
+`okf query` (deterministic memory search)
+<!-- ongoing-end -->
+
+Licensed under the MIT License.

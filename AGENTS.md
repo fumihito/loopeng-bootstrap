@@ -20,3 +20,7 @@ Use `python3 -m loopeng journal add` only for headless or script-driven runs;
 hooks-disabled operation is a supported degraded mode and may raise
 `journal_coverage`.
 If a user prompt begins with `review:`, run `python3 -m loopeng review --triage` and present its output as-is (no summary, elaboration, or additional analysis). End the response after presenting the trailing question and wait for the user. Use `--next` for `review: next`, omit `--triage` for `review: full`, use `review: dag` for the deterministic Mermaid/SVG cycle view, use `review: dag act` (mapped to `review dag --stage act`) for finding details, and use `--go <item-id>` for `review: go <item-id>`. Execute standard remediation only for catalog entries marked `agent_executable`; otherwise report that user judgment or proposal is required and stop.
+
+CLI のサブコマンド・review の view・journal のイベント種別・モード語を
+追加/変更するランでは、docs/doc-map.json が指す文書を同一ラン内で
+更新する。整合は record 時の doc_parity_lint が強制する。

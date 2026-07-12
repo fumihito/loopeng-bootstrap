@@ -42,7 +42,7 @@ The audit log uses two line types: `- <date> | audit <parent-full-hash> | <summa
 - If a prerequisite tool is missing, install or supply it before treating the audit as complete.
 - The manual evidence review in step 7 is the only non-deterministic part; it must be noted explicitly in the audit record.
 - When recording the audit hash, use the push's remote tip: the commit that the push advances from, typically `git rev-parse origin/<branch>`. Do not write the not-yet-created audit commit hash.
-- If `pytest` is unavailable, `python3 -m unittest discover -s tests` is an acceptable substitute. If you use the substitute, state that explicitly in `docs/audit-log.md`.
+- If `pytest` is unavailable, `python3 -m unittest discover -s tests` is an acceptable substitute. If you use the substitute, state that explicitly in the audit log.
 - If Go is unavailable, the audit is partial and must say so explicitly; do not report it as a full audit.
 
 The repository also ships `utils/audit_guard.py` and `utils/install-dev-hooks.sh` as an opt-in developer pre-push guard for audit-tracked changes. Run the installer from the repository root to write `.git/hooks/pre-push`, which blocks pushes that touch `.agent-loop/`, `tests/`, `install.py`, `utils/`, or `docs/loop-structure*` unless `docs/audit-log.md` already contains the parent hash of the earliest pushed commit.

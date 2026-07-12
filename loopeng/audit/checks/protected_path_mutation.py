@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from .common import AuditContext, AuditFinding
 from ..policy import PROTECTED_PATH_FRAGMENTS
+from ...journal import EVENT_INTENT
 
 
 def check_protected_path_mutation(context: AuditContext) -> list[AuditFinding]:
     findings: list[AuditFinding] = []
     intents: list[str] = []
     for event in context.events:
-        if str(event.get("kind") or "").lower() == "intent" and isinstance(event.get("paths"), list):
+        if str(event.get("kind") or "").lower() == EVENT_INTENT and isinstance(event.get("paths"), list):
             intents.extend(str(path) for path in event["paths"] if isinstance(path, str))
     for path in context.changed_paths:
         if any(fragment in path for fragment in PROTECTED_PATH_FRAGMENTS):

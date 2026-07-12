@@ -17,6 +17,25 @@ SECRET_PATTERNS = [
 
 SECRET_KEYS = {"password", "token", "secret", "api_key", "api-key", "api key"}
 
+# The journal event vocabulary has one declaration point.  Producers may still
+# accept extension events from headless callers, but events emitted by this
+# repository must use one of these names.
+EVENT_KINDS = (
+    "run-start",
+    "run-end",
+    "intent",
+    "mutation",
+    "okf-apply",
+    "decision",
+    "go-result",
+    "review",
+    "command",
+    "review_failure",
+    "hook_failure",
+)
+
+EVENT_RUN_START, EVENT_RUN_END, EVENT_INTENT, EVENT_MUTATION, EVENT_OKF_APPLY, EVENT_DECISION, EVENT_GO_RESULT, EVENT_REVIEW, EVENT_COMMAND, EVENT_REVIEW_FAILURE, EVENT_HOOK_FAILURE = EVENT_KINDS
+
 
 def _sanitize_text(text: str) -> str:
     home = str(Path.home())
@@ -70,7 +89,7 @@ def append_event(repo: Path, run_id: str, event: dict[str, Any]) -> Path:
     path = journal_path(repo, run_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(sanitize_event(event))
-    if str(payload.get("kind") or "").strip().lower() == "run-start":
+    if str(payload.get("kind") or "").strip().lower() == EVENT_RUN_START:
         payload.setdefault("baseline_changed_paths", _git_status_paths(repo))
     payload.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
     with path.open("a", encoding="utf-8") as handle:

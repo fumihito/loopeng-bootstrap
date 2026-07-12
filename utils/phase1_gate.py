@@ -30,6 +30,9 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 PY = sys.executable
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+from loopeng.journal import EVENT_INTENT, EVENT_MUTATION, EVENT_RUN_END, EVENT_RUN_START
 
 LEGACY_ARTIFACTS = (
     ".agent-loop/hooks/loop_hook.py",
@@ -148,9 +151,9 @@ def gate2_run_scoping() -> list[str]:
         (repo / "pre-dirty.txt").write_text("dirty before run\n", encoding="utf-8")
         run_id = "gate-scope"
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-start", "agent": "gate", "summary": "scope"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_START, "agent": "gate", "summary": "scope"}))
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-end"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_END}))
         _loopeng(repo, "audit", "run", "--run", run_id, "--repo", str(repo))
         report = repo / ".agent-loop/state/reports" / f"{run_id}.md"
         if not report.is_file():
@@ -173,14 +176,14 @@ def gate3_intent_discrimination() -> list[str]:
         # declared run
         run_id = "gate-declared"
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-start", "agent": "gate", "summary": "declared"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_START, "agent": "gate", "summary": "declared"}))
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "intent", "paths": ["AGENTS.md"], "reason": "gate"}))
+                 "--event", json.dumps({"kind": EVENT_INTENT, "paths": ["AGENTS.md"], "reason": "gate"}))
         (repo / "AGENTS.md").write_text("changed\n", encoding="utf-8")
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "mutation", "path": "AGENTS.md"}))
+                 "--event", json.dumps({"kind": EVENT_MUTATION, "path": "AGENTS.md"}))
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-end"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_END}))
         _loopeng(repo, "audit", "run", "--run", run_id, "--repo", str(repo))
         declared = (repo / ".agent-loop/state/reports" / f"{run_id}.md")
         if not declared.is_file():
@@ -193,12 +196,12 @@ def gate3_intent_discrimination() -> list[str]:
         subprocess.run(["git", "-C", str(repo), "checkout", "-q", "--", "AGENTS.md"], check=True)
         run_id2 = "gate-undeclared"
         _loopeng(repo, "journal", "add", "--run", run_id2, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-start", "agent": "gate", "summary": "undeclared"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_START, "agent": "gate", "summary": "undeclared"}))
         (repo / "AGENTS.md").write_text("changed again\n", encoding="utf-8")
         _loopeng(repo, "journal", "add", "--run", run_id2, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "mutation", "path": "AGENTS.md"}))
+                 "--event", json.dumps({"kind": EVENT_MUTATION, "path": "AGENTS.md"}))
         _loopeng(repo, "journal", "add", "--run", run_id2, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-end"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_END}))
         _loopeng(repo, "audit", "run", "--run", run_id2, "--repo", str(repo))
         utext = (repo / ".agent-loop/state/reports" / f"{run_id2}.md").read_text(encoding="utf-8")
         if "CRITICAL ALERTS PRESENT" not in utext:
@@ -239,9 +242,9 @@ def gate5_handoff_chain() -> list[str]:
         repo = _mk_repo(Path(td))
         run_id = "gate-run1"
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-start", "agent": "gate", "goal": "chain"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_START, "agent": "gate", "goal": "chain"}))
         _loopeng(repo, "journal", "add", "--run", run_id, "--repo", str(repo),
-                 "--event", json.dumps({"kind": "run-end"}))
+                 "--event", json.dumps({"kind": EVENT_RUN_END}))
         _loopeng(repo, "audit", "run", "--run", run_id, "--repo", str(repo))
         handoff = repo / ".agent-loop/state/handoff.json"
         if not handoff.is_file():

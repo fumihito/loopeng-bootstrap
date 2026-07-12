@@ -39,10 +39,20 @@ The canonical generator is `python3 -m loopeng audit run --run <id>`, which cons
 
 ## Journal event contract
 
+The following list is one-to-one with `loopeng.journal.EVENT_KINDS`; changing
+that tuple requires updating this section in the same run.
+
 - `run-start`: `{"kind":"run-start","agent":"<agent>","goal":"<goal>"}`
 - `run-end`: `{"kind":"run-end"}`
 - `okf-apply`: `{"kind":"okf-apply","report":"<path>","ok":true|false,"touched":[...]}`
 - `intent`: `{"kind":"intent","paths":["<relative path or directory>"],"reason":"<reason>"}`
+- `mutation`: `{"kind":"mutation","path":"<relative path>"}`
+- `decision`: `{"kind":"decision","item":"<id>","choice":"go|alt|hold"}`
+- `go-result`: `{"kind":"go-result","item":"<id>","result":"<result>"}`
+- `review`: review sections recorded after a review output is consumed.
+- `command`: a tool command captured by a hook.
+- `review_failure`: a hook could not obtain review context.
+- `hook_failure`: a hook audit or processing failure.
 
 Hooks are the standard automatic capture layer for Claude Code and Codex. `loopeng okf apply --run <id>` and `loopeng journal add` remain CLI paths for explicit/headless use. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.
 

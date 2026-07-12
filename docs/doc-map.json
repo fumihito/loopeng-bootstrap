@@ -1,0 +1,7 @@
+{
+  "cli_subcommands": ["README.md", "README.ja.md"],
+  "review_views": ["README.md", "README.ja.md", "docs/RUN_REPORT.md"],
+  "event_kinds": ["docs/RUN_REPORT.md"],
+  "hook_platforms": ["docs/INSTALL.md", "docs/ARCHITECTURE.md"],
+  "mode_words": ["AGENTS.md", "CLAUDE.md"]
+}

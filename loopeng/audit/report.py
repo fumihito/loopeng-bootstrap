@@ -8,7 +8,7 @@ from .._paths import agent_root
 from ..learning import save_learning_entries
 from .checks import collect_context, run_checks
 from .policy import DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
-from ..journal import sanitize_event
+from ..journal import EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, sanitize_event
 
 
 def _summarize_findings(findings):
@@ -67,8 +67,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     report_path = report_dir / f"{run_id}.md"
     learning_paths = save_learning_entries(repo, run_id)
     learning_backlog = len(list(context.learning_root.glob("*.json"))) if context.learning_root.is_dir() else 0
-    starts = [event for event in context.events if event.get("kind") == "run-start"]
-    ends = [event for event in context.events if event.get("kind") == "run-end"]
+    starts = [event for event in context.events if event.get("kind") == EVENT_RUN_START]
+    ends = [event for event in context.events if event.get("kind") == EVENT_RUN_END]
     agent = str(starts[-1].get("agent") or "unknown") if starts else "unknown"
     duration = "unknown"
     if starts and ends:
@@ -77,7 +77,7 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
             duration = f"{delta.total_seconds():.3f}s"
         except (KeyError, TypeError, ValueError):
             pass
-    okf_events = [event for event in context.events if event.get("kind") == "okf-apply"]
+    okf_events = [event for event in context.events if event.get("kind") == EVENT_OKF_APPLY]
     applied = [event for event in okf_events if event.get("ok")]
     rejected = [event for event in okf_events if not event.get("ok")]
     handoff_path = repo / agent_root("state", "handoff.json")

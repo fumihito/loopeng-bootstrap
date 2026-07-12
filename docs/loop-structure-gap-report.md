@@ -22,8 +22,8 @@ The main structural additions are now:
 
 | Diagram element | Current state | Evidence | Gap |
 |---|---|---|---|
-| `direct:` entry | Implemented | `loop_hook.py` routes `direct:` before SOP and Gatekeeper, and `docs/DIRECT_MODE.md` defines the mode. | None. |
-| `SOP router` | Implemented | `loop_hook.py` resolves `sop-<header>` and loads the matching skill; `docs/SOP_ROUTING.md` documents the isolation model. | None. |
+| `direct:` entry | Implemented | `loop_hook.py` routes `direct:` before SOP and Gatekeeper; the mode is documented in the current input guide. | None. |
+| `SOP router` | Implemented | `loop_hook.py` resolves `sop-<header>` and loads the matching skill; the current architecture docs describe the isolation model. | None. |
 | `Gatekeeper` | Implemented | `ROLES` includes `gatekeeper`; the hook blocks mutation and Sensemaker before trusted READY. | None. |
 | `Loop Brief Assistant` | Implemented | `ROLES` includes `loop-brief-assistant`; the hook allows it only after NEEDS_INPUT or PATTERN_CAPTURE. | The diagram does not show the assistant's pattern-capture branch. |
 | `Sensemaker` | Implemented | `ROLES` includes `sensemaker`; docs require prior memory retrieval and task framing. | None. |
@@ -35,7 +35,7 @@ The main structural additions are now:
 | `Memory Curator` | Implemented | `ROLES` includes `memory-curator`; `docs/OKF_LLMWIKI.md` requires curator-only commits via `okfctl apply-report`. | None. |
 | `LLMWiki` durable memory | Implemented | The OKF bundle is stored under `llmwiki/` and is write-protected from ordinary tools. | None. |
 | `Watchdog` / `Recovery` | Implemented | `ROLES` includes `watchdog-recovery`; the hook trips on failures and requires human reset. | The diagram compresses runtime monitoring and human reset into one node. |
-| `Learning Observer` | Implemented | `docs/LEARNING_OBSERVABILITY.md` defines the observer pipeline and metrics; the hook records learning observations at turn completion. | None. |
+| `Learning Observer` | Implemented | The current Run Report documentation describes the observer pipeline and metrics; the hook records learning observations at turn completion. | None. |
 | `Learning Auditor` | Implemented | `ROLES` includes `learning-auditor`; `sop-learning-audit` is read-only and isolated. | None. |
 | `Scheduler / external trigger` | Implemented as daemon + handoff artifact | `Stop` writes `next-turn.json`; `gatekeeper-prompt.json` preserves the deterministic continuation prompt; `.agent-loop/bin/next_turn_scheduler.py` reports or validates the handoff; `.agent-loop/bin/next_turn_scheduler_daemon.py` polls ready handoffs and can run configured trigger or notification commands under systemd. | None. |
 | `Turn completed` | Implemented as hook finalization | `Stop` handling in `loop_hook.py` sets `final_status`, records read-only completions, and writes runtime state. | None. |
@@ -54,8 +54,8 @@ These are not missing features. They are extra implementation constraints that m
 
 ## Concrete evidence
 
-- `docs/loop-structure.mmd:1-118`
-- `docs/loop-structure-implementation-plan.md:1-57`
+- `docs/loop-structure.mmd` (lines 1-118)
+- `docs/loop-structure-implementation-plan.md` (lines 1-57)
 - `.agent-loop/hooks/loop_hook.py:21-31`
 - `.agent-loop/hooks/loop_hook.py:44-56`
 - `.agent-loop/hooks/loop_hook.py:905-963`
@@ -71,9 +71,9 @@ These are not missing features. They are extra implementation constraints that m
 - `tests/test_smoke.py:170-216`
 - `tests/test_smoke.py:233-302`
 - `tests/test_smoke.py:316-351`
-- `docs/SOP_ROUTING.md:7-39`
-- `docs/OKF_LLMWIKI.md:9-20`
-- `docs/LEARNING_OBSERVABILITY.md:16-49`
+- the SOP routing section (lines 7-39)
+- the OKF LLMWiki section (lines 9-20)
+- the learning observability section (lines 16-49)
 
 ## Conclusion
 

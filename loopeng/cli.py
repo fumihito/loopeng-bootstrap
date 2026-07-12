@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ._paths import agent_root
 from .audit.report import run_audit_report
-from .journal import append_event
+from .journal import EVENT_OKF_APPLY, append_event
 from .okf.apply import apply_report
 from .okf.index import reindex_bundle
 from .okf.schema import validate_bundle
@@ -219,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         result = apply_report(args.bundle, args.report, args.backup_dir)
         if args.run:
             append_event(Path(args.bundle).resolve().parent, args.run, {
-                "kind": "okf-apply", "report": str(args.report), "ok": bool(result.get("ok")),
+                "kind": EVENT_OKF_APPLY, "report": str(args.report), "ok": bool(result.get("ok")),
                 "touched": result.get("touched", []),
             })
         print(json.dumps(result, indent=2, sort_keys=True))

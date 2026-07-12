@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from ..._paths import agent_root
+from ...journal import EVENT_RUN_START
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,7 @@ def collect_context(repo: Path, run_id: str) -> AuditContext:
     report_rel = report_path.relative_to(repo).as_posix()
     baseline_paths: set[str] = set()
     for event in _parse_json_lines(journal_path):
-        if str(event.get("kind") or "").strip().lower() == "run-start":
+        if str(event.get("kind") or "").strip().lower() == EVENT_RUN_START:
             baseline = event.get("baseline_changed_paths")
             if isinstance(baseline, list):
                 baseline_paths.update(str(item) for item in baseline if isinstance(item, str))
