@@ -134,6 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=t("Run Report の結果を一覧・トリアージし、判断や remediation を記録します。", "List and triage Run Report results, then record decisions or remediation."),
         formatter_class=formatter,
     )
+    review.add_argument("review_view", nargs="?", choices=("dag",), help=t("ループ模式図を生成", "Generate the loop-cycle diagram"))
     review.add_argument("--runs", type=int, default=5, help=t("表示対象にする直近 run 数 (既定: 5)", "Number of recent runs to show (default: 5)"))
     review.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
     review.add_argument("--section", choices=("results", "concerns", "premises"), help=t("表示するセクションだけに絞る", "Show only one section"))
@@ -144,7 +145,8 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--go", help=t("指定したカタログ項目の remediation を実行", "Execute remediation for a catalog item"))
     review.add_argument("--decision", help=t("判断 ID を記録", "Record a decision ID"))
     review.add_argument("--choice", choices=("go", "alt", "hold"), help=t("判断: go / alt / hold", "Decision: go / alt / hold"))
-    review.add_argument("--format", choices=("text", "json"), default="text", help=t("出力形式 (既定: text)", "Output format (default: text)"))
+    review.add_argument("--format", choices=("text", "json", "mermaid", "svg"), default="text", help=t("出力形式 (既定: text; dag は mermaid)", "Output format (default: text; mermaid for dag)"))
+    review.add_argument("--out", help=t("dag 成果物の出力先 (reports 配下)", "dag output path (under reports)"))
 
     status = sub.add_parser(
         "status", help=t("直近の Run Report と backlog を要約", "Summarize the latest Run Report and backlog"),
@@ -240,6 +242,16 @@ def main(argv: list[str] | None = None) -> int:
         from .review import execute_go, record_decision, render_review, render_triage, record_review
         if args.runs < 0:
             raise SystemExit("--runs must be non-negative")
+        if args.review_view == "dag":
+            from .review_dag import render_dag, render_summary, write_dag
+            fmt = args.format if args.format in {"mermaid", "svg"} else "mermaid"
+            content = render_dag(args.repo.resolve(), args.runs, run_id=args.run, fmt=fmt)
+            write_dag(args.repo.resolve(), content, "mmd" if fmt == "mermaid" else "svg", args.out)
+            if fmt == "mermaid":
+                sys.stdout.write(content)
+            else:
+                print(str((args.repo.resolve() / agent_root("state", "reports") / (args.out or "loop-dag.svg")).resolve()))
+            return 0
         if args.go:
             print(execute_go(args.repo.resolve(), args.go, args.run), end="")
             return 0

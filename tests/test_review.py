@@ -10,6 +10,7 @@ from pathlib import Path
 from loopeng._paths import agent_root
 from loopeng.okf.schema import validate_document_text
 from loopeng.review import execute_go, record_decision, render_review, render_triage
+from loopeng.review_dag import STAGE_MAP, render_dag, write_dag
 
 
 def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[dict] | None = None, undeclared: bool = False, ended: str | None = None) -> None:
@@ -31,6 +32,56 @@ def sidecar(root: Path, run_id: str, *, check: str | None = None, alerts: list[d
 
 
 class ReviewTests(unittest.TestCase):
+    def test_dag_fixture_maps_alerts_and_classes(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[
+                *([{"check_id": "protected_path_mutation", "severity": "critical", "declared": False}] * 15),
+                {"check_id": "protected_path_mutation", "severity": "critical", "declared": True},
+                *([{"check_id": "journal_coverage", "severity": "critical", "declared": True}] * 18),
+                *([{"check_id": "learning_backlog", "severity": "warn", "declared": True}] * 19),
+            ])
+            (root / agent_root("state", "handoff.json")).parent.mkdir(parents=True, exist_ok=True)
+            (root / agent_root("state", "handoff.json")).write_text('{"source_turn_id":"r1"}', encoding="utf-8")
+            text = render_dag(root, fmt="mermaid")
+            self.assertIn('act["act<br/>✖ 15 / ⚠ 1"]', text)
+            self.assertIn('record["record<br/>⚠ 18"]', text)
+            self.assertIn('learning["learning<br/>⚠ 19"]', text)
+            self.assertIn('handoff["handoff<br/>⚠ unconsumed"]', text)
+
+    def test_dag_is_deterministic_and_svg_is_xml(self) -> None:
+        import xml.etree.ElementTree as ET
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1")
+            first = render_dag(root)
+            second = render_dag(root)
+            self.assertEqual(first, second)
+            svg = render_dag(root, fmt="svg")
+            ET.fromstring(svg)
+            self.assertIn("Legend:", svg)
+            write_dag(root, svg, "svg")
+            self.assertEqual((root / agent_root("state", "reports") / "loop-dag.svg").read_text(encoding="utf-8"), svg)
+
+    def test_dag_unmapped_and_run_events(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            sidecar(root, "r1", alerts=[{"check_id": "new_check", "severity": "warn", "declared": True}])
+            journal = root / agent_root("state", "journal")
+            journal.mkdir(parents=True)
+            journal.joinpath("r1.jsonl").write_text("\n".join(json.dumps({"kind": kind}) for kind in ("run-start", "intent", "run-end")) + "\n", encoding="utf-8")
+            text = render_dag(root, run_id="r1")
+            self.assertIn('event0["1: run-start"]', text)
+            self.assertIn('event2["3: run-end"]', text)
+            self.assertNotIn('event3[', text)
+            self.assertIn("unmapped", text)
+
+    def test_stage_map_covers_registered_checks(self) -> None:
+        from loopeng.audit.checks import CHECKS
+        for check in CHECKS:
+            check_id = check.__name__.removeprefix("check_")
+            self.assertIn(check_id, STAGE_MAP)
+
     def test_results_are_sidecar_only_and_limited(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
