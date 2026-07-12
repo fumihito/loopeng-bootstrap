@@ -21,6 +21,7 @@ v0.2 consists of four pillars.
 | `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` / `query` / `draft` — initialize, search, draft, and update LLMWiki bundles |
 | `loopeng learning promote` | Generate validated memory drafts from learning backlog (does not apply them) |
 | `loopeng memory curate` | Apply at most three provisional UPSERTs from autonomous namespaces after audit |
+| `loopeng memory stats` | Summarize LLMWiki mutation windows and non-LLMWiki commits |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |

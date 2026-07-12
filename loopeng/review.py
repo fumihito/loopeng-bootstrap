@@ -117,8 +117,13 @@ def _concerns(repo: Path, runs: list[dict[str, Any]]) -> list[str]:
     for run in runs:
         for alert in run.get("alerts", []) if isinstance(run.get("alerts"), list) else []:
             if not isinstance(alert, dict) or str(alert.get("severity")) not in {"warn", "critical"}:
+                if isinstance(alert, dict) and str(alert.get("check_id")) == "memory_commit_divergence":
+                    lines.append(f"- memory_commit_divergence ({alert.get('severity')}) — run {run.get('run_id')}: {alert.get('message', '')}")
                 continue
             check_id = str(alert.get("check_id") or "unknown")
+            if check_id == "memory_commit_divergence":
+                lines.append(f"- memory_commit_divergence ({alert.get('severity')}) — run {run.get('run_id')}: {alert.get('message', '')}")
+                continue
             if check_id not in recurring:
                 lines.append(f"- {check_id} ({alert.get('severity')}) — run {run.get('run_id')}")
     lines.append(f"- info alerts: {info_count}")

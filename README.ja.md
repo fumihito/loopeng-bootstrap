@@ -21,6 +21,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng okf` | `init` / `validate` / `apply` / `reindex` / `log` / `query` / `draft` — LLMWiki の初期化・検索・起案・更新 |
 | `loopeng learning promote` | learning backlog から検証済み draft を生成(適用はしない) |
 | `loopeng memory curate` | 自律名前空間の provisional UPSERT を最大3件まで適用 |
+| `loopeng memory stats` | LLMWiki の変異窓とバンドル外コミットを集計 |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |

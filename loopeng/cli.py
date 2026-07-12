@@ -18,6 +18,7 @@ from .okf.draft import make_draft
 from .okf.promote import promote, establish
 from .okf.curate import curate
 from .schedule import build_next_turn_prompt
+from .memory_stats import STATS_WINDOWS, collect_stats, render_stats
 
 
 def _path(value: str) -> Path:
@@ -107,6 +108,12 @@ def build_parser() -> argparse.ArgumentParser:
     curate_cmd.add_argument("--repo", type=_path, default=Path("."))
     curate_cmd.add_argument("--run")
     curate_cmd.add_argument("--top", type=int, default=3)
+    stats_cmd = memory_sub.add_parser("stats", help=t("メモリ更新とコミット活動を集計", "Summarize memory updates and commit activity"))
+    stats_cmd.add_argument("--repo", type=_path, default=Path("."))
+    stats_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"))
+    stats_cmd.add_argument("--windows", default=",".join(STATS_WINDOWS))
+    stats_cmd.add_argument("--format", choices=("text", "json"), default="text")
+    stats_cmd.add_argument("--now")
 
     learning = sub.add_parser("learning", help=t("learning 起案を管理", "Manage learning proposals"))
     learning_sub = learning.add_subparsers(dest="learning_command", required=True)
@@ -277,6 +284,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.top < 0:
             raise SystemExit("--top must be non-negative")
         print(json.dumps(curate(args.repo, args.run, args.top), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "memory" and args.memory_command == "stats":
+        windows = tuple(item.strip() for item in args.windows.split(",") if item.strip())
+        stats = collect_stats(args.repo, args.bundle if args.bundle.is_absolute() else args.repo / args.bundle, windows, args.now)
+        if args.format == "json":
+            serializable = dict(stats)
+            if serializable.get("coverage") is not None:
+                serializable["coverage"] = serializable["coverage"].isoformat().replace("+00:00", "Z")
+            print(json.dumps(serializable, indent=2, ensure_ascii=False, sort_keys=True))
+        else:
+            print(render_stats(stats, windows), end="")
         return 0
 
     if args.command == "learning" and args.learning_command == "promote":

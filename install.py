@@ -87,6 +87,7 @@ RUNTIME_MANIFEST = [
     {'path': 'loopeng/learning.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/schedule.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/status.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/memory_stats.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/hooks/__init__.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/hooks/events.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/hooks/handler.py', 'profiles': {PROFILE_FULL}},

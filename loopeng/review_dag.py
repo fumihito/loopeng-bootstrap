@@ -29,6 +29,7 @@ STAGE_MAP = {
     "single_author_memory_change": "memory",
     "unreviewed_claim_persisted": "memory",
     "provisional_stagnation": "memory",
+    "memory_commit_divergence": "memory",
     "hook_failure": "hooks",
     "learning_backlog": "learning",
 }

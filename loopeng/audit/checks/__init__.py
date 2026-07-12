@@ -15,6 +15,7 @@ from .skill_structure_violation import check_skill_structure_violation
 from .unreviewed_claim_persisted import check_unreviewed_claim_persisted
 from .retrieval_volume import check_retrieval_volume
 from .provisional_stagnation import check_provisional_stagnation
+from .memory_commit_divergence import check_memory_commit_divergence
 
 
 CHECKS = (
@@ -32,6 +33,7 @@ CHECKS = (
     check_skill_structure_violation,
     check_retrieval_volume,
     check_provisional_stagnation,
+    check_memory_commit_divergence,
 )
 
 

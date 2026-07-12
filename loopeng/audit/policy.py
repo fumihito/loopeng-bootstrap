@@ -52,6 +52,11 @@ AUTONOMOUS_APPLIES_PER_RUN = 3
 AUTO_ESTABLISH = False
 ESTABLISH_CITATIONS = 3
 STAGNATION_DAYS = 30
+DIVERGENCE_WINDOW = "7d"
+DIVERGENCE_COMMITS_MIN = 8
+DIVERGENCE_OPS_ZERO_SEV = "warn"
+DIVERGENCE_OPS_MIN = 8
+DIVERGENCE_COMMITS_ZERO_SEV = "info"
 
 # Review-mode aggregation thresholds.  Keep these in policy so the digest
 # and its tests share one auditable source of truth.
@@ -140,4 +145,5 @@ ALERTS = {
     "high_risk_command": "warn",
     "skill_structure_violation": "warn",
     "provisional_stagnation": "info",
+    "memory_commit_divergence": "warn",
 }

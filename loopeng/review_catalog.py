@@ -8,6 +8,15 @@ from __future__ import annotations
 
 REMEDIATION_CATALOG = (
     {
+        "id": "memory-divergence",
+        "members": ("memory_commit_divergence",),
+        "cause": "ラン成果のメモリ書き戻しが止まっている(規則 A)/メモリ更新が作業と接地していない(規則 B)",
+        "standard_fix": "規則 A → loopeng learning promote と curate 経路の稼働確認、規則 B → 直近 ops の由来確認(memory stats --format json)",
+        "alt_fix": "乖離の判断を保留",
+        "question": "メモリ更新とコミット活動の乖離を確認しますか?",
+        "agent_executable": False,
+    },
+    {
         "id": "hooks-absence",
         "members": ("journal_coverage", "protected_path_mutation:undeclared", "handoff:unconsumed"),
         "cause": "hooks 層未導入により journal 自動取得・intent 運用・handoff 消費が人力",

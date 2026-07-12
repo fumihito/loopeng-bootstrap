@@ -133,6 +133,20 @@ def validate_bundle(bundle: Path) -> dict[str, Any]:
     for rel in ("index.md", "log.md"):
         if not (bundle / rel).exists():
             errors.append(f"missing {rel}")
+    json_log = bundle / "log.jsonl"
+    if json_log.is_file():
+        for index, line in enumerate(json_log.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError as exc:
+                errors.append(f"log.jsonl:{index} invalid JSON: {exc.msg}")
+                continue
+            if not isinstance(entry, dict):
+                errors.append(f"log.jsonl:{index} must be a JSON object")
+            elif entry.get("v") != 1:
+                errors.append(f"log.jsonl:{index} v must be 1")
     return {"ok": not errors, "errors": errors, "bundle": str(bundle)}
 
 

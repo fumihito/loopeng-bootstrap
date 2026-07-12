@@ -37,6 +37,8 @@ Use `python3 -m loopeng review dag --stage <stage>` to inspect finding details f
 
 The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report.
 
+The `memory_commit_divergence` inspection compares the 7-day `llmwiki/log.jsonl` operation count with non-LLMWiki commit activity and reports the configured one-sided divergence signals.
+
 ## Journal event contract
 
 The following list is one-to-one with `loopeng.journal.EVENT_KINDS`; changing

@@ -96,6 +96,29 @@ def _write_operation(bundle: Path, operation: dict[str, object]) -> Path:
     return destination
 
 
+def _memory_log_entry(bundle: Path, report: dict[str, object], operation: dict[str, object]) -> dict[str, object]:
+    action = str(operation["action"])
+    if action == "DEPRECATE":
+        frontmatter, _ = parse_frontmatter((bundle / f"{operation['concept_id']}.md").read_text(encoding="utf-8"))
+    else:
+        frontmatter, _ = parse_frontmatter(_document_text(operation.get("document")))
+    concept_id = str(operation["concept_id"])
+    namespace = concept_id.split("/", 1)[0]
+    return {
+        "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "action": action,
+        "concept_id": concept_id,
+        "type": str(frontmatter.get("type") or ""),
+        "namespace": namespace,
+        "tier": str(frontmatter.get("tier") or "established"),
+        "author": str(report.get("author") or report.get("role") or "unspecified"),
+        "run_id": str(report.get("run_id") or ""),
+        "proposal_id": str(operation.get("proposal_id") or ""),
+        "report": str(report.get("report") or ""),
+        "v": 1,
+    }
+
+
 def apply_report(bundle: Path, report_path: Path, backup_dir: Path, autonomous: bool = False) -> dict[str, object]:
     bundle = bundle.resolve()
     backup_dir = backup_dir.resolve()
@@ -136,6 +159,12 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path, autonomous: 
                 if operation["action"] == "DEPRECATE":
                     handle.write(f"- deprecated {operation['concept_id']} by {author}\n")
             handle.write(f"- applied {report_path.name} author={author} proposals={proposals}\n")
+        json_log = bundle / "log.jsonl"
+        with json_log.open("a", encoding="utf-8") as handle:
+            for operation in operations:
+                entry = _memory_log_entry(bundle, report, operation)
+                entry["report"] = str(report_path)
+                handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
     except Exception as exc:
         if backup_root.exists():
             for path in sorted(bundle.rglob("*"), reverse=True):
