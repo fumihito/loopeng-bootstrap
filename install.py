@@ -78,6 +78,8 @@ RUNTIME_MANIFEST = [
 # v0.2 distribution manifest: the legacy runtime is intentionally not shipped.
 RUNTIME_MANIFEST = [
     {'path': 'loopeng/__init__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'utils/skill_structure_lint.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/__main__.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/_paths.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/cli.py', 'profiles': {PROFILE_FULL}},
@@ -94,6 +96,36 @@ RUNTIME_MANIFEST = [
     {'path': 'loopeng/audit/policy.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/audit/report.py', 'profiles': {PROFILE_FULL}},
 ]
+
+COMMAND_DISPATCHER = '''#!/usr/bin/env python3
+"""Dispatch loopeng commands to the nearest managed repository."""
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+
+def find_repository(start: Path) -> Path | None:
+    current = start.resolve()
+    if current.is_file():
+        current = current.parent
+    for candidate in (current, *current.parents):
+        if (candidate / "loopeng" / "__main__.py").is_file():
+            return candidate
+    return None
+
+
+root = find_repository(Path.cwd())
+if root is None:
+    print("loopeng: no managed repository found (expected loopeng/__main__.py)", file=sys.stderr)
+    raise SystemExit(2)
+
+launcher = root / "loopeng.py"
+if launcher.is_file():
+    os.execv(sys.executable, [sys.executable, str(launcher), *sys.argv[1:]])
+os.execv(sys.executable, [sys.executable, "-m", "loopeng", *sys.argv[1:]])
+'''
 CONFIG_JSON_RELS = {
     '.agent-loop/policy.json',
     '.agent-loop/scheduler-policy.json',
@@ -2046,7 +2078,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description='Install Gatekeeper-first loop engineering adapters safely.'
     )
-    parser.add_argument('--repo', type=Path, required=True)
+    parser.add_argument('--repo', type=Path)
+    parser.add_argument(
+        '--install-command', metavar='DIR', nargs='?', const=Path('~/.local/bin'), type=Path,
+        help='Install the global loopeng dispatcher into DIR (default: ~/.local/bin).',
+    )
+    parser.add_argument(
+        '--force', action='store_true',
+        help='Allow --install-command to replace an existing dispatcher.',
+    )
     parser.add_argument('--profile', choices=sorted(INSTALL_PROFILES), default=PROFILE_FULL)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--self', dest='self_mode', action='store_true', help='Apply the installer to the kit repository itself.')
@@ -2074,6 +2114,29 @@ def main() -> int:
         help='Validate an existing merged installation without modifying it.',
     )
     args = parser.parse_args()
+    if args.install_command is not None:
+        if args.repo is not None:
+            parser.error('--install-command cannot be combined with --repo')
+        destination_dir = (args.install_command or Path('~/.local/bin')).expanduser().resolve()
+        destination_dir.mkdir(parents=True, exist_ok=True)
+        destination = destination_dir / 'loopeng'
+        if destination.exists() or destination.is_symlink():
+            if not args.force:
+                print(f'Installation failed safely: command already exists: {destination} (use --force to replace)', file=sys.stderr)
+                return 2
+            if destination.is_dir() and not destination.is_symlink():
+                print(f'Installation failed safely: command path is a directory: {destination}', file=sys.stderr)
+                return 2
+            destination.unlink()
+        destination.write_text(COMMAND_DISPATCHER, encoding='utf-8')
+        destination.chmod(0o755)
+        print(f'Installed loopeng dispatcher: {destination}')
+        path_entries = os.environ.get('PATH', '').split(os.pathsep)
+        if str(destination_dir) not in path_entries:
+            print(f'PATH does not include {destination_dir}; add it to PATH to invoke loopeng globally.')
+        return 0
+    if args.repo is None:
+        parser.error('--repo is required unless --install-command is used')
     repo = args.repo.expanduser().resolve()
     if not repo.exists():
         raise SystemExit(f'Repository not found: {repo}')

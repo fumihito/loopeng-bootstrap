@@ -15,6 +15,7 @@
 ## Run discipline
 
 Hooks are the standard journal/audit capture layer for Claude Code and Codex.
+Use `python3 -m loopeng` as the canonical CLI form; `./loopeng.py` is an equivalent shortcut at the repository root.
 Use `python3 -m loopeng journal add` only for headless or script-driven runs;
 hooks-disabled operation is a supported degraded mode and may raise
 `journal_coverage`.

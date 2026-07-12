@@ -49,6 +49,7 @@ In environments where v0.1 was installed, the v0.1 materials are archived under 
 
 ```bash
 cd /path/to/repository
+# `./loopeng.py` is the equivalent short form of `python3 -m loopeng`.
 python3 -m loopeng okf init llmwiki        # 初回のみ
 
 RUN_ID=$(date +%Y%m%d-%H%M%S)

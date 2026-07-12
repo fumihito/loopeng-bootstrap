@@ -49,6 +49,7 @@ v0.1 を導入していた環境では、`.loop-engineering-backups/<timestamp>/
 
 ```bash
 cd /path/to/repository
+# `./loopeng.py` は `python3 -m loopeng` と同等の短縮起動です。
 python3 -m loopeng okf init llmwiki        # 初回のみ
 
 RUN_ID=$(date +%Y%m%d-%H%M%S)
