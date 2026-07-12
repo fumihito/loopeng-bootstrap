@@ -46,6 +46,7 @@ HARD_BLOCKS = {
 
 ALERTS = {
     "protected_path_mutation": "critical",
+    "intent_overdeclaration": "warn",
     "budget_exceeded": "warn",
     "journal_coverage": "critical",
     "single_author_memory_change": "warn",

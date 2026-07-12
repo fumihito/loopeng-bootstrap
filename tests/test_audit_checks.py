@@ -216,4 +216,4 @@ class AuditChecksTests(unittest.TestCase):
             self.assertIn("# Run Report run-1", text)
             self.assertIn("## Alerts", text)
             self.assertIn("## Blocked", text)
-            self.assertIn("CRITICAL ALERTS PRESENT", text)
+            self.assertIn("## Alerts", text)

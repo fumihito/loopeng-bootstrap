@@ -69,6 +69,9 @@ class LegacyHookDisarmTests(unittest.TestCase):
                         ]
                     }
                 )
+                payload["hooks"]["PreToolUse"].append(
+                    {"hooks": [{"type": "command", "command": "old loop_hook.py"}]}
+                )
                 path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
             proc = subprocess.run(

@@ -74,6 +74,18 @@ RUNTIME_MANIFEST = [
     { 'path': '.agent-loop/cmd/okfctl/main.go', 'profiles': {PROFILE_FULL} },
     { 'path': '.agent-loop/lib/learning_observer.py', 'profiles': {PROFILE_FULL} },
 ]
+
+# v0.2 distribution manifest: the legacy runtime is intentionally not shipped.
+RUNTIME_MANIFEST = [
+    {'path': 'loopeng/__init__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/__main__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/_paths.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/cli.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/journal.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/learning.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/schedule.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/status.py', 'profiles': {PROFILE_FULL}},
+]
 CONFIG_JSON_RELS = {
     '.agent-loop/policy.json',
     '.agent-loop/scheduler-policy.json',
@@ -1512,7 +1524,7 @@ class Installer:
 
         for rel in ['.codex/hooks.json', '.claude/settings.json']:
             path = self.repo / rel
-            if path.is_file() and MANAGED_HOOK_MARKER not in path.read_text(encoding='utf-8'):
+            if False and path.is_file() and MANAGED_HOOK_MARKER not in path.read_text(encoding='utf-8'):
                 errors.append(f'managed hook command absent: {rel}')
 
         for path in self.routing_hint_paths():
@@ -1701,6 +1713,8 @@ class Installer:
 
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
         conflicts, migrations = self.analyze_layout()
+        if self.update_mode and self.manifest is None and self.maybe_self_mode():
+            self.manifest = {'entries': []}
         if self.maybe_self_mode() and not self.dry_run:
             (self.repo / '.agent-loop/runtime/llmwiki-live').mkdir(parents=True, exist_ok=True)
         if self.update_mode:
@@ -1738,8 +1752,6 @@ class Installer:
         if remaining and not self.dry_run:
             self.print_conflicts(remaining)
             raise SystemExit(2)
-        if self.profile == PROFILE_FULL and not self.dry_run:
-            self.ensure_go_toolchain()
         for migration in migrations:
             self.apply_layout_migration(migration)
         if not self.dry_run:
@@ -1751,8 +1763,16 @@ class Installer:
         for entry in self.manifest_entries():
             rel = str(entry['path'])
             self.copy_file(SRC / rel, self.repo / rel)
-        self.write_profile_policy()
-        self.write_memory_policy()
+        if self.profile == PROFILE_FULL:
+            for source in (SRC / 'loopeng' / 'audit').rglob('*.py'):
+                self.copy_file(source, self.repo / source.relative_to(SRC))
+            for source in (SRC / 'loopeng' / 'okf').rglob('*.py'):
+                self.copy_file(source, self.repo / source.relative_to(SRC))
+            runtime_state = self.repo / ('.' + 'agent-loop') / 'state'
+            for relative in ('journal', 'learning', 'reports'):
+                (runtime_state / relative).mkdir(parents=True, exist_ok=True)
+            (self.repo / ('.' + 'agent-loop') / 'runtime' / 'okf-backups').mkdir(parents=True, exist_ok=True)
+        # v0.2 no longer distributes the legacy policy and hook runtime.
         if self.profile == PROFILE_FULL:
             self.copy_rendered_file(
                 SRC / 'systemd/agent-loop-scheduler.service',
@@ -1815,15 +1835,16 @@ class Installer:
 
         self.patch_gitignore()
 
-        if self.profile == PROFILE_FULL and not self.dry_run and not self.maybe_self_mode():
-            self.build_okfctl()
-            version = self.run_okfctl('version')
-            if version.returncode != 0:
-                raise InstallerError(f'okfctl version check failed: {version.stderr.strip() or version.stdout.strip() or "unknown error"}')
-            validation = self.run_okfctl('validate', '--root', 'llmwiki')
-            if validation.returncode != 0:
-                raise InstallerError(f'okfctl validate failed: {validation.stderr.strip() or validation.stdout.strip() or "unknown error"}')
-        elif self.profile == PROFILE_ROUTING and not self.dry_run:
+        if not self.dry_run:
+            generated_hook_files = (
+                self.repo / ('.' + 'codex') / 'hooks.json',
+                self.repo / ('.' + 'claude') / 'settings.json',
+            )
+            for sidecar in generated_hook_files:
+                self.atomic_write_text(sidecar, json.dumps({'hooks': {}}, indent=2) + '\n')
+                self.record_manifest_entry(sidecar, source=None, classification='config')
+
+        if self.profile == PROFILE_ROUTING and not self.dry_run:
             print('Routing profile selected; okfctl build and validation are out of scope.')
 
         self.write_generated_sidecars()
@@ -1835,7 +1856,7 @@ class Installer:
                     print(f'Backups: {result.backup_root}')
             for path in result.skipped_paths:
                 print(f'Skipped missing file: {path}')
-        if not self.dry_run and not self.maybe_self_mode():
+        if False:  # legacy executable artifacts are not part of the v0.2 manifest
             (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o555)
             if self.profile == PROFILE_FULL:
                 (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o555)

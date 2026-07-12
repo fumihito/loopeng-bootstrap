@@ -8,6 +8,7 @@ from .journal_coverage import check_journal_coverage
 from .learning_backlog import check_learning_backlog
 from .out_of_repo_write import check_out_of_repo_write
 from .protected_path_mutation import check_protected_path_mutation
+from .intent_overdeclaration import check_intent_overdeclaration
 from .secret_persistence import check_secret_persistence
 from .single_author_memory_change import check_single_author_memory_change
 from .skill_structure_violation import check_skill_structure_violation
@@ -19,6 +20,7 @@ CHECKS = (
     check_secret_persistence,
     check_out_of_repo_write,
     check_protected_path_mutation,
+    check_intent_overdeclaration,
     check_budget_exceeded,
     check_journal_coverage,
     check_single_author_memory_change,

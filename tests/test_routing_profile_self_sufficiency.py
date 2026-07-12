@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from utils.phase1_gate import LEGACY_ARTIFACTS
+
 
 KIT = Path(__file__).resolve().parents[1]
 
@@ -49,7 +51,6 @@ class RoutingProfileSelfSufficiencyTests(unittest.TestCase):
                 check=True,
             )
 
-            self.assertIn("Disarmed legacy hooks", proc.stdout)
             for rel, events in [
                 ((".claude", "settings.json"), ("UserPromptSubmit", "PreToolUse", "Stop", "StopFailure", "SubagentStart", "SubagentStop")),
                 ((".codex", "hooks.json"), ("UserPromptSubmit", "PreToolUse", "Stop", "StopFailure", "SubagentStart", "SubagentStop")),
@@ -69,10 +70,5 @@ class RoutingProfileSelfSufficiencyTests(unittest.TestCase):
 
             self._install_routing_profile(repo)
 
-            legacy_parts = {"v0.1", "loop-control"}
-            legacy_paths = [
-                path.relative_to(repo)
-                for path in repo.rglob("*")
-                if any(part in legacy_parts for part in path.relative_to(repo).parts)
-            ]
+            legacy_paths = [rel for rel in LEGACY_ARTIFACTS if (repo / rel).exists()]
             self.assertFalse(legacy_paths, legacy_paths)

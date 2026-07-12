@@ -26,7 +26,6 @@ TYPE_PREFIXES = {
     "Recovery Pattern": "recovery-patterns",
     "Runbook": "runbooks",
     "Reference": "references",
-    "Loop Brief Pattern": "loop-brief-patterns",
 }
 
 REQUIRED_FRONTMATTER = {
@@ -132,14 +131,27 @@ def validate_report_payload(payload: Any) -> list[str]:
     if not isinstance(operations, list):
         errors.append("operations must be a list")
     else:
+        if len(operations) > 20:
+            errors.append("operations must contain no more than 20 items")
+        proposal_ids: set[str] = set()
         for index, op in enumerate(operations):
             if not isinstance(op, dict):
                 errors.append(f"operations[{index}] must be an object")
                 continue
-            if op.get("action") not in {"UPSERT", "DELETE"}:
-                errors.append(f"operations[{index}].action must be UPSERT or DELETE")
+            if op.get("action") not in {"UPSERT", "DELETE", "DEPRECATE"}:
+                errors.append(f"operations[{index}].action must be UPSERT, DEPRECATE, or DELETE")
+            proposal_id = op.get("proposal_id")
+            if not isinstance(proposal_id, str) or not proposal_id.strip():
+                errors.append(f"operations[{index}].proposal_id must be a non-empty string")
+            elif proposal_id in proposal_ids:
+                errors.append(f"operations[{index}].proposal_id must be unique")
+            else:
+                proposal_ids.add(proposal_id)
             if not isinstance(op.get("concept_id"), str) or not op["concept_id"]:
                 errors.append(f"operations[{index}].concept_id must be a non-empty string")
+            if op.get("action") == "UPSERT" and isinstance(op.get("document"), str):
+                if len(op["document"].encode("utf-8")) > 65536:
+                    errors.append(f"operations[{index}].document exceeds 65536 UTF-8 bytes")
     return errors
 
 

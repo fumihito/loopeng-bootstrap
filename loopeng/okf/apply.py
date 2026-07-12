@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+import json
 
 from .backup import backup_tree
 from .index import reindex_bundle
@@ -23,41 +24,36 @@ def _bundle_destination(bundle: Path, concept_id: str) -> Path:
     return destination
 
 
-def _validate_operation(bundle: Path, role: str, operation: dict[str, object]) -> None:
+ALLOWED_PREFIXES = {
+    "concepts", "decisions", "constraints", "failure-patterns",
+    "evaluation-rules", "recovery-patterns", "runbooks", "references",
+}
+
+
+def _validate_operation(bundle: Path, operation: dict[str, object]) -> None:
     concept_id = str(operation["concept_id"])
     destination = _bundle_destination(bundle, concept_id)
     prefix = concept_id.split("/", 1)[0]
     if operation["action"] == "DELETE":
-        allowed_prefixes = set(concept_prefix_for_type(name) for name in (
-            "Concept",
-            "Decision",
-            "Constraint",
-            "Failure Pattern",
-            "Evaluation Rule",
-            "Recovery Pattern",
-            "Runbook",
-            "Reference",
-            "Loop Brief Pattern",
-        ))
-        if prefix not in allowed_prefixes:
+        raise ValueError("DELETE is forbidden; use DEPRECATE to preserve audit history")
+    if operation["action"] == "DEPRECATE":
+        if prefix not in ALLOWED_PREFIXES:
             raise ValueError(f"concept_id namespace is not allowed: {concept_id!r}")
+        if not destination.is_file():
+            raise ValueError(f"cannot deprecate missing document: {concept_id!r}")
         return
 
     document = _document_text(operation.get("document"))
-    if role == "memory-curator":
-        errors = validate_document_text(document)
-        if errors:
-            raise ValueError("; ".join(errors))
-        frontmatter, _ = parse_frontmatter(document)
-        type_name = str(frontmatter.get("type") or "")
-        expected_prefix = concept_prefix_for_type(type_name)
-        if not expected_prefix:
-            raise ValueError(f"unsupported type: {type_name!r}")
-        if prefix != expected_prefix:
-            raise ValueError(f"concept_id must be under {expected_prefix}/ for type {type_name!r}")
-    else:
-        if prefix != "loop-brief-patterns":
-            raise ValueError("brief pattern concept_id must be under loop-brief-patterns/")
+    errors = validate_document_text(document)
+    if errors:
+        raise ValueError("; ".join(errors))
+    frontmatter, _ = parse_frontmatter(document)
+    type_name = str(frontmatter.get("type") or "")
+    expected_prefix = concept_prefix_for_type(type_name)
+    if not expected_prefix:
+        raise ValueError(f"unsupported type: {type_name!r}")
+    if prefix != expected_prefix:
+        raise ValueError(f"concept_id must be under {expected_prefix}/ for type {type_name!r}")
     _ = destination
 
 
@@ -65,9 +61,23 @@ def _write_operation(bundle: Path, operation: dict[str, object]) -> Path:
     concept_id = str(operation["concept_id"])
     destination = _bundle_destination(bundle, concept_id)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if operation["action"] == "DELETE":
-        if destination.exists():
-            destination.unlink()
+    if operation["action"] == "DEPRECATE":
+        text = destination.read_text(encoding="utf-8")
+        frontmatter, body = parse_frontmatter(text)
+        if not frontmatter:
+            raise ValueError("cannot deprecate document without frontmatter")
+        frontmatter["status"] = "deprecated"
+        lines = ["---"]
+        for key, value in frontmatter.items():
+            if isinstance(value, list):
+                rendered = "[" + ", ".join(json.dumps(item, ensure_ascii=False) for item in value) + "]"
+            elif isinstance(value, str):
+                rendered = json.dumps(value, ensure_ascii=False)
+            else:
+                rendered = str(value).lower() if isinstance(value, bool) else str(value)
+            lines.append(f"{key}: {rendered}")
+        lines.extend(["---", "", body.rstrip("\n"), ""])
+        destination.write_text("\n".join(lines), encoding="utf-8")
         return destination
     document = operation.get("document")
     destination.write_text(_document_text(document), encoding="utf-8")
@@ -84,31 +94,17 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path) -> dict[str,
     errors = validate_report_payload(report)
     if errors:
         return {"ok": False, "errors": errors}
-    role = str(report.get("role") or "memory-curator")
-    if role == "brief-pattern-curator":
-        brief_errors: list[str] = []
-        for index, operation in enumerate(report.get("operations", [])):
-            if not isinstance(operation, dict):
-                brief_errors.append(f"operations[{index}] must be an object")
-                continue
-            try:
-                _validate_operation(bundle, role, operation)
-            except Exception as exc:
-                brief_errors.append(f"operations[{index}]: {exc}")
-        if brief_errors:
-            return {"ok": False, "errors": brief_errors}
-    else:
-        role_errors: list[str] = []
-        for index, operation in enumerate(report.get("operations", [])):
-            if not isinstance(operation, dict):
-                role_errors.append(f"operations[{index}] must be an object")
-                continue
-            try:
-                _validate_operation(bundle, role, operation)
-            except Exception as exc:
-                role_errors.append(f"operations[{index}]: {exc}")
-        if role_errors:
-            return {"ok": False, "errors": role_errors}
+    operation_errors: list[str] = []
+    for index, operation in enumerate(report.get("operations", [])):
+        if not isinstance(operation, dict):
+            operation_errors.append(f"operations[{index}] must be an object")
+            continue
+        try:
+            _validate_operation(bundle, operation)
+        except Exception as exc:
+            operation_errors.append(f"operations[{index}]: {exc}")
+    if operation_errors:
+        return {"ok": False, "errors": operation_errors}
     operations = report.get("operations", [])
     backup_root = backup_dir / report_path.stem
     backup_tree(bundle, backup_root)
@@ -122,7 +118,12 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path) -> dict[str,
         reindex_bundle(bundle)
         log_path = bundle / "log.md"
         with log_path.open("a", encoding="utf-8") as handle:
-            handle.write(f"- applied {report_path.name}\n")
+            proposals = ",".join(str(op["proposal_id"]) for op in operations)
+            author = str(report.get("role") or report.get("author") or "unspecified")
+            for operation in operations:
+                if operation["action"] == "DEPRECATE":
+                    handle.write(f"- deprecated {operation['concept_id']} by {author}\n")
+            handle.write(f"- applied {report_path.name} author={author} proposals={proposals}\n")
     except Exception as exc:
         if backup_root.exists():
             for path in sorted(bundle.rglob("*"), reverse=True):

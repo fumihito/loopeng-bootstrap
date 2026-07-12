@@ -6,13 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests._helpers import class_requires_go, normalize_repo_permissions
+from tests._helpers import normalize_repo_permissions
 
 
 KIT = Path(__file__).resolve().parents[1]
 
 
-@class_requires_go
 class InstalledRepoSelfSufficiencyTests(unittest.TestCase):
     def test_installed_repo_can_self_update(self) -> None:
         with tempfile.TemporaryDirectory() as td:

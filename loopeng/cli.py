@@ -43,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply_cmd.add_argument("report", type=_path)
     apply_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"))
     apply_cmd.add_argument("--backup-dir", type=_path, default=Path(agent_root("runtime", "okf-backups")))
+    apply_cmd.add_argument("--run")
 
     journal = sub.add_parser("journal")
     journal_sub = journal.add_subparsers(dest="journal_command", required=True)
@@ -62,6 +63,9 @@ def build_parser() -> argparse.ArgumentParser:
     audit_run.add_argument("--run", required=True)
     audit_run.add_argument("--repo", type=_path, default=Path("."))
 
+    status = sub.add_parser("status")
+    status.add_argument("--repo", type=_path, default=Path("."))
+
     return parser
 
 
@@ -76,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "okf" and args.okf_command == "init":
         bundle = args.bundle
         bundle.mkdir(parents=True, exist_ok=True)
-        for rel in ("concepts", "decisions", "constraints", "failure-patterns", "evaluation-rules", "recovery-patterns", "runbooks", "references", "loop-brief-patterns"):
+        for rel in ("concepts", "decisions", "constraints", "failure-patterns", "evaluation-rules", "recovery-patterns", "runbooks", "references"):
             (bundle / rel).mkdir(parents=True, exist_ok=True)
         index = bundle / "index.md"
         if not index.exists():
@@ -115,6 +119,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "okf" and args.okf_command == "apply":
         result = apply_report(args.bundle, args.report, args.backup_dir)
+        if args.run:
+            append_event(Path(args.bundle).resolve().parent, args.run, {
+                "kind": "okf-apply", "report": str(args.report), "ok": bool(result.get("ok")),
+                "touched": result.get("touched", []),
+            })
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["ok"] else 1
 
@@ -131,6 +140,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "audit" and args.audit_command == "run":
         report_path = run_audit_report(args.repo, args.run)
         print(str(report_path))
+        return 0
+
+    if args.command == "status":
+        from .status import render_status
+        print(render_status(args.repo))
         return 0
 
     raise SystemExit("unhandled command")

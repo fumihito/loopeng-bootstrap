@@ -25,16 +25,16 @@ Example
 """
 
 VALID_REPORTS = [
-    {"operations": [{"action": "UPSERT", "concept_id": "concepts/example-1", "document": REPORT_DOCUMENT}]},
-    {"operations": [{"action": "UPSERT", "concept_id": "concepts/example-2", "document": REPORT_DOCUMENT}]},
-    {"operations": [{"action": "DELETE", "concept_id": "concepts/example-3"}]},
+    {"operations": [{"action": "UPSERT", "proposal_id": "p1", "concept_id": "concepts/example-1", "document": REPORT_DOCUMENT}]},
+    {"operations": [{"action": "UPSERT", "proposal_id": "p2", "concept_id": "concepts/example-2", "document": REPORT_DOCUMENT}]},
+    {"operations": [{"action": "UPSERT", "proposal_id": "p3", "concept_id": "concepts/example-3", "document": REPORT_DOCUMENT}]},
     {
         "operations": [
-            {"action": "UPSERT", "concept_id": "concepts/example-4", "document": REPORT_DOCUMENT},
-            {"action": "DELETE", "concept_id": "concepts/example-5"},
+            {"action": "UPSERT", "proposal_id": "p4", "concept_id": "concepts/example-4", "document": REPORT_DOCUMENT},
+            {"action": "UPSERT", "proposal_id": "p5", "concept_id": "concepts/example-5", "document": REPORT_DOCUMENT},
         ]
     },
-    {"operations": [{"action": "UPSERT", "concept_id": "concepts/example-6", "document": REPORT_DOCUMENT}]},
+    {"operations": [{"action": "UPSERT", "proposal_id": "p6", "concept_id": "concepts/example-6", "document": REPORT_DOCUMENT}]},
 ]
 
 INVALID_REPORTS = [

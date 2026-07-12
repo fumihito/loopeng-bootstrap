@@ -86,7 +86,9 @@ def collect_context(repo: Path, run_id: str) -> AuditContext:
     status_paths = tuple(
         path
         for path in _git_status_paths(repo)
-        if path != report_rel and not path.startswith(agent_root("state", "reports").as_posix())
+        if path != report_rel
+        and path != journal_path.relative_to(repo).as_posix()
+        and not path.startswith(agent_root("state", "reports").as_posix())
         and path not in baseline_paths
     )
     return AuditContext(
