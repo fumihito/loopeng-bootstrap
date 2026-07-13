@@ -29,6 +29,7 @@ def _prompt(screen: Any, text: str) -> str:
     screen.move(max(0, height - 2), 0)
     screen.clrtoeol()
     screen.addnstr(max(0, height - 2), 0, text, max(1, width - 1))
+    screen.refresh()
     curses.echo()
     try:
         return screen.getstr(max(0, height - 1), 0).decode(errors="replace")
@@ -123,6 +124,9 @@ def _missing_packet(screen: Any, repo: Path, run_id: str) -> None:
 
 
 def _confirm_exit(screen: Any) -> bool:
+    # Do not let the Ctrl-C that triggered this confirmation immediately
+    # cancel the confirmation input itself.
+    curses.flushinp()
     return _prompt(screen, "exit? [y/N] ").strip().casefold() in {"y", "yes"}
 
 
