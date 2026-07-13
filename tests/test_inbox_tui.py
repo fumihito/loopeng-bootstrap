@@ -103,6 +103,21 @@ class InboxModelTests(unittest.TestCase):
         finally:
             holder.cleanup()
 
+    def test_packet_detail_prioritizes_markdown_files(self) -> None:
+        holder, root = self.repo()
+        try:
+            packet = root / ".agent-loop/state/review-packets/r1"
+            (packet / "source").mkdir(parents=True)
+            (packet / "journal.json").write_text("journal\n", encoding="utf-8")
+            (packet / "source" / "z.md").write_text("source markdown\n", encoding="utf-8")
+            (packet / "report.md").write_text("report markdown\n", encoding="utf-8")
+            (packet / "manifest.json").write_text(json.dumps({"run_id": "r1", "files": ["journal.json", "source", "report.md"]}), encoding="utf-8")
+            lines = packet_detail_lines(packet)
+            headers = [line for line in lines if line.startswith("===== ")]
+            self.assertEqual(headers[:2], ["===== source/z.md =====", "===== report.md ====="])
+        finally:
+            holder.cleanup()
+
     def test_generate_packet_delegates_to_audit_export(self) -> None:
         holder, root = self.repo()
         try:

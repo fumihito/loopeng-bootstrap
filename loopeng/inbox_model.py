@@ -79,6 +79,19 @@ def packet_detail_lines(packet: Path) -> list[str]:
     names = [str(name) for name in listed if isinstance(name, str)]
     if "manifest.json" not in names:
         names.insert(0, "manifest.json")
+    expanded: list[tuple[int, str]] = []
+    for index, name in enumerate(names):
+        candidate = (packet / name).resolve()
+        try:
+            candidate.relative_to(packet.resolve())
+        except ValueError:
+            expanded.append((index, name))
+            continue
+        if candidate.is_dir():
+            expanded.extend((index, path.relative_to(packet).as_posix()) for path in sorted(candidate.rglob("*")) if path.is_file())
+        else:
+            expanded.append((index, name))
+    names = [name for _, name in sorted(expanded, key=lambda entry: (not entry[1].casefold().endswith(".md"), entry[0], entry[1]))]
     lines = [f"Packet: {packet}", "Read-only packet contents", ""]
     for name in names:
         path = (packet / name).resolve()
