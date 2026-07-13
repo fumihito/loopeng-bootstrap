@@ -61,6 +61,7 @@ def _action_prompt(screen: Any, options: tuple[str, ...]) -> str:
     height, width = screen.getmaxyx()
     value = ""
     completion_index = -1
+    completion_prefix: str | None = None
     curses.noecho()
     try:
         while True:
@@ -79,11 +80,15 @@ def _action_prompt(screen: Any, options: tuple[str, ...]) -> str:
             if key in (curses.KEY_BACKSPACE, 8, 127):
                 value = value[:-1]
                 completion_index = -1
+                completion_prefix = None
             elif key in (9,):
-                value, completion_index = _next_completion(value, options, completion_index)
+                if completion_index == -1:
+                    completion_prefix = value
+                value, completion_index = _next_completion(completion_prefix or value, options, completion_index)
             elif 0 <= key < 256:
                 value += chr(key)
                 completion_index = -1
+                completion_prefix = None
     finally:
         curses.noecho()
 

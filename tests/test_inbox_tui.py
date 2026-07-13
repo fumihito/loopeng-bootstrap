@@ -47,6 +47,12 @@ class InboxModelTests(unittest.TestCase):
         self.assertEqual(_next_completion("", options, -1), ("intake", 0))
         self.assertEqual(_next_completion("", options, 0), ("detail", 1))
 
+    def test_request_and_review_cycle_from_shared_prefix(self) -> None:
+        options = ("request", "review", "packet")
+        self.assertEqual(_next_completion("re", options, -1), ("request", 0))
+        self.assertEqual(_next_completion("re", options, 0), ("review", 1))
+        self.assertEqual(_next_completion("re", options, 1), ("request", 0))
+
     def test_action_ctrl_c_rejects_input_and_exit_requires_confirmation(self) -> None:
         screen = mock.Mock()
         screen.getmaxyx.return_value = (24, 80)
