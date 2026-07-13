@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, interactive
+from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, interactive, packet_detail_lines
 from loopeng.inbox_tui import _available_label
 from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
@@ -87,6 +87,19 @@ class InboxModelTests(unittest.TestCase):
             request = build_request(root, "missing-run")
             self.assertIn("Review packet: unavailable", request)
             self.assertNotIn("review-packets/missing-run/manifest.json", request)
+        finally:
+            holder.cleanup()
+
+    def test_packet_detail_reads_manifest_listed_files(self) -> None:
+        holder, root = self.repo()
+        try:
+            packet = root / ".agent-loop/state/review-packets/r1"
+            packet.mkdir(parents=True)
+            (packet / "journal.json").write_text("journal content\n", encoding="utf-8")
+            (packet / "manifest.json").write_text(json.dumps({"run_id": "r1", "files": ["journal.json"]}), encoding="utf-8")
+            lines = packet_detail_lines(packet)
+            self.assertIn("===== journal.json =====", lines)
+            self.assertIn("journal content", lines)
         finally:
             holder.cleanup()
 

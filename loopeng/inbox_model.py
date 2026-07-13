@@ -20,6 +20,7 @@ from ._paths import agent_root
 
 DETAIL_LINES = 20
 ESTABLISH_BATCH = 20
+PACKET_DETAIL_MAX_LINES = 20000
 
 ACTION_TABLE = {
     "provisional": ("establish", "detail", "skip"),
@@ -62,13 +63,40 @@ def detail(repo: Path, item: dict[str, Any]) -> str:
         if packet is None:
             return (f"packet unavailable for run {item['target']}\n"
                     f"Generate it with: python3 -m loopeng audit export --run {item['target']}")
-        manifest = packet / "manifest.json"
-        try:
-            value = json.loads(manifest.read_text(encoding="utf-8"))
-            return json.dumps({key: value.get(key) for key in ("run_id", "packet_hash", "sanitized", "files") if key in value}, indent=2, ensure_ascii=False)
-        except (OSError, json.JSONDecodeError):
-            return f"packet: {manifest}\nmanifest unavailable"
+        return "\n".join(packet_detail_lines(packet))
     return json.dumps({key: item.get(key) for key in ("kind", "target", "label", "age_days")}, ensure_ascii=False, indent=2)
+
+
+def packet_detail_lines(packet: Path) -> list[str]:
+    """Read the exported packet files for the read-only TUI pager."""
+    manifest = packet / "manifest.json"
+    try:
+        value = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return [f"manifest unavailable: {manifest}"]
+    listed = value.get("files") if isinstance(value, dict) else []
+    names = [str(name) for name in listed if isinstance(name, str)]
+    if "manifest.json" not in names:
+        names.insert(0, "manifest.json")
+    lines = [f"Packet: {packet}", "Read-only packet contents", ""]
+    for name in names:
+        path = (packet / name).resolve()
+        try:
+            path.relative_to(packet.resolve())
+        except ValueError:
+            lines.extend([f"===== {name} (blocked path) =====", ""])
+            continue
+        lines.extend([f"===== {name} ====="])
+        try:
+            content = path.read_text(encoding="utf-8")
+            lines.extend(content.splitlines() or ["(empty)"])
+        except (OSError, UnicodeError) as exc:
+            lines.append(f"unreadable: {type(exc).__name__}")
+        lines.append("")
+        if len(lines) >= PACKET_DETAIL_MAX_LINES:
+            lines.append("(packet detail truncated)")
+            break
+    return lines[:PACKET_DETAIL_MAX_LINES]
 
 
 def _establish(repo: Path, items: list[dict[str, Any]], run_id: str) -> dict[str, Any]:
