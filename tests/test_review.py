@@ -176,7 +176,7 @@ class ReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             append_event(root, "r1", {"kind": "run-start", "agent": "test", "goal": "secret test"})
-            append_event(root, "r1", {"kind": "note", "message": "password=SUPER-SECRET-VALUE"})
+            append_event(root, "r1", {"kind": "note", "message": "password=SUPER-SECRET-VALUE"})  # publish-safety: ignore sensitive assignment
             append_event(root, "r1", {"kind": "run-end"})
             run_audit_report(root, "r1")
             payload = json.loads((root / agent_root("state", "reports") / "r1.json").read_text(encoding="utf-8"))

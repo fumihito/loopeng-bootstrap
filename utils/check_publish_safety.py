@@ -4,12 +4,14 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
 IGNORED_DIR_NAMES = {".git"}
 MAX_READ_BYTES = 2 * 1024 * 1024
+SENSITIVE_ASSIGNMENT_SUPPRESSION = "# publish-safety: ignore sensitive assignment"
+REDACTED_VALUE_RE = re.compile(r"^(?:<redacted>[^A-Za-z0-9_<>]*)+$", re.IGNORECASE)
 
 HIGH_CONFIDENCE_FILE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?i)(^|/)\.env(\.[^/]+)?$"), ".env file"),
@@ -96,6 +98,8 @@ def secretish(value: str) -> bool:
         return False
     if any(ch.isspace() for ch in value):
         return False
+    if REDACTED_VALUE_RE.fullmatch(value):
+        return False
     classes = {
         "lower": any(ch.islower() for ch in value),
         "upper": any(ch.isupper() for ch in value),
@@ -149,8 +153,43 @@ def line_findings(path: Path, root: Path, text: str) -> list[Finding]:
     return findings
 
 
-def scan(root: Path) -> list[Finding]:
+def line_findings_with_suppressions(
+    path: Path, root: Path, text: str
+) -> tuple[list[Finding], list[Finding]]:
     findings: list[Finding] = []
+    suppressed: list[Finding] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        line_result = line_findings(path, root, line)
+        for finding in line_result:
+            if (
+                finding.message == "sensitive assignment"
+                and SENSITIVE_ASSIGNMENT_SUPPRESSION in line
+            ):
+                suppressed.append(
+                    Finding(
+                        path=path,
+                        line=line_no,
+                        severity="SUPPRESSED",
+                        message=finding.message,
+                        evidence=(
+                            f"{finding.evidence}] ["
+                            f"{SENSITIVE_ASSIGNMENT_SUPPRESSION.removeprefix('# ')}"
+                        ),
+                    )
+                )
+            else:
+                findings.append(replace(finding, line=line_no))
+    return findings, suppressed
+
+
+def scan(root: Path) -> list[Finding]:
+    findings, _ = scan_with_suppressions(root)
+    return findings
+
+
+def scan_with_suppressions(root: Path) -> tuple[list[Finding], list[Finding]]:
+    findings: list[Finding] = []
+    suppressed: list[Finding] = []
     for path in iter_files(root):
         file_finding = file_name_finding(path, root)
         if file_finding is not None:
@@ -173,8 +212,10 @@ def scan(root: Path) -> list[Finding]:
         except UnicodeDecodeError:
             text = data.decode("utf-8", errors="replace")
 
-        findings.extend(line_findings(path, root, text))
-    return findings
+        line_result, line_suppressed = line_findings_with_suppressions(path, root, text)
+        findings.extend(line_result)
+        suppressed.extend(line_suppressed)
+    return findings, suppressed
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -191,7 +232,11 @@ def main(argv: list[str]) -> int:
         print(f"ERROR: root does not exist or is not a directory: {root}", file=sys.stderr)
         return 2
 
-    findings = scan(root)
+    findings, suppressed = scan_with_suppressions(root)
+    if suppressed:
+        print(f"Suppressed {len(suppressed)} potential issue(s) under {root}:")
+        for finding in suppressed:
+            print(finding.render(root))
     if not findings:
         print(f"OK: no obvious credentials or risky secrets found under {root}")
         return 0

@@ -189,15 +189,15 @@ def _capture_recovery(repo: Path, run_id: str, command: str, success: bool) -> N
     candidates = [event for event in events if event.get("kind") == EVENT_LEARNING_CANDIDATE]
     if len(candidates) >= LEARNING_CAPTURE_LIMIT:
         return
-    token = command.strip().split(None, 1)[0] if command.strip() else "unknown"
+    command_name = command.strip().split(None, 1)[0] if command.strip() else "unknown"
     previous = None
     for event in reversed(events[:-1]):
         if event.get("kind") == EVENT_COMMAND and not event.get("tool_success", True):
             prior = str(event.get("command") or "").strip().split(None, 1)
-            if prior and prior[0] == token:
+            if prior and prior[0] == command_name:
                 previous = str(event.get("command")); break
     if success and previous:
-        summary = {"source": "hook-capture", "command_token": token,
+        summary = {"source": "hook-capture", "command_token": command_name,
                    "failed": previous, "recovered": command}
         candidate = {"kind": EVENT_LEARNING_CANDIDATE, **summary}
         append_event(repo, run_id, candidate)
@@ -205,7 +205,7 @@ def _capture_recovery(repo: Path, run_id: str, command: str, success: bool) -> N
         learning.mkdir(parents=True, exist_ok=True)
         target = learning / f"{run_id}-hook-{len(candidates)+1}.json"
         target.write_text(json.dumps({"source": "hook-capture", "source_run_id": run_id,
-                                      "summary": f"{token}: failure recovered by subsequent command",
+                                      "summary": f"{command_name}: failure recovered by subsequent command",
                                       "failed_command": previous, "recovery_command": command},
                                      indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
