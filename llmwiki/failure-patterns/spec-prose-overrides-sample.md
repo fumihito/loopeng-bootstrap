@@ -1,30 +1,18 @@
 ---
 type: "Failure Pattern"
-title: "Spec prose overrides sample"
-description: "Spec prose overrides sample"
-tags: ["specification", "semantics", "review"]
-timestamp: "2026-07-13T05:08:57.805946+00:00"
+title: "Specification prose overrides sample"
+description: "Normative prose wins when a sample conflicts."
+tags: ["specification", "review"]
+timestamp: "2026-07-13T00:00:00Z"
 status: active
 sensitivity: internal
 authority: "user"
 confidence: 0.7
+tier: provisional
 ---
 
 # Summary
-When specification prose and its sample conflict, implementation should follow the governing rule expressed by the prose or executable semantics.
-
-# Evidence
-Examples are illustrations and can omit boundary conditions. A rule, pseudo-code definition, or explicit invariant carries the semantic obligation; review should identify and resolve a contradiction instead of silently treating the sample as authority.
-
-# Applicability
-Use during design and code review when examples and normative clauses disagree.
+Follow governing prose or executable semantics when examples conflict.
 
 # Invalidation Conditions
-Rewrite this pattern if a controlled review record shows that sample-first interpretation is the explicitly governed convention for the affected specification family.
-
-# Decision Log
-Make the semantic core executable or pseudo-code precise before implementation.
-
-# Citations
-SA-WP9 initial memory seed; review-dag Z1 finding.
-
+Replace after a governed sample-first convention is established.
