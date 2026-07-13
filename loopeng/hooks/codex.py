@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .events import NormalizedEvent, event_kind
+from .events import EventKind, NormalizedEvent, event_kind
 
 
 def normalize(payload: dict[str, Any], *, repo: Path | None = None) -> NormalizedEvent:
@@ -21,6 +21,10 @@ def normalize(payload: dict[str, Any], *, repo: Path | None = None) -> Normalize
 
 def render(result: dict[str, Any], event: NormalizedEvent) -> dict[str, Any]:
     output = dict(result.get("response") or {})
+    # Stop supports the common hook response fields, but not the
+    # hookSpecificOutput envelope used by context and tool events.
+    if event.kind is EventKind.RUN_STOP:
+        return output
     specific = output.setdefault("hookSpecificOutput", {})
     specific.setdefault("hookEventName", event.event_name)
     return output

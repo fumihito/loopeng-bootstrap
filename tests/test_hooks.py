@@ -9,7 +9,7 @@ from pathlib import Path
 
 from loopeng.hooks import handler
 from loopeng.hooks.claude_code import normalize as normalize_claude
-from loopeng.hooks.codex import normalize as normalize_codex
+from loopeng.hooks.codex import normalize as normalize_codex, render as render_codex
 from loopeng.hooks.events import EventKind
 
 
@@ -61,6 +61,10 @@ class HookTests(unittest.TestCase):
             result = handler.handle(normalize_codex({"hook_event_name": "Stop", "cwd": str(repo), "run_id": "broken-state"}))
             self.assertEqual(result["response"], {"continue": True})
             self.assertNotIn("block", json.dumps(result).lower())
+
+    def test_codex_stop_render_uses_common_output_only(self) -> None:
+        event = normalize_codex({"hook_event_name": "Stop", "cwd": str(ROOT)})
+        self.assertEqual(render_codex({"response": {"continue": True}}, event), {"continue": True})
 
     def test_review_prefix_injects_triage_and_preserves_instruction(self) -> None:
         with tempfile.TemporaryDirectory() as td:
