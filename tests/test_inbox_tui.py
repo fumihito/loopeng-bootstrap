@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from loopeng.inbox_model import ACTION_TABLE, actions_for, detail, execute, generate_packet, interactive, packet_detail_lines
-from loopeng.inbox_tui import _action_prompt, _available_label, _confirm_exit, _next_completion
+from loopeng.inbox_tui import _action_prompt, _available_label, _confirm_exit, _next_completion, build_human_review
 from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
 
@@ -71,6 +71,21 @@ class InboxModelTests(unittest.TestCase):
             with mock.patch("loopeng.inbox_tui.curses.wrapper", side_effect=lambda main: main(screen)), mock.patch("loopeng.inbox_tui.curses.curs_set"), mock.patch("loopeng.inbox_tui.curses.ACS_HLINE", 0, create=True), mock.patch("loopeng.inbox_tui.curses.echo"), mock.patch("loopeng.inbox_tui.curses.noecho"), mock.patch("loopeng.inbox_tui.curses.flushinp"):
                 run(root, "tui-test")
             self.assertEqual(screen.getch.call_count, 4)
+        finally:
+            holder.cleanup()
+
+    def test_human_review_builder_creates_key_only_contract(self) -> None:
+        holder, root = self.repo()
+        try:
+            packet = root / ".agent-loop/state/review-packets/r1"
+            packet.mkdir(parents=True)
+            (packet / "manifest.json").write_text(json.dumps({"run_id": "r1", "packet_hash": "hash"}), encoding="utf-8")
+            (packet / "journal.json").write_text("[{\"kind\": \"run-start\"}]", encoding="utf-8")
+            (packet / "source-index.json").write_text(json.dumps({"note.py": 1}), encoding="utf-8")
+            value = build_human_review(root, "r1", ("unable",) * 5, "blocked-on-info")
+            self.assertEqual(value["reviewer"]["model"], "human-tui")
+            self.assertEqual([item["id"] for item in value["dimensions"]], ["D1", "D2", "D3", "D4", "D5"])
+            self.assertEqual(value["overall"], "blocked-on-info")
         finally:
             holder.cleanup()
 
