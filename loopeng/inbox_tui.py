@@ -106,12 +106,12 @@ def _missing_packet(screen: Any, repo: Path, run_id: str) -> None:
         screen.erase()
         height, width = screen.getmaxyx()
         screen.addnstr(0, 0, f"Packet unavailable for {run_id}", max(1, width - 1))
-        screen.addnstr(2, 0, "[e] generate packet with audit export  [q] back", max(1, width - 1))
+        screen.addnstr(2, 0, "[g] generate packet with audit export  [q] back", max(1, width - 1))
         screen.refresh()
         key = screen.getch()
         if key in (ord("q"), 27):
             return
-        if key == ord("e"):
+        if key == ord("g"):
             try:
                 packet = generate_packet(repo, run_id)
                 _pager(screen, packet_detail_lines(packet))
