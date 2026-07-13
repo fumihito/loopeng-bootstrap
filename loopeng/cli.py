@@ -541,7 +541,11 @@ def main(argv: list[str] | None = None) -> int:
                 finally:
                     end_session(args.repo.resolve(), run_id)
                 from .audit.report import run_audit_report as run_tui_audit_report
-                answer = input("Run audit now? [Y/n] ").strip().casefold()
+                try:
+                    answer = input("Run audit now? [Y/n] ").strip().casefold()
+                except KeyboardInterrupt:
+                    print("\nInbox TUI interrupted during audit prompt; session closed.")
+                    return 0
                 if answer not in {"n", "no"}:
                     print(f"audit: {run_tui_audit_report(args.repo.resolve(), run_id)}")
                 return 0

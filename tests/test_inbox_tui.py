@@ -139,6 +139,29 @@ class InboxModelTests(unittest.TestCase):
         finally:
             holder.cleanup()
 
+    def test_tui_keyboard_interrupt_at_audit_prompt_closes_without_traceback(self) -> None:
+        holder, root = self.repo()
+        try:
+            from loopeng.cli import main
+            with mock.patch("loopeng.cli.sys.stdin.isatty", return_value=True), mock.patch("loopeng.cli.sys.stdout.isatty", return_value=True), mock.patch("loopeng.inbox_tui.run", return_value=None), mock.patch("builtins.input", side_effect=KeyboardInterrupt), mock.patch("builtins.print") as printed:
+                self.assertEqual(main(["inbox", "--tui", "--repo", str(root)]), 0)
+            self.assertTrue(any("during audit prompt" in str(call) for call in printed.call_args_list))
+        finally:
+            holder.cleanup()
+
+    def test_interactive_keyboard_interrupt_closes_without_traceback(self) -> None:
+        holder, root = self.repo()
+        try:
+            class InterruptingInput:
+                def readline(self) -> str:
+                    raise KeyboardInterrupt
+
+            output = io.StringIO()
+            self.assertEqual(interactive(root, InterruptingInput(), output), 0)
+            self.assertIn("interactive session interrupted", output.getvalue())
+        finally:
+            holder.cleanup()
+
 
 if __name__ == "__main__":
     unittest.main()

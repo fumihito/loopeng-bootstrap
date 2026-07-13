@@ -188,6 +188,7 @@ def interactive(repo: Path, input_stream: Any, output_stream: Any) -> int:
     """Line-oriented driver; all mutations still go through ``execute``."""
     repo = repo.resolve()
     run_id = start_session(repo)
+    interrupted = False
     try:
         while True:
             items = list_items(repo)
@@ -229,11 +230,20 @@ def interactive(repo: Path, input_stream: Any, output_stream: Any) -> int:
                     continue
             result = execute(repo, chosen, action, run_id, value)
             output_stream.write(json.dumps(result, ensure_ascii=False) + "\n")
+    except KeyboardInterrupt:
+        interrupted = True
+        output_stream.write("\nInbox interactive session interrupted; session closed.\n")
     finally:
         end_session(repo, run_id)
+    if interrupted:
+        return 0
     output_stream.write("Run audit now? [Y/n] ")
     output_stream.flush()
-    answer = input_stream.readline().strip().casefold()
+    try:
+        answer = input_stream.readline().strip().casefold()
+    except KeyboardInterrupt:
+        output_stream.write("\nInbox interactive session interrupted during audit prompt; session closed.\n")
+        return 0
     if answer not in {"n", "no"}:
         output_stream.write(f"audit: {run_audit_report(repo, run_id)}\n")
     return 0
