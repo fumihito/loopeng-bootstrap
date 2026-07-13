@@ -13,7 +13,7 @@ from .okf.approval import approve, reject
 from .okf.apply import apply_report
 from .okf.promote import establish
 from .review import record_decision
-from .review_request import build_request
+from .review_request import build_request, resolve_packet
 from .run import record_human_outcome
 from .audit.report import run_audit_report
 from ._paths import agent_root
@@ -58,7 +58,11 @@ def detail(repo: Path, item: dict[str, Any]) -> str:
         except OSError:
             return "unreadable entry"
     if kind == "external-review":
-        manifest = repo / agent_root("state", "review-packets") / str(item["target"]) / "manifest.json"
+        packet = resolve_packet(repo, str(item["target"]))
+        if packet is None:
+            return (f"packet unavailable for run {item['target']}\n"
+                    f"Generate it with: python3 -m loopeng audit export --run {item['target']}")
+        manifest = packet / "manifest.json"
         try:
             value = json.loads(manifest.read_text(encoding="utf-8"))
             return json.dumps({key: value.get(key) for key in ("run_id", "packet_hash", "sanitized", "files") if key in value}, indent=2, ensure_ascii=False)
@@ -108,7 +112,10 @@ def execute(repo: Path, item: dict[str, Any] | list[dict[str, Any]], action: str
         append_event(repo, run_id, {"kind": EVENT_EXTERNAL_REVIEW, "run_id": str(current["target"]), "status": "request-generated", "authorization": "tui-interactive"})
         return {"ok": True, "request": request}
     if action == "packet" and kind == "external-review":
-        return {"ok": True, "packet": str(repo / agent_root("state", "review-packets") / str(current["target"]))}
+        packet = resolve_packet(repo, str(current["target"]))
+        if packet is None:
+            return {"ok": False, "error": f"packet unavailable for run {current['target']}; run audit export first"}
+        return {"ok": True, "packet": str(packet / "manifest.json")}
     if action in {"go", "alt", "hold"} and kind == "held":
         record_decision(repo, str(current["target"]), action, run_id, authorization="tui-interactive")
         return {"ok": True, "choice": action}

@@ -9,6 +9,7 @@ from unittest import mock
 
 from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, interactive
 from loopeng.inbox_tui import _available_label
+from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
 
 
@@ -77,6 +78,15 @@ class InboxModelTests(unittest.TestCase):
             request.assert_called_once_with(root, "run-1")
             self.assertEqual(result["request"], "request")
             self.assertNotIn("accepted", result)
+        finally:
+            holder.cleanup()
+
+    def test_missing_packet_is_not_reported_as_an_existing_path(self) -> None:
+        holder, root = self.repo()
+        try:
+            request = build_request(root, "missing-run")
+            self.assertIn("Review packet: unavailable", request)
+            self.assertNotIn("review-packets/missing-run/manifest.json", request)
         finally:
             holder.cleanup()
 
