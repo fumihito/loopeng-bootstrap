@@ -40,12 +40,14 @@ def run(repo: Path, run_id: str) -> None:
         selected = 0
         marked: set[int] = set()
         messages: list[str] = []
+        detail_lines: list[str] = []
         while True:
             items = list_items(repo)
             screen.erase()
             height, width = screen.getmaxyx()
             screen.addnstr(0, 0, f"Inbox ({len(items)})  [space]=mark [a]=act [d]=detail [A]=act-all-marked [q]=quit", max(1, width - 1))
-            for index, item in enumerate(items[:max(0, height - 6)]):
+            list_limit = max(0, height - 6) if not detail_lines else max(0, height - min(len(detail_lines), 8) - 6)
+            for index, item in enumerate(items[:list_limit]):
                 prefix = ">" if index == selected else " "
                 mark = "x" if index in marked else " "
                 target = _short(str(item.get("target", "")), max(10, width - 36))
@@ -54,6 +56,11 @@ def run(repo: Path, run_id: str) -> None:
             screen.hline(max(2, height - 4), 0, curses.ACS_HLINE, max(1, width - 1))
             available = _available_label(items, marked)
             screen.addnstr(max(0, height - 3), 0, f"marked: {len(marked)}  available: {available}", max(1, width - 1))
+            if detail_lines:
+                detail_start = max(0, height - min(len(detail_lines), 8) - 3)
+                screen.addnstr(max(0, detail_start - 1), 0, "Detail (d to refresh):", max(1, width - 1))
+                for offset, line in enumerate(detail_lines[-8:]):
+                    screen.addnstr(detail_start + offset, 0, _short(line, max(1, width - 1)), max(1, width - 1))
             if messages:
                 screen.addnstr(max(0, height - 2), 0, _short(messages[-1], max(1, width - 1)), max(1, width - 1))
             screen.refresh()
@@ -70,7 +77,8 @@ def run(repo: Path, run_id: str) -> None:
                 else:
                     marked.add(selected)
             elif key == ord("d") and items:
-                messages.append(detail(repo, items[selected]).splitlines()[0] if detail(repo, items[selected]) else "(empty detail)")
+                detail_lines = detail(repo, items[selected]).splitlines()[:20] or ["(empty detail)"]
+                messages.append(f"showing {len(detail_lines)} detail lines")
             elif key in (ord("a"), ord("A")) and items:
                 chosen = [items[i] for i in sorted(marked)] if key == ord("A") and marked else [items[selected]]
                 if key == ord("A") and len({str(item.get("kind")) for item in chosen}) != 1:
