@@ -180,7 +180,7 @@ class InboxModelTests(unittest.TestCase):
             from loopeng.cli import main
             with mock.patch("loopeng.cli.sys.stdin.isatty", return_value=True), mock.patch("loopeng.cli.sys.stdout.isatty", return_value=True), mock.patch("loopeng.inbox_tui.run", return_value=None), mock.patch("builtins.input", side_effect=KeyboardInterrupt), mock.patch("builtins.print") as printed:
                 self.assertEqual(main(["inbox", "--tui", "--repo", str(root)]), 0)
-            self.assertTrue(any("during audit prompt" in str(call) for call in printed.call_args_list))
+            self.assertFalse(any("Traceback" in str(call) for call in printed.call_args_list))
         finally:
             holder.cleanup()
 

@@ -562,7 +562,7 @@ def main(argv: list[str] | None = None) -> int:
                     print("TTY unavailable; falling back to --interactive.")
                     return interactive(args.repo, sys.stdin, sys.stdout)
                 from .inbox_tui import run
-                from .inbox_model import start_session, end_session
+                from .inbox_model import end_session, read_one_key_confirmation, start_session
                 run_id = start_session(args.repo.resolve())
                 try:
                     try:
@@ -572,11 +572,7 @@ def main(argv: list[str] | None = None) -> int:
                 finally:
                     end_session(args.repo.resolve(), run_id)
                 from .audit.report import run_audit_report as run_tui_audit_report
-                try:
-                    answer = input("Run audit now? [Y/n] ").strip().casefold()
-                except KeyboardInterrupt:
-                    print("\nInbox TUI interrupted during audit prompt; session closed.")
-                    return 0
+                answer = read_one_key_confirmation(sys.stdin, sys.stdout, "Run audit now? [Y/n] ")
                 if answer not in {"n", "no"}:
                     try:
                         print(f"audit: {run_tui_audit_report(args.repo.resolve(), run_id)}")

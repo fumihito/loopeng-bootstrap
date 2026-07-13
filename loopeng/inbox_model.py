@@ -24,6 +24,39 @@ DETAIL_LINES = 20
 ESTABLISH_BATCH = 20
 PACKET_DETAIL_MAX_LINES = 20000
 
+
+def read_one_key_confirmation(input_stream: Any, output_stream: Any, prompt: str) -> str:
+    output_stream.write(prompt)
+    output_stream.flush()
+    if not getattr(input_stream, "isatty", lambda: False)():
+        try:
+            return input_stream.readline().strip().casefold()
+        except KeyboardInterrupt:
+            return ""
+    try:
+        import termios
+        import tty
+        fd = input_stream.fileno()
+        previous = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            value = input_stream.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, previous)
+        output_stream.write("\n")
+        output_stream.flush()
+        return value.strip().casefold()
+    except KeyboardInterrupt:
+        try:
+            return input_stream.readline().strip().casefold()
+        except KeyboardInterrupt:
+            return ""
+    except Exception:
+        try:
+            return input_stream.readline().strip().casefold()
+        except KeyboardInterrupt:
+            return ""
+
 ACTION_TABLE = {
     "provisional": ("establish", "detail", "skip"),
     "draft": ("approve", "reject", "detail", "skip"),
@@ -256,13 +289,7 @@ def interactive(repo: Path, input_stream: Any, output_stream: Any) -> int:
         end_session(repo, run_id)
     if interrupted:
         return 0
-    output_stream.write("Run audit now? [Y/n] ")
-    output_stream.flush()
-    try:
-        answer = input_stream.readline().strip().casefold()
-    except KeyboardInterrupt:
-        output_stream.write("\nInbox interactive session interrupted during audit prompt; session closed.\n")
-        return 0
+    answer = read_one_key_confirmation(input_stream, output_stream, "Run audit now? [Y/n] ")
     if answer not in {"n", "no"}:
         try:
             output_stream.write(f"audit: {run_audit_report(repo, run_id)}\n")
