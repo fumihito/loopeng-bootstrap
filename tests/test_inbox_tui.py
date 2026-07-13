@@ -103,6 +103,17 @@ class InboxModelTests(unittest.TestCase):
         finally:
             holder.cleanup()
 
+    def test_tui_keyboard_interrupt_closes_without_traceback(self) -> None:
+        holder, root = self.repo()
+        try:
+            from loopeng.cli import main
+            output = mock.patch("builtins.print")
+            with mock.patch("loopeng.cli.sys.stdin.isatty", return_value=True), mock.patch("loopeng.cli.sys.stdout.isatty", return_value=True), mock.patch("loopeng.inbox_tui.run", side_effect=KeyboardInterrupt), mock.patch("builtins.input", return_value="n"), output as printed:
+                self.assertEqual(main(["inbox", "--tui", "--repo", str(root)]), 0)
+            self.assertTrue(any("Inbox TUI interrupted; session closed." in str(call) for call in printed.call_args_list))
+        finally:
+            holder.cleanup()
+
 
 if __name__ == "__main__":
     unittest.main()

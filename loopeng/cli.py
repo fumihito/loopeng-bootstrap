@@ -534,7 +534,10 @@ def main(argv: list[str] | None = None) -> int:
                 from .inbox_model import start_session, end_session
                 run_id = start_session(args.repo.resolve())
                 try:
-                    run(args.repo.resolve(), run_id)
+                    try:
+                        run(args.repo.resolve(), run_id)
+                    except KeyboardInterrupt:
+                        print("\nInbox TUI interrupted; session closed.")
                 finally:
                     end_session(args.repo.resolve(), run_id)
                 from .audit.report import run_audit_report as run_tui_audit_report
