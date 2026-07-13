@@ -3,10 +3,28 @@ from __future__ import annotations
 from pathlib import Path
 
 from .schema import parse_document
+from .._paths import wiki_space
+
+
+def _add_space(path: Path, space: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    frontmatter, body = parse_document(path)
+    if not frontmatter or frontmatter.get("space") in {"framework", "project"}:
+        return
+    lines = ["---"] + [f"{key}: {value!r}" for key, value in {**frontmatter, "space": space}.items()]
+    lines.extend(["---", "", body.rstrip("\n"), ""])
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def reindex_bundle(bundle: Path) -> None:
     bundle.mkdir(parents=True, exist_ok=True)
+    space, _ = wiki_space(bundle.parent)
+    for document in bundle.rglob("*.md"):
+        if document.name not in {"index.md", "log.md"}:
+            try:
+                _add_space(document, space)
+            except (OSError, UnicodeError):
+                pass
     for directory in sorted([path for path in bundle.rglob("*") if path.is_dir()]):
         index = directory / "index.md"
         entries = sorted(

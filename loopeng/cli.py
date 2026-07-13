@@ -110,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--limit", type=int, default=10)
     query.add_argument("--run")
     query.add_argument("--tier", choices=("all", "provisional", "established"), default="all")
+    query.add_argument("--space", choices=("current", "framework", "project", "all"), default="current")
 
     memory = sub.add_parser("memory", help=t("自律メモリの起案・適用", "Curate bounded autonomous memory"))
     memory_sub = memory.add_subparsers(dest="memory_command", required=True)
@@ -145,10 +146,12 @@ def build_parser() -> argparse.ArgumentParser:
     stats_cmd.add_argument("--windows", default=",".join(STATS_WINDOWS))
     stats_cmd.add_argument("--format", choices=("text", "json"), default="text")
     stats_cmd.add_argument("--now")
+    stats_cmd.add_argument("--space", choices=("current", "framework", "project", "all"), default="current")
     efficacy_cmd = memory_sub.add_parser("efficacy", help=t("学習の再発効力を集計", "Measure learning efficacy"), formatter_class=formatter)
     efficacy_cmd.add_argument("--repo", type=_path, default=Path("."))
     efficacy_cmd.add_argument("--windows", default="7d,28d")
     efficacy_cmd.add_argument("--now")
+    efficacy_cmd.add_argument("--space", choices=("current", "framework", "project", "all"), default="current")
 
     learning = sub.add_parser("learning", help=t("learning 起案を管理", "Manage learning proposals"))
     learning_sub = learning.add_subparsers(dest="learning_command", required=True)
@@ -334,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "okf" and args.okf_command == "query":
         if args.limit < 0:
             raise SystemExit("--limit must be non-negative")
-        results = query_bundle(args.bundle, args.type_name, args.tag, args.grep, args.status, args.limit, args.tier)
+        results = query_bundle(args.bundle, args.type_name, args.tag, args.grep, args.status, args.limit, args.tier, args.space)
         payload = {"results": results[:args.limit], "total_matched": len(results), "returned": min(len(results), args.limit)}
         if args.run:
             append_event(args.bundle.resolve().parent, args.run, {"kind": EVENT_RETRIEVAL, "query": " ".join(filter(None, [args.type_name, *args.tag, args.grep or ""])), "read_ids": [r["concept_id"] for r in results[:args.limit]]})
@@ -370,7 +373,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "memory" and args.memory_command == "stats":
         windows = tuple(item.strip() for item in args.windows.split(",") if item.strip())
-        stats = collect_stats(args.repo, args.bundle if args.bundle.is_absolute() else args.repo / args.bundle, windows, args.now)
+        stats = collect_stats(args.repo, args.bundle if args.bundle.is_absolute() else args.repo / args.bundle, windows, args.now, args.space)
         if args.format == "json":
             serializable = dict(stats)
             if serializable.get("coverage") is not None:
@@ -382,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "memory" and args.memory_command == "efficacy":
         windows = tuple(item.strip() for item in args.windows.split(",") if item.strip())
-        print(render_efficacy(collect_efficacy(args.repo, windows, args.now)), end="")
+        print(render_efficacy(collect_efficacy(args.repo, windows, args.now, args.space)), end="")
         return 0
 
     if args.command == "learning" and args.learning_command == "promote":

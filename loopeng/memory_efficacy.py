@@ -8,6 +8,7 @@ from typing import Any
 
 from ._paths import agent_root
 from .okf.schema import parse_document
+from ._paths import wiki_space
 
 INEFFECTIVE_RECURRENCES = 2
 
@@ -33,11 +34,12 @@ def _journals(repo: Path) -> list[tuple[str, dict[str, Any]]]:
     return output
 
 
-def collect_efficacy(repo: Path, windows: tuple[str, ...] = ("7d", "28d"), now: str | None = None) -> dict[str, Any]:
+def collect_efficacy(repo: Path, windows: tuple[str, ...] = ("7d", "28d"), now: str | None = None, space: str = "current") -> dict[str, Any]:
     repo = repo.resolve()
     as_of = _time(now) or datetime.now(timezone.utc)
     docs: dict[str, tuple[datetime, str]] = {}
-    bundle = repo / "llmwiki"
+    current, bundle = wiki_space(repo)
+    selected_space = current if space == "current" else space
     for path in bundle.rglob("*.md") if bundle.is_dir() else ():
         if path.name in {"index.md", "log.md"}:
             continue
@@ -46,11 +48,13 @@ def collect_efficacy(repo: Path, windows: tuple[str, ...] = ("7d", "28d"), now: 
         except OSError:
             continue
         signature = frontmatter.get("signature")
+        if selected_space != "all" and str(frontmatter.get("space") or "unknown") != selected_space:
+            continue
         stored = _time(frontmatter.get("timestamp"))
         if signature and stored:
             concept_id = path.relative_to(bundle).with_suffix("").as_posix()
             docs[concept_id] = (stored, str(signature))
-    output: dict[str, Any] = {"coverage": {"signed": len(docs), "total": 0}, "windows": {}}
+    output: dict[str, Any] = {"space": selected_space, "coverage": {"signed": len(docs), "total": 0}, "windows": {}}
     events = _journals(repo)
     for label in windows:
         days = int(label[:-1])
@@ -67,7 +71,7 @@ def collect_efficacy(repo: Path, windows: tuple[str, ...] = ("7d", "28d"), now: 
 
 
 def render_efficacy(value: dict[str, Any]) -> str:
-    lines = [f"signature coverage: {value['coverage']['signed']}/{value['coverage']['total']}"]
+    lines = [f"space: {value.get('space', 'current')}", f"signature coverage: {value['coverage']['signed']}/{value['coverage']['total']}"]
     for window, rows in value["windows"].items():
         lines.append(f"{window}:")
         lines.extend(f"- {row['concept_id']}: recurrence={row['recurrences']} retrieval={row['retrievals']} retrieved_then_recurred={row['retrieved_then_recurred']}" for row in rows)

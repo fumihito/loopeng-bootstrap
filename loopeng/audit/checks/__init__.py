@@ -23,6 +23,7 @@ from .learning_ineffective import check_learning_ineffective
 from .inbox_stale import check_inbox_stale
 from .external_review_overdue import check_external_review_overdue
 from .external_review_failed import check_external_review_failed
+from .wiki_space_mismatch import check_wiki_space_mismatch
 
 
 CHECKS = (
@@ -48,6 +49,7 @@ CHECKS = (
     check_inbox_stale,
     check_external_review_overdue,
     check_external_review_failed,
+    check_wiki_space_mismatch,
 )
 
 

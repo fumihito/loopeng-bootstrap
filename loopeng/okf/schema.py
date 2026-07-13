@@ -43,6 +43,7 @@ REQUIRED_FRONTMATTER = {
 VALID_TIERS = {"provisional", "established"}
 ALLOWED_STATUSES = {"active", "deprecated"}
 ALLOWED_SENSITIVITY = {"public", "internal"}
+VALID_SPACES = {"framework", "project"}
 
 
 def _parse_scalar(value: str) -> Any:

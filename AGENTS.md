@@ -1,4 +1,5 @@
 <!-- completion-protocol:begin -->
+LLMWiki は現空間種別(framework/project)にスコープされ、両空間の知識を混ぜません。
 ## Completion protocol (mandatory)
 
 監査対象パス(`.agent-loop/` `tests/` `install.py` `utils/` `docs/loop-structure*`)に触れる作業では:

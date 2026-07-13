@@ -10,6 +10,8 @@ from .apply import apply_report
 from .promote import promote
 from .schema import load_report
 from .schema import parse_frontmatter
+from .._paths import wiki_space
+from .apply import _space_document
 
 
 def _import_seed_drafts(repo: Path) -> list[str]:
@@ -24,7 +26,11 @@ def _import_seed_drafts(repo: Path) -> list[str]:
     for path in sorted(source.glob("*.json")):
         destination = target / path.name
         if not destination.exists():
-            destination.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+            report = json.loads(path.read_text(encoding="utf-8"))
+            for operation in report.get("operations", []):
+                if isinstance(operation, dict) and operation.get("action") == "UPSERT":
+                    operation["document"] = _space_document(str(operation.get("document") or ""), "framework")
+            destination.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
             imported.append(path.stem)
     marker.write_text(json.dumps({"imported": imported}, indent=2) + "\n", encoding="utf-8")
     return imported
@@ -33,6 +39,7 @@ def _import_seed_drafts(repo: Path) -> list[str]:
 def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_PER_RUN) -> dict[str, Any]:
     """Promote learning once, then apply only the bounded safe subset."""
     repo = repo.resolve()
+    space, bundle = wiki_space(repo)
     run = run_id or "curate"
     _import_seed_drafts(repo)
     # Draft generation may exceed the apply cap so excess candidates remain
@@ -47,12 +54,19 @@ def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_
         try:
             report = load_report(report_path)
             op = report.get("operations", [{}])[0]
+            draft_space = str(report.get("space") or "")
+            if not draft_space:
+                draft_space, _ = wiki_space(repo)
+            if draft_space != space:
+                pending.append(str(report_path))
+                append_event(repo, run, {"kind": EVENT_MEMORY_DRAFT, "draft": str(report_path), "status": "pending-approval", "reason": "wiki_space_mismatch"})
+                continue
             namespace = str(op.get("concept_id", "")).split("/", 1)[0]
             if namespace not in AUTONOMOUS_NAMESPACES or count >= AUTONOMOUS_APPLIES_PER_RUN:
                 pending.append(str(report_path))
                 append_event(repo, run, {"kind": EVENT_MEMORY_DRAFT, "draft": str(report_path), "status": "pending-approval"})
                 continue
-            result = apply_report(repo / "llmwiki", report_path, repo / ".agent-loop" / "runtime" / "okf-backups", autonomous=True)
+            result = apply_report(bundle, report_path, repo / ".agent-loop" / "runtime" / "okf-backups", autonomous=True)
             append_event(repo, run, {"kind": EVENT_OKF_APPLY, "report": str(report_path), "ok": bool(result.get("ok")), "touched": result.get("touched", []), "tier": "provisional", "actor": "autonomous-curate"})
             if result.get("ok"):
                 applied.append(str(op.get("concept_id")))
@@ -88,11 +102,11 @@ def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_
         except (OSError, json.JSONDecodeError):
             safe_run = False
         if safe_run:
-            for path in (repo / "llmwiki").rglob("*.md"):
+            for path in bundle.rglob("*.md"):
                 if path.name in {"index.md", "log.md"}:
                     continue
                 frontmatter, body = parse_frontmatter(path.read_text(encoding="utf-8"))
-                concept_id = path.relative_to(repo / "llmwiki").with_suffix("").as_posix()
+                concept_id = path.relative_to(bundle).with_suffix("").as_posix()
                 if frontmatter.get("tier", "established") != "provisional" or citations.get(concept_id, 0) < ESTABLISH_CITATIONS:
                     continue
                 frontmatter["tier"] = "established"
@@ -100,7 +114,7 @@ def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_
                 report = {"schema": "okf-report-v1", "role": "auto-establish", "authority": "policy", "operations": [{"action": "UPSERT", "proposal_id": f"auto-establish-{concept_id.replace('/', '-')}", "concept_id": concept_id, "document": "\n".join(rendered)}]}
                 target = repo / ".agent-loop" / "state" / "memory-drafts" / f"auto-establish-{concept_id.replace('/', '-')}.json"
                 target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-                result = apply_report(repo / "llmwiki", target, repo / ".agent-loop" / "runtime" / "okf-backups")
+                result = apply_report(bundle, target, repo / ".agent-loop" / "runtime" / "okf-backups")
                 append_event(repo, run, {"kind": EVENT_OKF_APPLY, "report": str(target), "ok": bool(result.get("ok")), "touched": result.get("touched", []), "tier": "established", "actor": "auto-establish"})
                 if result.get("ok"):
                     established.append(concept_id)

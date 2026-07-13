@@ -4,14 +4,17 @@ from pathlib import Path
 from typing import Any
 
 from .schema import parse_document
+from .._paths import wiki_space
 
 
 def query_bundle(bundle: Path, type_name: str | None = None, tags: list[str] | None = None,
                  grep: str | None = None, status: str = "active", limit: int = 10,
-                 tier: str = "all") -> list[dict[str, Any]]:
+                 tier: str = "all", space: str | None = None) -> list[dict[str, Any]]:
     tags = tags or []
     needle = grep.casefold() if grep else None
     results: list[dict[str, Any]] = []
+    current_space, _ = wiki_space(bundle.parent)
+    requested_space = current_space if space in {None, "current"} else space
     for path in sorted(bundle.rglob("*.md")):
         if path.name == "index.md" or path.name == "log.md":
             continue
@@ -27,6 +30,9 @@ def query_bundle(bundle: Path, type_name: str | None = None, tags: list[str] | N
         actual_tier = str(frontmatter.get("tier") or "established")
         if tier != "all" and actual_tier != tier:
             continue
+        actual_space = str(frontmatter.get("space") or "unknown")
+        if requested_space != "all" and actual_space not in {requested_space, "unknown"}:
+            continue
         if type_name is not None and frontmatter.get("type") != type_name:
             continue
         actual_tags = frontmatter.get("tags") if isinstance(frontmatter.get("tags"), list) else []
@@ -41,6 +47,7 @@ def query_bundle(bundle: Path, type_name: str | None = None, tags: list[str] | N
             "description": frontmatter.get("description", ""),
             "tags": actual_tags,
             "tier": actual_tier,
+            "space": actual_space,
             "label": "[provisional]" if actual_tier == "provisional" else "",
         })
     return results

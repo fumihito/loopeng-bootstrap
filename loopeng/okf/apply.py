@@ -11,6 +11,7 @@ from .schema import concept_prefix_for_type, load_report, parse_frontmatter, val
 from ..audit.policy import AUTONOMOUS_NAMESPACES
 from ..locking import repo_lock
 from ..audit.policy import INSTRUCTION_SMELL_PATTERNS
+from .._paths import wiki_space
 from datetime import datetime, timezone
 
 
@@ -18,6 +19,24 @@ def _document_text(document: object) -> str:
     if not isinstance(document, str):
         raise ValueError("operation document must be a string")
     return document if document.endswith("\n") else document + "\n"
+
+
+def _space_document(document: str, space: str) -> str:
+    frontmatter, body = parse_frontmatter(document)
+    if not frontmatter or frontmatter.get("space") in {"framework", "project"}:
+        return document
+    frontmatter["space"] = space
+    lines = ["---"]
+    for key, value in frontmatter.items():
+        if isinstance(value, list):
+            rendered = "[" + ", ".join(json.dumps(item, ensure_ascii=False) for item in value) + "]"
+        elif isinstance(value, str):
+            rendered = json.dumps(value, ensure_ascii=False)
+        else:
+            rendered = str(value)
+        lines.append(f"{key}: {rendered}")
+    lines.extend(["---", "", body.rstrip("\n"), ""])
+    return "\n".join(lines)
 
 
 def _instruction_smells(text: str) -> list[str]:
@@ -120,6 +139,7 @@ def _memory_log_entry(bundle: Path, report: dict[str, object], operation: dict[s
         "type": str(frontmatter.get("type") or ""),
         "namespace": namespace,
         "tier": str(frontmatter.get("tier") or "established"),
+        "space": str(frontmatter.get("space") or "unknown"),
         "author": str(report.get("author") or report.get("role") or "unspecified"),
         "run_id": str(report.get("run_id") or ""),
         "proposal_id": str(operation.get("proposal_id") or ""),
@@ -141,6 +161,11 @@ def _apply_report_locked(bundle: Path, report_path: Path, backup_dir: Path, auto
     if not bundle_validation["ok"]:
         return {"ok": False, "errors": bundle_validation["errors"]}
     report = load_report(report_path)
+    space, _ = wiki_space(bundle.parent)
+    for operation in report.get("operations", []):
+        if (isinstance(operation, dict) and operation.get("action") == "UPSERT"
+                and isinstance(operation.get("document"), str)):
+            operation["document"] = _space_document(operation["document"], space)
     errors = validate_report_payload(report)
     if errors:
         return {"ok": False, "errors": errors}

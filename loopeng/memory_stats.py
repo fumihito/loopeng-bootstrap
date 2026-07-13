@@ -6,6 +6,8 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from ._paths import wiki_space
+from .okf.schema import parse_document
 
 STATS_WINDOWS = ("1d", "3d", "7d", "28d")
 
@@ -52,12 +54,16 @@ def _commit_count(repo: Path, cutoff: datetime, bundle: Path) -> int:
     return sum(1 for line in proc.stdout.splitlines() if line.strip())
 
 
-def collect_stats(repo: Path, bundle: Path, windows: tuple[str, ...] = STATS_WINDOWS, now: str | datetime | None = None) -> dict[str, Any]:
+def collect_stats(repo: Path, bundle: Path, windows: tuple[str, ...] = STATS_WINDOWS, now: str | datetime | None = None, space: str = "current") -> dict[str, Any]:
     repo, bundle = repo.resolve(), bundle.resolve()
     as_of = _parse_time(now) if isinstance(now, str) else (now or datetime.now(timezone.utc))
     if as_of.tzinfo is None:
         as_of = as_of.replace(tzinfo=timezone.utc)
     entries = _read_log(bundle)
+    current, _ = wiki_space(repo)
+    selected_space = current if space == "current" else space
+    if selected_space != "all":
+        entries = [item for item in entries if str(item.get("space") or selected_space) == selected_space]
     result: dict[str, Any] = {"coverage": min((_parse_time(str(item["ts"])) for item in entries), default=None), "windows": {}}
     for label in windows:
         if label not in STATS_WINDOWS:
@@ -65,11 +71,12 @@ def collect_stats(repo: Path, bundle: Path, windows: tuple[str, ...] = STATS_WIN
         days = int(label[:-1])
         cutoff = as_of - timedelta(days=days)
         selected = [item for item in entries if cutoff <= _parse_time(str(item["ts"])) <= as_of]
-        counters = {key: Counter(str(item.get(key) or "unknown") for item in selected) for key in ("action", "namespace", "type", "tier", "author")}
+        counters = {key: Counter(str(item.get(key) or "unknown") for item in selected) for key in ("action", "namespace", "type", "tier", "author", "space")}
         result["windows"][label] = {
             "ops": len(selected),
             "commits": _commit_count(repo, cutoff, bundle),
             "by": {key: _sort_counts(counters[key]) for key in ("action", "namespace", "type", "tier", "author")},
+            "by_space": _sort_counts(counters["space"]),
         }
     divergence = []
     seven = result["windows"].get("7d")
@@ -89,11 +96,11 @@ def _compact(values: dict[str, int]) -> str:
 def render_stats(stats: dict[str, Any], windows: tuple[str, ...]) -> str:
     coverage = stats.get("coverage")
     coverage_text = f"since {coverage.date().isoformat()}" if isinstance(coverage, datetime) else "no memory log yet"
-    lines = ["[loopeng-bootstrap v0.2.0 | loopeng/v0.2 | memory-stats]", f"Memory updates (log coverage {coverage_text})", "", "window  ops  upsert  deprecate  by namespace              by tier          by author"]
+    lines = ["[loopeng-bootstrap v0.2.0 | loopeng/v0.2 | memory-stats]", f"Memory updates (log coverage {coverage_text})", "", "window  ops  upsert  deprecate  by namespace              by tier          by author  by space"]
     for label in windows:
         item = stats["windows"][label]
         action = item["by"]["action"]
-        lines.append(f"{label:<7} {item['ops']:>3}  {action.get('UPSERT', 0):>6}  {action.get('DEPRECATE', 0):>9}  {_compact(item['by']['namespace']):<24} {_compact(item['by']['tier']):<16} {_compact(item['by']['author'])}")
+        lines.append(f"{label:<7} {item['ops']:>3}  {action.get('UPSERT', 0):>6}  {action.get('DEPRECATE', 0):>9}  {_compact(item['by']['namespace']):<24} {_compact(item['by']['tier']):<16} {_compact(item['by']['author']):<18} {_compact(item.get('by_space', {}))}")
     commits = " / ".join(f"{label} {stats['windows'][label]['commits']}" for label in windows)
     lines.extend(["", f"Commits (non-llmwiki): {commits}"])
     divergence = stats.get("divergence", [])

@@ -24,7 +24,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng learning promote` | learning backlog から検証済み draft を生成(適用はしない) |
 | `loopeng memory curate` | 自律名前空間の provisional UPSERT を最大3件まで適用 |
 | `loopeng memory stats` | LLMWiki の変異窓とバンドル外コミットを集計 |
-| `loopeng memory efficacy` | signature 付き学習の再発・参照効力を突合 |
+| `loopeng memory efficacy` | signature 付き学習の再発・参照効力を突合 (`--space current|framework|project|all`) |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
 | `loopeng run verify` / `run outcome` | 宣言された受入コマンドの検証、または人間の成果ラベル追記 |
@@ -108,6 +108,7 @@ none
 <!-- ongoing-end -->
 
 耐久メモリ参照は `index.md → okf query → 上位 K 件(既定 5)の本文読み込み` の順とし、`llmwiki/` の一括読み込みは行いません。
+`okf query` は現リポジトリの framework/project 空間を既定範囲とし、横断参照は `--space all` を明示します。`memory stats` と `memory efficacy` も `--space` で空間別に集計します。
 provisional エントリは観測記録として扱い、行動の制約・決定の根拠としては established を優先します。自律名前空間の provisional UPSERT は `memory curate` が適用し、それ以外の `memory-drafts` 適用は当該ランでユーザーが明示指示した場合のみ行います。
 
 ライセンスは MIT License です。

@@ -7,9 +7,10 @@ from typing import Any
 
 from .query import query_bundle
 from .schema import validate_document_text, validate_report_payload
+from .._paths import wiki_space
 
 
-def _document(type_name: str, title: str, tags: list[str], authority: str, confidence: float, body: str, signature: str | None = None) -> str:
+def _document(type_name: str, title: str, tags: list[str], authority: str, confidence: float, body: str, signature: str | None = None, space: str = "project") -> str:
     def q(value: object) -> str:
         return json.dumps(value, ensure_ascii=False)
     fields = [
@@ -17,6 +18,7 @@ def _document(type_name: str, title: str, tags: list[str], authority: str, confi
         f"tags: {q(tags)}", f"timestamp: {q(datetime.now(timezone.utc).isoformat())}",
         "status: active", "sensitivity: internal", f"authority: {q(authority)}",
         f"confidence: {confidence}"]
+    fields.append(f"space: {q(space)}")
     if signature:
         fields.append(f"signature: {q(signature)}")
     return "---\n" + "\n".join([*fields, "---", "", body or f"# {title}\n\nDraft pending review.", ""])
@@ -34,7 +36,8 @@ def add_tier(document: str, tier: str = "provisional") -> str:
 def make_draft(repo: Path, type_name: str, concept_id: str, title: str, tags: list[str],
                body: str = "", authority: str = "user", confidence: float = 0.7,
                notes: str = "") -> tuple[Path, list[dict[str, Any]]]:
-    document = _document(type_name, title, tags, authority, confidence, body)
+    space, bundle = wiki_space(repo)
+    document = _document(type_name, title, tags, authority, confidence, body, space=space)
     errors = validate_document_text(document)
     if errors:
         raise ValueError("invalid draft document: " + "; ".join(errors))
@@ -49,4 +52,4 @@ def make_draft(repo: Path, type_name: str, concept_id: str, title: str, tags: li
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + ".json")
     target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return target, query_bundle(repo / "llmwiki", tags=tags, grep=title, status="all") if (repo / "llmwiki").is_dir() else []
+    return target, query_bundle(bundle, tags=tags, grep=title, status="all") if bundle.is_dir() else []

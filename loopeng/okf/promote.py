@@ -11,6 +11,7 @@ from .query import query_bundle
 from .schema import validate_document_text, validate_report_payload, concept_prefix_for_type
 from .schema import parse_frontmatter
 from ..locking import repo_lock
+from .._paths import wiki_space
 
 
 def _entries(repo: Path) -> list[tuple[Path, dict[str, Any]]]:
@@ -29,6 +30,7 @@ def _entries(repo: Path) -> list[tuple[Path, dict[str, Any]]]:
 
 
 def promote(repo: Path, top: int = 3, ids: list[str] | None = None, type_name: str = "Concept", autonomous: bool = False) -> list[dict[str, Any]]:
+    space, bundle = wiki_space(repo)
     selected = _entries(repo)
     def order(item):
         name = item[0].stem
@@ -49,7 +51,7 @@ def promote(repo: Path, top: int = 3, ids: list[str] | None = None, type_name: s
         # Query the bundle once without the AND tag filter: duplicate policy
         # is overlap >= 2, not exact tag-set equality.
         selected_type = str(entry.get("type") or ("Failure Pattern" if autonomous else type_name))
-        matches = query_bundle(repo / "llmwiki", grep=title, status="all") if (repo / "llmwiki").is_dir() else []
+        matches = query_bundle(bundle, grep=title, status="all") if bundle.is_dir() else []
         overlap = [m for m in matches if len(set(tags).intersection(m.get("tags", []))) >= 2 or str(title).casefold() in str(m.get("title", "")).casefold()]
         concept_id = overlap[0]["concept_id"] if overlap else f"{concept_prefix_for_type(selected_type)}/{re.sub(r'[^a-z0-9]+', '-', title.casefold()).strip('-') or path.stem}"
         notes = f"duplicate candidate: UPSERT existing {concept_id}" if overlap else "new concept candidate"
@@ -57,11 +59,12 @@ def promote(repo: Path, top: int = 3, ids: list[str] | None = None, type_name: s
         if not signature and entry.get("failed_command"):
             command_prefix = str(entry["failed_command"]).strip().split(None, 1)[0]
             signature = json.dumps({"command_prefix": command_prefix, "error_tokens": [str(token) for token in entry.get("error_tokens", [])]}, ensure_ascii=False)
-        document = _document(selected_type, title, [str(t) for t in tags], str(entry.get("source_run_id") or "learning"), float(entry.get("confidence", 0.7)), body, str(signature) if signature else None)
+        document = _document(selected_type, title, [str(t) for t in tags], str(entry.get("source_run_id") or "learning"), float(entry.get("confidence", 0.7)), body, str(signature) if signature else None, space=space)
         if autonomous:
             document = add_tier(document, "provisional")
         errors = validate_document_text(document)
         report = {"schema": "okf-report-v1", "role": "learning-promote", "authority": str(entry.get("source_run_id") or "learning"), "source_learning": str(path), "notes": notes,
+                  "space": space,
                   "operations": [{"action": "UPSERT", "proposal_id": f"proposal-{path.stem}", "concept_id": concept_id, "document": document}]}
         errors.extend(validate_report_payload(report))
         if errors:
@@ -81,7 +84,8 @@ def establish(repo: Path, concept_ids: list[str]) -> dict[str, Any]:
     target_dir = repo / ".agent-loop" / "state" / "memory-drafts"
     target_dir.mkdir(parents=True, exist_ok=True)
     for concept_id in concept_ids:
-        path = repo / "llmwiki" / f"{concept_id}.md"
+        _, bundle = wiki_space(repo)
+        path = bundle / f"{concept_id}.md"
         if not path.is_file():
             out.append({"concept_id": concept_id, "error": "missing document"})
             continue

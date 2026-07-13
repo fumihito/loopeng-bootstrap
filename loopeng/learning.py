@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ._paths import agent_root
+from ._paths import agent_root, wiki_space
 
 
 def learning_root(repo: Path) -> Path:
@@ -30,6 +30,7 @@ def extract_learning_entries(repo: Path, run_id: str) -> list[dict[str, Any]]:
                 "kind": event.get("kind"),
                 "summary": event.get("summary"),
                 "source_run_id": run_id,
+                "space": wiki_space(repo)[0],
             })
     return entries
 
@@ -43,4 +44,3 @@ def save_learning_entries(repo: Path, run_id: str) -> list[Path]:
         path.write_text(json.dumps(entry, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         saved.append(path)
     return saved
-

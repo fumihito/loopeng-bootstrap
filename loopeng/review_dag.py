@@ -39,6 +39,7 @@ STAGE_MAP = {
     "inbox_stale": "handoff",
     "external_review_overdue": "audit",
     "external_review_failed": "audit",
+    "wiki_space_mismatch": "memory",
 }
 
 CRIT = "✖"

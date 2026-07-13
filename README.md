@@ -24,7 +24,7 @@ Pending durable-memory drafts are listed with `python3 -m loopeng memory drafts 
 | `loopeng learning promote` | Generate validated memory drafts from learning backlog (does not apply them) |
 | `loopeng memory curate` | Apply at most three provisional UPSERTs from autonomous namespaces after audit |
 | `loopeng memory stats` | Summarize LLMWiki mutation windows and non-LLMWiki commits |
-| `loopeng memory efficacy` | Compare signed learning entries with later recurrence and retrieval |
+| `loopeng memory efficacy` | Compare signed learning entries with later recurrence and retrieval (`--space current|framework|project|all`) |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
 | `loopeng run verify` / `run outcome` | Verify declared acceptance commands or append a human outcome label |
@@ -108,6 +108,7 @@ none
 <!-- ongoing-end -->
 
 Memory retrieval follows `index.md → okf query → top K (default 5) document reads`; do not bulk-read `llmwiki/`.
+`okf query` defaults to the current framework/project space; use `--space all` for an explicit cross-space read. `memory stats` and `memory efficacy` likewise support `--space` and report only the selected space.
 Provisional entries are observations; prefer established entries as the basis for constraints and decisions. `memory curate` may apply only bounded provisional UPSERTs in autonomous namespaces; other drafts require explicit user instruction.
 
 Licensed under the MIT License.
