@@ -8,7 +8,8 @@ from .._paths import agent_root
 from ..learning import save_learning_entries
 from .checks import collect_context, run_checks
 from .policy import DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
-from ..journal import EVENT_BLOCKED, EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, GOVERNANCE_EVENT_KINDS, sanitize_event
+from ..journal import EVENT_BLOCKED, EVENT_EXTERNAL_REVIEW, EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, GOVERNANCE_EVENT_KINDS, sanitize_event
+from .policy import REVIEW_REQUIRED_TRIGGERS, SAMPLING_EVERY_N_RUNS
 from ..journal import EVENT_OUTCOME
 
 
@@ -102,12 +103,34 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     rejected = [event for event in okf_events if not event.get("ok")]
     skill_events = [event for event in context.events if event.get("kind") == EVENT_SKILL_USED]
     blocked_events = [event for event in context.events if event.get("kind") == EVENT_BLOCKED]
-    completed_reports = len(list((repo / agent_root("state", "reports")).glob("*.json")))
-    external_review_due = (completed_reports + 1) % 10 == 0
     outcome_events = [event for event in context.events if event.get("kind") == EVENT_OUTCOME]
     human_outcomes = [event for event in outcome_events if event.get("source") == "human"]
     selected_outcome = (human_outcomes or outcome_events)[-1] if (human_outcomes or outcome_events) else None
     outcome_status = str(selected_outcome.get("status")) if selected_outcome else "none"
+    completed_reports = len(list((repo / agent_root("state", "reports")).glob("*.json")))
+    trigger_reasons: list[str] = []
+    if any(event.get("kind") == EVENT_OKF_APPLY and event.get("ok") and event.get("tier", "established") == "established" for event in context.events):
+        trigger_reasons.append("established_memory_change")
+    if outcome_status == "fail":
+        prior_fail = []
+        for path in sorted((repo / agent_root("state", "reports")).glob("*.json"), reverse=True):
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if value.get("run_id") != run_id:
+                prior_fail.append(value.get("outcome"))
+            if len(prior_fail) >= 1:
+                break
+        if prior_fail and prior_fail[0] == "fail":
+            trigger_reasons.append("outcome_fail_streak_2")
+    if any(finding.check_id == "memory_instruction_smell" for finding in findings):
+        trigger_reasons.append("instruction_smell_present")
+    reviews = [event for event in context.events if event.get("kind") == EVENT_EXTERNAL_REVIEW and event.get("accepted_by") == "loopeng review intake"]
+    sampling_due = (completed_reports + 1) % SAMPLING_EVERY_N_RUNS == 0
+    if sampling_due:
+        trigger_reasons.append(f"sampling_{SAMPLING_EVERY_N_RUNS}")
+    external_review_due = not reviews and bool(trigger_reasons)
     skill_counts: dict[str, int] = {}
     skill_sources: dict[str, dict[str, int]] = {}
     for event in skill_events:
@@ -157,11 +180,12 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         "behavior": {"skills": skill_counts, "blocked": blocked_counts},
         "outcome": outcome_status,
         "overhead": {"governance_events": sum(1 for event in context.events if event.get("kind") in GOVERNANCE_EVENT_KINDS), "total_events": len(context.events)},
+        "review": reviews[-1] if reviews else None,
         "handoff_written": True,
         "schema": 2,
     }
     if external_review_due:
-        sidecar["alerts"].append({"check_id": "external_review_due", "severity": "info", "declared": True, "message": "sampling interval reached; external review packet is due"})
+        sidecar["alerts"].append({"check_id": "external_review_due", "severity": "info", "declared": True, "message": "external review is due: " + ", ".join(trigger_reasons)})
 
     report_lines = [
         f"# Run Report {run_id}", "", "## What ran", f"- run-id: {run_id}",
@@ -195,7 +219,12 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     report_lines.extend(["", "## Alerts"])
     report_lines.extend(_format_findings(alerts))
     if external_review_due:
-        report_lines.append("- external_review_due [info]: sampling interval reached; external review packet is due (see audit export)")
+        report_lines.append("- external_review_due [info]: external review is due: " + ", ".join(trigger_reasons) + " (see audit export)")
+    report_lines.extend(["", "## Review"])
+    if reviews:
+        report_lines.append(f"- accepted external review: {reviews[-1].get('overall', 'unknown')} ({reviews[-1].get('report', 'unknown')})")
+    else:
+        report_lines.append("- none")
     report_lines.extend(["", "## Blocked"])
     report_lines.extend(_format_findings(blocked))
     report_lines.extend([

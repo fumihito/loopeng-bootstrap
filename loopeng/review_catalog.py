@@ -8,6 +8,15 @@ from __future__ import annotations
 
 REMEDIATION_CATALOG = (
     {
+        "id": "external-review",
+        "members": ("external_review_due", "external_review_overdue", "external_review_failed"),
+        "cause": "外部エージェントレビューが必要または未処理",
+        "standard_fix": "audit export で packet を提示し、別エージェントへのレビュー依頼文を生成する",
+        "alt_fix": "レビュー判断を保留",
+        "question": "外部レビュー packet の提示依頼を準備しますか?",
+        "agent_executable": True,
+    },
+    {
         "id": "memory-divergence",
         "members": ("memory_commit_divergence",),
         "cause": "ラン成果のメモリ書き戻しが止まっている(規則 A)/メモリ更新が作業と接地していない(規則 B)",

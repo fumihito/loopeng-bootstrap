@@ -122,6 +122,7 @@ def _start_if_needed(event: NormalizedEvent) -> tuple[str, str | None]:
         "mode": event.payload.get("mode", "standard"),
         "acceptance": event.payload.get("acceptance", []),
         "discipline": event.payload.get("discipline"),
+        "review_of": event.payload.get("review_of"),
     })
     _save_active(event.repo, {"run_id": run_id, "session_id": event.payload.get("session_id"), "started_at": _now()})
     _register_active_run(event.repo, run_id, event)

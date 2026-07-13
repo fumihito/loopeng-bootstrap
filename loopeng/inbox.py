@@ -44,12 +44,15 @@ def collect_inbox(repo: Path, now: datetime | None = None) -> list[dict[str, Any
         if frontmatter.get("tier") == "provisional" and frontmatter.get("status", "active") == "active":
             items.append({"kind":"provisional", "target": str(path.relative_to(repo)), "label": "promotion", "timestamp": _age_timestamp(frontmatter.get("timestamp"), path.stat().st_mtime)})
     journal_root = repo / agent_root("state", "journal")
+    accepted_reviews: set[str] = set()
     for path in sorted(journal_root.glob("*.jsonl")) if journal_root.is_dir() else ():
         try:
             events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
         except (OSError, json.JSONDecodeError):
             continue
         for event in events:
+            if event.get("kind") == "external-review" and event.get("accepted_by") == "loopeng review intake":
+                accepted_reviews.add(path.stem)
             if event.get("kind") == "decision" and event.get("choice") == "hold":
                 items.append({"kind":"held", "target": str(event.get("item") or path.stem), "label": "judgment", "timestamp": _age_timestamp(event.get("timestamp"), path.stat().st_mtime)})
     report_root = repo / agent_root("state", "reports")
@@ -60,7 +63,7 @@ def collect_inbox(repo: Path, now: datetime | None = None) -> list[dict[str, Any
             continue
         if isinstance(value, dict) and value.get("outcome") == "unverified":
             items.append({"kind":"outcome", "target": str(value.get("run_id") or path.stem), "label": "unverified", "timestamp": _age_timestamp(value.get("ended_at"), path.stat().st_mtime)})
-        if isinstance(value, dict) and any(isinstance(alert, dict) and alert.get("check_id") == "external_review_due" for alert in value.get("alerts", [])):
+        if isinstance(value, dict) and path.stem not in accepted_reviews and any(isinstance(alert, dict) and alert.get("check_id") == "external_review_due" for alert in value.get("alerts", [])):
             items.append({"kind":"external-review", "target": str(value.get("run_id") or path.stem), "label": "review", "timestamp": _age_timestamp(value.get("ended_at"), path.stat().st_mtime)})
     items.sort(key=lambda item: item["timestamp"])
     for item in items:

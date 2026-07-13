@@ -25,6 +25,8 @@ from .memory_efficacy import collect_efficacy, render_efficacy
 from .inbox import render_inbox
 from .run_stats import collect_run_stats, render_run_stats
 from .audit.export import export_packet
+from .review_intake import intake
+from .review_request import build_request
 
 
 def _path(value: str) -> Path:
@@ -192,7 +194,8 @@ def build_parser() -> argparse.ArgumentParser:
         description=t("Run Report の結果を一覧・トリアージし、判断や remediation を記録します。", "List and triage Run Report results, then record decisions or remediation."),
         formatter_class=formatter,
     )
-    review.add_argument("review_view", nargs="?", choices=("dag",), help=t("ループ模式図を生成", "Generate the loop-cycle diagram"))
+    review.add_argument("review_view", nargs="?", choices=("dag", "intake", "request"), help=t("ループ模式図または外部レビュー操作", "Loop diagram or external review operation"))
+    review.add_argument("review_target", nargs="?", type=_path, help=t("intake 対象 report JSON", "intake report JSON"))
     review.add_argument("--runs", type=int, default=5, help=t("表示対象にする直近 run 数 (既定: 5)", "Number of recent runs to show (default: 5)"))
     review.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
     review.add_argument("--section", choices=("results", "concerns", "premises"), help=t("表示するセクションだけに絞る", "Show only one section"))
@@ -379,6 +382,17 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("--stage requires review dag")
         if args.check and not args.stage:
             raise SystemExit("--check requires --stage")
+        if args.review_view == "intake":
+            if args.review_target is None:
+                raise SystemExit("review intake requires a report JSON path")
+            result = intake(args.repo, args.review_target)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0 if result.get("accepted") else 1
+        if args.review_view == "request":
+            if args.run is None:
+                raise SystemExit("review request requires --run")
+            print(build_request(args.repo, args.run), end="")
+            return 0
         if args.review_view == "dag":
             from .review_dag import DETAIL_GUIDE, render_dag, render_detail, render_summary, write_dag
             if args.stage:

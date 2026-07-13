@@ -46,6 +46,11 @@ The optional sidecar `behavior` key contains `skills` and `blocked` count maps. 
 
 Every tenth completed run is sampled with an informational `external_review_due` marker; `audit export` creates the sanitized packet. The packet mechanism does not decide who reviews it or how a review establishes the loop.
 
+Established-memory changes, a two-run fail streak, and an instruction-smell
+finding also create `external_review_due` independently of sampling. Due items
+older than seven days raise `external_review_overdue`; an accepted failed review
+without a declared follow-up raises `external_review_failed`.
+
 For this deployment, the external review actor is a separate agent. Review execution and result return remain outside the loop mechanism; the exported packet is the handoff boundary.
 
 `Outcome` records the latest human `run outcome` label when present, otherwise the observed `run verify` result. Command acceptance checks run in order with a 300-second timeout: all commands passing and no text checks is `pass`; any command failure is `fail`; passing commands with unresolved text checks is `unverified`. Text acceptance is never resolved by agent self-report. The sidecar includes the optional `outcome` key. Handoff is last-write-wins.
@@ -76,6 +81,16 @@ that tuple requires updating this section in the same run.
 - `blocked`: `{"kind":"blocked","check_id":"<HARD_BLOCK>","summary":"<sanitized, max 200 chars>","tool_name":"<name>"}`.
 - `outcome`: `{"kind":"outcome","status":"pass|fail|unverified","source":"verify|human","results":[...]}`.
 - `recurrence`: `{"kind":"recurrence","concept_id":"...","matched":"..."}`.
+- `external-review`: `{"kind":"external-review","run_id":"...","overall":"pass|fail|blocked-on-info","report":"<path>","accepted_by":"loopeng review intake"}`.
+
+## Review
+
+The Review section contains the accepted external-agent review result. A due
+marker is cleared only by an accepted `external-review` event; a reviewer
+submission that fails intake remains pending.
+
+Use `loopeng review request --run <id>` to generate the external-agent request
+and `loopeng review intake <report.json>` to perform deterministic acceptance.
 
 Hooks are the standard automatic capture layer for Claude Code and Codex. `loopeng okf apply --run <id>` and `loopeng journal add` remain CLI paths for explicit/headless use. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.
 

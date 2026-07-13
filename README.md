@@ -30,6 +30,7 @@ v0.2 consists of four pillars.
 | `loopeng inbox` | Show pending human approvals, held decisions, and unresolved outcomes |
 | `loopeng run stats` | Display run outcomes and governance-overhead ratios without alerting |
 | `loopeng audit export` | Export a sanitized journal, report, sidecar, and git-diff review packet |
+| `loopeng review intake` / `request` | Deterministically accept an external-agent review or generate its request |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
 | `loopeng status` | Summarize the latest Run Report and learning backlog |
 | `loopeng review` | Review recent run results, concerns, and premises; `--triage` guides review and `dag` renders a Mermaid/SVG loop view |

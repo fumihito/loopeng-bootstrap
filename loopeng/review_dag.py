@@ -37,6 +37,8 @@ STAGE_MAP = {
     "memory_instruction_smell": "memory",
     "learning_ineffective": "memory",
     "inbox_stale": "handoff",
+    "external_review_overdue": "audit",
+    "external_review_failed": "audit",
 }
 
 CRIT = "✖"

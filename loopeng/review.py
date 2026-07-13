@@ -462,6 +462,10 @@ def execute_go(repo: Path, item_id: str, run_id: str | None = None) -> str:
         proposal.write_text("# Review proposal: learning-backlog\n\nlearning promote --top 3\n", encoding="utf-8")
         drafts = promote(repo, top=3)
         result = f"[{item_id}] learning promote を実行しました。適用せず draft を提示します。apply はしていません:\n" + "\n".join(str(entry["draft"]) for entry in drafts)
+    elif item_id == "external-review":
+        from .review_request import build_request
+        target_run = sorted(item["runs"])[0] if item["runs"] else ""
+        result = f"[{item_id}] 別エージェント向けレビュー依頼を生成しました:\n" + build_request(repo, target_run)
     else:
         proposal = repo / agent_root("state", "review-proposals") / f"{item_id.replace(':', '-')}-{run_id}.md"
         proposal.parent.mkdir(parents=True, exist_ok=True)

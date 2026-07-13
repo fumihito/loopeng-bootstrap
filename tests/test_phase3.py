@@ -27,6 +27,7 @@ class Phase3Tests(unittest.TestCase):
             self.assertTrue((packet / "manifest.json").is_file())
             self.assertNotIn("secret", (packet / "journal.json").read_text(encoding="utf-8"))
             self.assertTrue(json.loads((packet / "manifest.json").read_text(encoding="utf-8"))["sanitized"])
+            self.assertTrue(json.loads((packet / "manifest.json").read_text(encoding="utf-8"))["packet_hash"])
 
     def test_sampling_due_is_reported_and_added_to_inbox(self) -> None:
         with tempfile.TemporaryDirectory() as td:

@@ -75,6 +75,9 @@ INSTRUCTION_SMELL_PATTERNS = (
     r"新しい指示",
     r"以前の指示を無視",
 )
+REVIEW_REQUIRED_TRIGGERS = ("established_memory_change", "outcome_fail_streak_2", "instruction_smell_present")
+SAMPLING_EVERY_N_RUNS = 10
+REVIEW_OVERDUE_DAYS = 7
 
 HARD_BLOCKS = {
     "destructive_command": "Categorically destructive command patterns",
@@ -158,4 +161,6 @@ ALERTS = {
     "memory_instruction_smell": "warn",
     "learning_ineffective": "info",
     "inbox_stale": "info",
+    "external_review_overdue": "warn",
+    "external_review_failed": "warn",
 }
