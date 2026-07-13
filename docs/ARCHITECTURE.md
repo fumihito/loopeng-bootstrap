@@ -39,6 +39,9 @@ The following are normative invariants:
    the tool runs. Hook code must not add policy conditions.
 4. Hook failures, timeouts, and corrupt state fail open and are recorded.
    Fail-closed behavior is reserved for an established HARD_BLOCK.
+5. A PRE_TOOL HARD_BLOCK is evaluated in the fixed order decision → best-effort
+   journal record → deny response. Recording cannot relax or create the control
+   decision; a journal failure leaves the deny unchanged.
 
 The D10 enforcement point is therefore `PreToolUse` for destructive commands and
 out-of-repository writes; secret persistence and invalid OKF applications remain

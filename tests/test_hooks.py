@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from loopeng.hooks import handler
@@ -51,6 +52,44 @@ class HookTests(unittest.TestCase):
             self.assertEqual(denied["response"]["hookSpecificOutput"]["permissionDecision"], "deny")
             allowed = handler.handle(normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_input": {"command": "echo hello"}}))
             self.assertEqual(allowed["response"]["hookSpecificOutput"]["permissionDecision"], "allow")
+
+    def test_skill_used_records_tool_and_path_sources_with_consecutive_suppression(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            run_id = "skill-run"
+            tool = normalize_claude({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": run_id,
+                                     "tool_name": "Skill", "tool_input": {"skill": "frame-diag"}})
+            handler.handle(tool)
+            handler.handle(tool)
+            other = normalize_codex({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": run_id,
+                                     "tool_name": "Read", "tool_input": {"path": str(repo / "notes.md")}})
+            handler.handle(other)
+            path_event = normalize_codex({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": run_id,
+                                          "tool_name": "Read", "tool_input": {"path": str(repo / "skills/frame-diag/SKILL.md")}})
+            handler.handle(path_event)
+            routing = normalize_codex({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": run_id,
+                                       "tool_name": "Read", "tool_input": {"path": str(repo / "skills/frame-diag/routing.md")}})
+            handler.handle(routing)
+            events = [json.loads(line) for line in (repo / ".agent-loop/state/journal" / f"{run_id}.jsonl").read_text().splitlines()]
+            skills = [event for event in events if event.get("kind") == "skill-used"]
+            self.assertEqual([(event["skill"], event["source"]) for event in skills],
+                             [("frame-diag", "tool"), ("frame-diag", "path")])
+
+    def test_blocked_event_is_sanitized_and_deny_survives_journal_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            command = "rm -rf " + chr(47) + " token=secret " + "x" * 300
+            event = normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo), "run_id": "blocked-run",
+                                     "tool_name": "Bash", "tool_input": {"command": command}})
+            denied = handler.handle(event)
+            self.assertEqual(denied["response"]["hookSpecificOutput"]["permissionDecision"], "deny")
+            body = (repo / ".agent-loop/state/journal/blocked-run.jsonl").read_text()
+            self.assertIn('"kind": "blocked"', body)
+            self.assertNotIn("secret", body)
+            self.assertLessEqual(len(json.loads(body.splitlines()[-1])["summary"]), 200)
+            with mock.patch("loopeng.hooks.handler._record_blocked", side_effect=OSError("journal")):
+                still_denied = handler.handle(event)
+            self.assertEqual(still_denied["response"]["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_run_stop_is_fail_open_when_state_is_corrupt(self) -> None:
         with tempfile.TemporaryDirectory() as td:

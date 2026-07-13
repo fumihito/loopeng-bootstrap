@@ -8,7 +8,7 @@ from .._paths import agent_root
 from ..learning import save_learning_entries
 from .checks import collect_context, run_checks
 from .policy import DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
-from ..journal import EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, sanitize_event
+from ..journal import EVENT_BLOCKED, EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, sanitize_event
 
 
 def _summarize_findings(findings):
@@ -99,6 +99,19 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         except (OSError, json.JSONDecodeError):
             curate = {}
     rejected = [event for event in okf_events if not event.get("ok")]
+    skill_events = [event for event in context.events if event.get("kind") == EVENT_SKILL_USED]
+    blocked_events = [event for event in context.events if event.get("kind") == EVENT_BLOCKED]
+    skill_counts: dict[str, int] = {}
+    skill_sources: dict[str, dict[str, int]] = {}
+    for event in skill_events:
+        skill = str(event.get("skill") or "unknown")
+        source = str(event.get("source") or "unknown")
+        skill_counts[skill] = skill_counts.get(skill, 0) + 1
+        skill_sources.setdefault(skill, {})[source] = skill_sources.setdefault(skill, {}).get(source, 0) + 1
+    blocked_counts: dict[str, int] = {}
+    for event in blocked_events:
+        check_id = str(event.get("check_id") or "unknown")
+        blocked_counts[check_id] = blocked_counts.get(check_id, 0) + 1
     handoff_path = repo / agent_root("state", "handoff.json")
     prior_handoff = json.loads(handoff_path.read_text(encoding="utf-8")) if handoff_path.is_file() else {}
     protected = [finding for finding in findings if finding.check_id == "protected_path_mutation"]
@@ -134,6 +147,7 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         ],
         "undeclared_critical": bool(undeclared),
         "memory": {"applied": len(applied), "provisional": len(provisional_applied), "pending": len(curate.get("pending", [])), "rejected": len(rejected)},
+        "behavior": {"skills": skill_counts, "blocked": blocked_counts},
         "handoff_written": True,
         "schema": 2,
     }
@@ -150,7 +164,19 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     report_lines.extend(["", "### Undeclared"])
     report_lines.extend(f"- changed: {path}" for path in sorted(undeclared_paths))
     report_lines.extend(_format_findings(undeclared or [finding for finding in findings if finding.check_id in {"journal_coverage", "out_of_repo_write"}]))
-    report_lines.extend(["", "## Memory", f"- applied OKF reports: {len(applied)}", f"- provisional applied: {len(provisional_applied)}", f"- pending approval: {len(curate.get('pending', []))}", f"- rejected OKF reports: {len(rejected)}", f"- touched: {', '.join(touched) or 'none'}", "", "## Learning", f"- entries: {len(learning_paths)}", f"- backlog: {learning_backlog}", f"- drafted-unapplied: {drafted_unapplied}", "", "## Alerts"])
+    report_lines.extend(["", "## Memory", f"- applied OKF reports: {len(applied)}", f"- provisional applied: {len(provisional_applied)}", f"- pending approval: {len(curate.get('pending', []))}", f"- rejected OKF reports: {len(rejected)}", f"- touched: {', '.join(touched) or 'none'}", "", "## Learning", f"- entries: {len(learning_paths)}", f"- backlog: {learning_backlog}", f"- drafted-unapplied: {drafted_unapplied}", "", "## Behavior"])
+    if skill_counts:
+        for skill in sorted(skill_counts):
+            sources = ", ".join(f"{source}={count}" for source, count in sorted(skill_sources[skill].items()))
+            report_lines.append(f"- skills used: {skill} ({skill_counts[skill]}; {sources})")
+    else:
+        report_lines.append("- skills used: none")
+    if blocked_events:
+        for event in blocked_events:
+            report_lines.append(f"- blocked operations: {event.get('check_id', 'unknown')} / {event.get('summary', 'unknown')} (1)")
+    else:
+        report_lines.append("- blocked operations: none")
+    report_lines.extend(["", "## Alerts"])
     report_lines.extend(_format_findings(alerts))
     report_lines.extend(["", "## Blocked"])
     report_lines.extend(_format_findings(blocked))

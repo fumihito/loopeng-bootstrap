@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from .._paths import agent_root
-from ..audit.policy import AUDIT_TIMEOUT_SECONDS, LEARNING_CAPTURE_LIMIT, pre_tool_hard_block
+from ..audit.policy import AUDIT_TIMEOUT_SECONDS, HARD_BLOCKS, LEARNING_CAPTURE_LIMIT, pre_tool_hard_block
 from ..journal import append_event
 from ..review import MODE_PREFIX
-from ..journal import EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_LEARNING_CANDIDATE, EVENT_MUTATION, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START
+from ..journal import BLOCKED_SUMMARY_MAX, EVENT_BLOCKED, EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_LEARNING_CANDIDATE, EVENT_MUTATION, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, sanitize_event
 from .events import EventKind, NormalizedEvent
 
 HANDOFF_CONTEXT_LIMIT = 2000
@@ -23,6 +23,11 @@ try:
     VERSION = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
 except OSError:
     pass
+
+# Detection rules have one declaration point. Adapter modules only expose
+# tool_name and paths; classification remains here.
+SKILL_TOOL_NAMES = ("skill",)
+SKILL_PATH_PATTERN = r"(?:^|/)skills/([a-z0-9-]+)/SKILL\.md$"
 
 
 def _now() -> str:
@@ -174,9 +179,65 @@ def _post_tool(event: NormalizedEvent, run_id: str) -> None:
         record["command"] = command
     if isinstance(tool_input, dict):
         record["path"] = tool_input.get("path") or tool_input.get("file_path")
+    _record_skill_use(event, run_id, tool)
     append_event(event.repo, run_id, record)
     if command:
         _capture_recovery(event.repo, run_id, str(command), bool(success))
+
+
+def _skill_candidates(event: NormalizedEvent, tool: str) -> list[tuple[str, str]]:
+    tool_input = event.payload.get("tool_input")
+    candidates: list[tuple[str, str]] = []
+    if tool.lower() in SKILL_TOOL_NAMES and isinstance(tool_input, dict):
+        name = tool_input.get("skill") or tool_input.get("name")
+        if isinstance(name, str) and re.fullmatch(r"[a-z0-9-]+", name):
+            candidates.append((name, "tool"))
+    for raw in event.payload.get("paths", []):
+        if not isinstance(raw, str):
+            continue
+        match = re.search(SKILL_PATH_PATTERN, raw)
+        if match:
+            candidates.append((match.group(1), "path"))
+    return candidates
+
+
+def _record_skill_use(event: NormalizedEvent, run_id: str, tool: str) -> None:
+    """Record POST_TOOL skill use, suppressing an immediately repeated event."""
+    path = event.repo / agent_root("state", "journal") / f"{run_id}.jsonl"
+    try:
+        events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        previous = events[-1] if events else {}
+        # _post_tool emits a normal command/mutation event after skill-used;
+        # treat that one generated companion record as part of the same
+        # detection so consecutive identical POST_TOOL observations collapse.
+        if previous.get("kind") != EVENT_SKILL_USED and len(events) >= 2 and events[-2].get("kind") == EVENT_SKILL_USED:
+            previous = events[-2]
+    except (FileNotFoundError, OSError, json.JSONDecodeError, IndexError):
+        previous = {}
+    for skill, source in _skill_candidates(event, tool):
+        if previous.get("kind") == EVENT_SKILL_USED and previous.get("skill") == skill and previous.get("source") == source:
+            continue
+        append_event(event.repo, run_id, {"kind": EVENT_SKILL_USED, "skill": skill, "source": source})
+        previous = {"kind": EVENT_SKILL_USED, "skill": skill, "source": source}
+
+
+def _blocked_summary(event: NormalizedEvent) -> str:
+    tool_input = event.payload.get("tool_input")
+    if isinstance(tool_input, dict):
+        value = tool_input.get("command") or tool_input.get("path") or tool_input.get("file_path")
+    else:
+        value = event.payload.get("command")
+    sanitized = sanitize_event({"summary": str(value or event.payload.get("tool_name") or "unknown")}).get("summary", "unknown")
+    return str(sanitized)[:BLOCKED_SUMMARY_MAX]
+
+
+def _record_blocked(event: NormalizedEvent, run_id: str, reason: str) -> None:
+    check_id = next((name for name, message in HARD_BLOCKS.items() if message == reason), None)
+    if check_id is None:
+        return
+    append_event(event.repo, run_id, {"kind": EVENT_BLOCKED, "check_id": check_id,
+                                      "summary": _blocked_summary(event),
+                                      "tool_name": str(event.payload.get("tool_name") or event.payload.get("tool") or "unknown")})
 
 
 def _capture_recovery(repo: Path, run_id: str, command: str, success: bool) -> None:
@@ -241,6 +302,12 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
         if event.kind is EventKind.PRE_TOOL:
             reason = pre_tool_hard_block(event.payload, event.repo)
             if reason:
+                try:
+                    _record_blocked(event, run_id, reason)
+                except Exception:
+                    # Journal capture is best effort; the established deny is
+                    # never changed by a recording failure.
+                    pass
                 result["response"] = {"hookSpecificOutput": {"permissionDecision": "deny", "permissionDecisionReason": _banner(event) + reason}}
             else:
                 result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}

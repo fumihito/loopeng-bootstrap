@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .events import EventKind, NormalizedEvent, event_kind
+from .events import EventKind, NormalizedEvent, event_kind, input_paths
 
 
 def normalize(payload: dict[str, Any], *, repo: Path | None = None) -> NormalizedEvent:
@@ -16,7 +16,9 @@ def normalize(payload: dict[str, Any], *, repo: Path | None = None) -> Normalize
     adapter deliberately does not infer undocumented event or output fields.
     """
     cwd = Path(str(payload.get("cwd") or repo or Path.cwd())).resolve()
-    return NormalizedEvent(event_kind(payload.get("hook_event_name") or payload.get("event")), "codex", cwd, dict(payload))
+    normalized = dict(payload)
+    normalized.setdefault("paths", input_paths(normalized.get("tool_input")))
+    return NormalizedEvent(event_kind(payload.get("hook_event_name") or payload.get("event")), "codex", cwd, normalized)
 
 
 def render(result: dict[str, Any], event: NormalizedEvent) -> dict[str, Any]:

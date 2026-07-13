@@ -6,6 +6,18 @@ from pathlib import Path
 from typing import Any
 
 
+def input_paths(tool_input: Any) -> list[str]:
+    """Extract platform-neutral path fields without making policy decisions."""
+    if not isinstance(tool_input, dict):
+        return []
+    paths: list[str] = []
+    for key in ("path", "file_path", "filename", "target", "destination"):
+        value = tool_input.get(key)
+        if isinstance(value, str):
+            paths.append(value)
+    return paths
+
+
 class EventKind(StrEnum):
     SESSION_START = "SESSION_START"
     PROMPT_SUBMIT = "PROMPT_SUBMIT"
