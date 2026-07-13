@@ -17,6 +17,30 @@ MODE_WORD_RE = re.compile(r"(?<![\w-])([a-z][a-z0-9-]*:)(?![/\w-])")
 PATH_RE = re.compile(r"`((?:docs|utils|loopeng)/[^`\s]+)`")
 ONGOING_RE = re.compile(r"<!-- ongoing-start -->\s*(.*?)\s*<!-- ongoing-end -->", re.S | re.I)
 
+# Historical documents preserve the paths that existed at the time they were
+# written. They are evidence, not current documentation parity targets.
+HISTORICAL_DOC_ROOT = "docs/v0.2-phase1"
+RETIRED_PATHS = (
+    ".agent-loop/hooks",
+    ".agent-loop/lib",
+    ".agent-loop/bin",
+    ".agent-loop/cmd",
+    ".agent-loop/systemd",
+    ".agent-loop/otel.json",
+    ".agent-loop/otel-collector.yaml",
+    ".agent-loop/policy.json",
+    ".agent-loop/*-policy.json",
+    "routing_hints.py",
+    "TELEMETRY_SCHEMA.md",
+    "systemd",
+    "templates/LOOP_BRIEF.md",
+    "templates/OKF_LOOP_BRIEF_PATTERN.md",
+    "skills/gatekeeper",
+    "skills/sensemaker",
+    "skills/command-route",
+    "adapters/shared/skills/gatekeeper",
+)
+
 
 def _parser_surface() -> tuple[list[str], list[str]]:
     from loopeng.cli import build_parser
@@ -139,7 +163,12 @@ def lint(root: Path) -> list[str]:
                 _record(errors, "3 ongoing status", rel, command)
 
     # 4. Every explicit repository path in the documented surfaces exists.
-    doc_paths = ["README.md", "README.ja.md"] + sorted(path.relative_to(root).as_posix() for path in (root / "docs").glob("*.md"))
+    doc_paths = ["README.md", "README.ja.md"] + sorted(
+        path.relative_to(root).as_posix()
+        for path in (root / "docs").glob("*.md")
+        if HISTORICAL_DOC_ROOT not in path.relative_to(root).as_posix()
+        and path.name != "audit-log.md"
+    )
     for rel in doc_paths:
         path = root / rel
         if not path.is_file():
@@ -147,6 +176,11 @@ def lint(root: Path) -> list[str]:
         for referenced in PATH_RE.findall(path.read_text(encoding="utf-8")):
             if not _path_exists(root, referenced):
                 _record(errors, "4 reference path", rel, referenced)
+
+    # 6. Retired v0.1 material must not silently reappear in a merge.
+    for retired in RETIRED_PATHS:
+        if _path_exists(root, retired):
+            errors.append(f"6 retired path: <tree>: present {retired!r}")
 
     # 5. Executable tokens and mode words are present in both README bodies.
     readmes = _docs(root, ["README.md", "README.ja.md"])

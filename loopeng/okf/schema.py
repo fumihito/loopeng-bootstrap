@@ -41,6 +41,8 @@ REQUIRED_FRONTMATTER = {
     "confidence",
 }
 VALID_TIERS = {"provisional", "established"}
+ALLOWED_STATUSES = {"active", "deprecated"}
+ALLOWED_SENSITIVITY = {"public", "internal"}
 
 
 def _parse_scalar(value: str) -> Any:
@@ -103,6 +105,10 @@ def validate_document_text(text: str) -> list[str]:
         errors.append(f"missing frontmatter fields: {', '.join(sorted(missing))}")
     if frontmatter.get("type") not in ALLOWED_TYPES:
         errors.append(f"unsupported type: {frontmatter.get('type')!r}")
+    if frontmatter.get("status") not in ALLOWED_STATUSES:
+        errors.append(f"unsupported status: {frontmatter.get('status')!r}")
+    if frontmatter.get("sensitivity") not in ALLOWED_SENSITIVITY:
+        errors.append(f"unsupported sensitivity: {frontmatter.get('sensitivity')!r}")
     tags = frontmatter.get("tags")
     if not isinstance(tags, list) or not tags:
         errors.append("tags must be a non-empty list")

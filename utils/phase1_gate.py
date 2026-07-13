@@ -37,12 +37,18 @@ from loopeng.journal import EVENT_INTENT, EVENT_MUTATION, EVENT_RUN_END, EVENT_R
 LEGACY_ARTIFACTS = (
     ".agent-loop/hooks/loop_hook.py",
     ".agent-loop/lib/loop_gate.py",
+    ".agent-loop/bin/okfctl",
+    ".agent-loop/cmd/okfctl/main.go",
     ".agent-loop/policy.json",
     ".agent-loop/sop-policy.json",
     ".agent-loop/direct-policy.json",
     ".agent-loop/otel.json",
     ".agent-loop/otel-collector.yaml",
     "routing_hints.py",
+    "TELEMETRY_SCHEMA.md",
+    "systemd/agent-loop-scheduler.service",
+    "templates/LOOP_BRIEF.md",
+    "templates/OKF_LOOP_BRIEF_PATTERN.md",
 )
 
 VALID_DOC = """---

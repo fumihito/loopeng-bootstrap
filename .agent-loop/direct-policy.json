@@ -1,8 +1,0 @@
-{
-  "version": 1,
-  "enabled": true,
-  "allow_mutations": false,
-  "max_prompt_bytes": 65536,
-  "allow_loop_control_roles": false,
-  "allow_direct_edit_prefix": true 
-}

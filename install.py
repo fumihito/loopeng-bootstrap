@@ -10,7 +10,6 @@ import subprocess
 import sys
 import tempfile
 import hashlib
-import re
 import tomllib
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -23,58 +22,15 @@ utils_root = Path(__file__).resolve().parent / 'utils'
 if str(utils_root) not in sys.path:
     sys.path.insert(0, str(utils_root))
 
-import routing_hints as routing_hints_lib
 from legacy_hook_disarm import disarm_legacy_hooks
 
 SRC = Path(__file__).resolve().parent
 BEGIN = '<!-- LOOP-ENGINEERING:BEGIN -->'
 END = '<!-- LOOP-ENGINEERING:END -->'
 MANAGED_HOOK_MARKER = '.agent-loop/hooks/loop_hook.py'
-GO_MINIMUM_VERSION = '1.21'
 PROFILE_FULL = 'full'
 PROFILE_ROUTING = 'routing'
 INSTALL_PROFILES = {PROFILE_FULL, PROFILE_ROUTING}
-LOOP_ONLY_SKILLS = {
-    'gatekeeper',
-    'loop-brief-assistant',
-    'brief-pattern-curator',
-    'sensemaker',
-    'integrator',
-    'governor',
-    'state-steward',
-    'watchdog-recovery',
-    'meta-evaluator',
-    'learning-auditor',
-    'memory-curator',
-    'sop-learning-audit',
-}
-RUNTIME_MANIFEST = [
-    { 'path': '.agent-loop/hooks/loop_hook.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/policy.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/sop-policy.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/direct-policy.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/otel.json', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/otel-collector.yaml', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/lib/loop_gate.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': 'routing_hints.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': 'utils/routing_hints_lint.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': 'utils/skill_structure_lint.py', 'profiles': {PROFILE_FULL, PROFILE_ROUTING} },
-    { 'path': '.agent-loop/scheduler-policy.json', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/learning-policy.json', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/memory-policy.json', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/brief-pattern-policy.json', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/learning_health.py', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/next_turn_scheduler.py', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/next_turn_scheduler_daemon.py', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/loop_status.py', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/trigger-dryrun.sh', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/trigger-example.sh', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/okfctl', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/bin/build-okfctl.sh', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/cmd/okfctl/main.go', 'profiles': {PROFILE_FULL} },
-    { 'path': '.agent-loop/lib/learning_observer.py', 'profiles': {PROFILE_FULL} },
-]
-
 # v0.2 distribution manifest: the legacy runtime is intentionally not shipped.
 RUNTIME_MANIFEST = [
     {'path': 'loopeng/__init__.py', 'profiles': {PROFILE_FULL}},
@@ -147,14 +103,8 @@ if launcher.is_file():
 os.execv(sys.executable, [sys.executable, "-m", "loopeng", *sys.argv[1:]])
 '''
 CONFIG_JSON_RELS = {
-    '.agent-loop/policy.json',
-    '.agent-loop/scheduler-policy.json',
-    '.agent-loop/learning-policy.json',
-    '.agent-loop/memory-policy.json',
-    '.agent-loop/brief-pattern-policy.json',
-    '.agent-loop/direct-policy.json',
-    '.agent-loop/sop-policy.json',
-    '.agent-loop/otel.json',
+    '.codex/hooks.json',
+    '.claude/settings.json',
 }
 GENERATED_JSON_SIDECAR_DIRS = {
     '.claude',
@@ -457,8 +407,6 @@ class Installer:
 
     def should_add_banner(self, destination: Path) -> bool:
         rel = self.destination_rel(destination)
-        if rel == 'routing_hints.py':
-            return False
         if rel.startswith('skills/') or rel.startswith('llmwiki/') or rel.startswith('.agent-loop/templates/'):
             return False
         return True
@@ -641,13 +589,6 @@ class Installer:
                 continue
             names.append(path.parent.name)
         return names
-
-    def routing_hint_paths(self) -> list[Path]:
-        return [
-            path
-            for path in sorted(self.repo.rglob('routing.md'))
-            if path.is_file() and '.git' not in path.relative_to(self.repo).parts
-        ]
 
     def inspect_skill_tree(self, root: Path) -> list[Conflict]:
         conflicts: list[Conflict] = []
@@ -902,42 +843,16 @@ class Installer:
     def destination_paths(self) -> list[Path]:
         paths: list[Path] = []
         paths.extend(self.runtime_manifest_paths())
-        if self.profile == PROFILE_FULL:
-            paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
         paths.extend(self.repo / rel for rel in [
-            '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
-            '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
-            '.agent-loop/docs/LLM_ASSISTED_INSTALL.md',
-            '.agent-loop/docs/MERGE_RULES.md',
-            '.agent-loop/docs/SHARED_LAYOUTS.md',
-            '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
-            '.agent-loop/docs/ARCHITECTURE.md',
-            '.agent-loop/docs/OKF_LLMWIKI.md',
-            '.agent-loop/docs/INSTALL.md',
-            '.agent-loop/docs/RELEASE_AUDIT.md',
-            '.agent-loop/docs/RUN_REPORT.md',
-            '.agent-loop/docs/REVIEW_CONTRACT.md',
-            '.agent-loop/templates/LOOP_BRIEF.md',
-            '.agent-loop/templates/OKF_CONCEPT.md',
-            '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md',
-            '.agent-loop/templates/SOP_SKILL_TEMPLATE.md',
-            '.agent-loop/templates/INSTALL_MERGE_REPORT.md',
             '.codex/hooks.json',
             '.claude/settings.json',
             '.gitignore',
         ])
-        if self.profile == PROFILE_FULL:
-            paths.append(self.repo / '.agent-loop/systemd/agent-loop-scheduler.service')
         for source in (SRC / "llmwiki").rglob("*"):
             if source.is_file():
                 paths.append(self.repo / "llmwiki" / source.relative_to(SRC / "llmwiki"))
         skill_mappings, _ = self.skill_install_layout()
         mappings = list(skill_mappings)
-        if self.profile == PROFILE_FULL:
-            mappings.extend([
-                (SRC / 'adapters/codex/.codex/agents', self.repo / '.codex/agents', 'codex-agents'),
-                (SRC / 'adapters/claude/.claude/agents', self.repo / '.claude/agents', 'claude-agents'),
-            ])
         for source_base, target_base, _ in mappings:
             for source in source_base.rglob('*'):
                 if source.is_file():
@@ -1433,67 +1348,6 @@ class Installer:
         self.lock_read_only(path)
         self.record_manifest_entry(path, source=None, classification='generated')
 
-    def ensure_go_toolchain(self) -> str:
-        if shutil.which('go') is None:
-            raise InstallerError(
-                f'Go {GO_MINIMUM_VERSION}+ is required; install.py must fail closed rather than defer this to runtime.'
-            )
-        try:
-            completed = subprocess.run(
-                ['go', 'version'], cwd=self.repo, text=True, capture_output=True, check=False,
-            )
-        except OSError as exc:
-            raise InstallerError(f'cannot execute Go toolchain: {type(exc).__name__}: {exc}') from exc
-        output = (completed.stdout or completed.stderr or '').strip()
-        if completed.returncode != 0:
-            raise InstallerError(f'Go toolchain check failed: {output or "go version returned a non-zero exit status"}')
-        match = re.search(r'go1\.(\d+)', output)
-        if not match:
-            raise InstallerError(f'Go toolchain version is unclear from `{output or "go version"}`; {GO_MINIMUM_VERSION}+ is required')
-        if int(match.group(1)) < 21:
-            raise InstallerError(f'{output} is too old; {GO_MINIMUM_VERSION}+ is required')
-        return output
-
-    def build_okfctl(self) -> None:
-        source = self.repo / '.agent-loop/cmd/okfctl/main.go'
-        binary = self.repo / '.agent-loop/bin/okfctl.bin'
-        if not source.is_file():
-            raise InstallerError(f'missing Go source for okfctl: {source}')
-        self.ensure_go_toolchain()
-        fd, tmp_name = tempfile.mkstemp(prefix='.okfctl.bin.', dir=str(binary.parent))
-        os.close(fd)
-        tmp = Path(tmp_name)
-        try:
-            env = os.environ.copy()
-            env['GOWORK'] = 'off'
-            env['GOCACHE'] = env.get('GOCACHE', '/tmp/loopeng-gocache')
-            Path(env['GOCACHE']).mkdir(parents=True, exist_ok=True)
-            completed = subprocess.run(
-                ['go', 'build', '-trimpath', '-ldflags', '-s -w', '-o', str(tmp), str(source)],
-                cwd=self.repo, text=True, capture_output=True, env=env, check=False,
-            )
-            if completed.returncode != 0:
-                stderr = completed.stderr.strip() or completed.stdout.strip() or 'go build failed'
-                raise InstallerError(f'okfctl build failed: {stderr}')
-            tmp.chmod(0o755)
-            os.replace(tmp, binary)
-            if not self.dry_run:
-                self.lock_read_only(binary)
-                self.record_manifest_entry(binary, source=source, classification='generated')
-        finally:
-            tmp.unlink(missing_ok=True)
-
-    def run_okfctl(self, *args: str) -> subprocess.CompletedProcess[str]:
-        binary = self.repo / '.agent-loop/bin/okfctl'
-        if not binary.is_file():
-            raise InstallerError(f'missing okfctl wrapper: {binary}')
-        try:
-            return subprocess.run(
-                [str(binary), *args], cwd=self.repo, text=True, capture_output=True, check=False,
-            )
-        except OSError as exc:
-            raise InstallerError(f'cannot execute okfctl: {type(exc).__name__}: {exc}') from exc
-
     @staticmethod
     def sha256_file(path: Path) -> str:
         digest = hashlib.sha256()
@@ -1680,34 +1534,11 @@ class Installer:
         required_files = [
             *self.runtime_manifest_paths(),
             '.agent-loop/runtime/install-manifest.json',
-            '.agent-loop/docs/LOOP_INPUT_GUIDE.md',
-            '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md',
-            '.agent-loop/docs/LLM_ASSISTED_INSTALL.md',
-            '.agent-loop/docs/MERGE_RULES.md',
-            '.agent-loop/docs/SHARED_LAYOUTS.md',
-            '.agent-loop/docs/DESIGN_PHILOSOPHY.md',
-            '.agent-loop/docs/ARCHITECTURE.md',
-            '.agent-loop/docs/OKF_LLMWIKI.md',
-            '.agent-loop/docs/INSTALL.md',
-            '.agent-loop/docs/RELEASE_AUDIT.md',
-            '.agent-loop/docs/RUN_REPORT.md',
-            '.agent-loop/docs/REVIEW_CONTRACT.md',
-            '.agent-loop/templates/LOOP_BRIEF.md',
-            '.agent-loop/templates/OKF_CONCEPT.md',
-            '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md',
-            '.agent-loop/templates/SOP_SKILL_TEMPLATE.md',
-            '.agent-loop/templates/INSTALL_MERGE_REPORT.md',
             '.codex/hooks.json',
             '.claude/settings.json',
         ]
-        if self.maybe_self_mode():
-            required_files = [
-                rel for rel in required_files
-                if not str(rel).startswith('.agent-loop/docs/') and not str(rel).startswith('.agent-loop/templates/')
-            ]
         if expected_loop_mode:
             required_files.extend([
-                '.agent-loop/systemd/agent-loop-scheduler.service',
                 'llmwiki/index.md',
                 'llmwiki/log.md',
             ])
@@ -1716,7 +1547,7 @@ class Installer:
             if not path.is_file() or path.is_symlink():
                 errors.append(f'missing or unsafe required file: {rel}')
 
-        for rel in ['.codex/hooks.json', '.claude/settings.json', '.agent-loop/policy.json', '.agent-loop/sop-policy.json', '.agent-loop/direct-policy.json', '.agent-loop/otel.json']:
+        for rel in ['.codex/hooks.json', '.claude/settings.json']:
             path = self.repo / rel
             if path.is_file():
                 value = None
@@ -1733,16 +1564,6 @@ class Installer:
             path = self.repo / rel
             if False and path.is_file() and MANAGED_HOOK_MARKER not in path.read_text(encoding='utf-8'):
                 errors.append(f'managed hook command absent: {rel}')
-
-        for path in self.routing_hint_paths():
-            try:
-                document = routing_hints_lib.load_routing_hints(path)
-                errors.extend(
-                    f'routing hint invalid: {path.relative_to(self.repo)}: {message}'
-                    for message in routing_hints_lib.validate_routing_hints_document(document, expected_frame=path.parent.name)
-                )
-            except Exception as exc:
-                errors.append(f'routing hint invalid: {path.relative_to(self.repo)}: {type(exc).__name__}: {exc}')
 
         manifest_path = self.repo / '.agent-loop/runtime/install-manifest.json'
         manifest: dict[str, object] | None = None
@@ -1800,19 +1621,6 @@ class Installer:
                         errors.append(f'cannot compare platform skill identity: {rel}: {exc}')
 
         if expected_loop_mode:
-            for role in ['gatekeeper', 'loop-brief-assistant', 'brief-pattern-curator', 'sensemaker', 'integrator', 'governor', 'state-steward', 'watchdog-recovery', 'meta-evaluator', 'learning-auditor', 'memory-curator']:
-                toml_path = self.repo / f'.codex/agents/{role}.toml'
-                if toml_path.is_file():
-                    try:
-                        value = tomllib.loads(toml_path.read_text(encoding='utf-8'))
-                        if not isinstance(value, dict):
-                            errors.append(f'TOML root is not a table: .codex/agents/{role}.toml')
-                    except Exception as exc:
-                        errors.append(f'invalid TOML .codex/agents/{role}.toml: {type(exc).__name__}: {exc}')
-                for rel in [f'.codex/agents/{role}.toml', f'.claude/agents/{role}.md', f'.agents/skills/{role}/SKILL.md', f'.claude/skills/{role}/SKILL.md']:
-                    path = self.repo / rel
-                    if not path.exists():
-                        errors.append(f'missing required loop artifact: {rel}')
             for skill in ['sop-diag', 'sop-list', 'sop-install', 'sop-learning-audit']:
                 canonical = self.repo / f'skills/{skill}/SKILL.md'
                 if not canonical.is_file() or canonical.is_symlink():
@@ -1830,22 +1638,6 @@ class Installer:
                                 errors.append(f'platform SOP skill is not the canonical shared file: {rel}')
                         except OSError as exc:
                             errors.append(f'cannot compare platform SOP skill identity: {rel}: {exc}')
-
-            okf_binary = self.repo / '.agent-loop/bin/okfctl.bin'
-            if not okf_binary.exists():
-                errors.append('missing built okfctl binary: .agent-loop/bin/okfctl.bin')
-            elif not os.access(okf_binary, os.X_OK):
-                errors.append('built okfctl binary is not executable: .agent-loop/bin/okfctl.bin')
-            else:
-                try:
-                    completed = subprocess.run(
-                        [str(okf_binary), 'validate', '--root', 'llmwiki', '--json'],
-                        cwd=self.repo, text=True, capture_output=True, timeout=30, check=False,
-                    )
-                    if completed.returncode != 0:
-                        errors.append('OKF LLMWiki validation failed; run .agent-loop/bin/okfctl validate --root llmwiki for details')
-                except (OSError, subprocess.TimeoutExpired) as exc:
-                    errors.append(f'cannot execute built OKF validator: {type(exc).__name__}: {exc}')
 
         return errors
 
@@ -1870,53 +1662,6 @@ class Installer:
         }
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         self.atomic_write_text(self.manifest_path, json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
-
-    def write_profile_policy(self) -> None:
-        if self.dry_run:
-            return
-        path = self.repo / '.agent-loop/policy.json'
-        if not path.is_file():
-            return
-        if self.update_mode:
-            manifest_entry = self.managed_entry(path)
-            if manifest_entry is not None and manifest_entry.get('classification') == 'config' and path.exists():
-                current_hash = self.sha256_file(path)
-                if current_hash != manifest_entry.get('sha256'):
-                    return
-        try:
-            value = json.loads(path.read_text(encoding='utf-8'))
-        except json.JSONDecodeError as exc:
-            raise InstallerError(f'invalid policy JSON after copy: {path}: {exc}') from exc
-        if not isinstance(value, dict):
-            raise InstallerError(f'policy root must be an object: {path}')
-        value['loop_mode_enabled'] = self.profile == PROFILE_FULL
-        self.atomic_write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + '\n')
-        self.record_manifest_entry(path, source=SRC / '.agent-loop/policy.json', classification='config')
-
-    def write_memory_policy(self) -> None:
-        if self.dry_run:
-            return
-        path = self.repo / '.agent-loop/memory-policy.json'
-        if not path.is_file():
-            return
-        if self.update_mode:
-            manifest_entry = self.managed_entry(path)
-            if manifest_entry is not None and manifest_entry.get('classification') == 'config' and path.exists():
-                current_hash = self.sha256_file(path)
-                if current_hash != manifest_entry.get('sha256'):
-                    return
-        try:
-            value = json.loads(path.read_text(encoding='utf-8'))
-        except json.JSONDecodeError as exc:
-            raise InstallerError(f'invalid memory policy JSON after copy: {path}: {exc}') from exc
-        if not isinstance(value, dict):
-            raise InstallerError(f'memory policy root must be an object: {path}')
-        if self.maybe_self_mode():
-            value['bundle_root'] = '.agent-loop/runtime/llmwiki-live'
-        else:
-            value['bundle_root'] = 'llmwiki'
-        self.atomic_write_text(path, json.dumps(value, indent=2, ensure_ascii=False) + '\n')
-        self.record_manifest_entry(path, source=SRC / '.agent-loop/memory-policy.json', classification='config')
 
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
         if self.update_mode and not self.is_self_install():
@@ -1983,35 +1728,6 @@ class Installer:
             for relative in ('journal', 'learning', 'reports'):
                 (runtime_state / relative).mkdir(parents=True, exist_ok=True)
             (self.repo / ('.' + 'agent-loop') / 'runtime' / 'okf-backups').mkdir(parents=True, exist_ok=True)
-        # v0.2 no longer distributes the legacy policy and hook runtime.
-        if self.profile == PROFILE_FULL:
-            self.copy_rendered_file(
-                SRC / 'systemd/agent-loop-scheduler.service',
-                self.repo / '.agent-loop/systemd/agent-loop-scheduler.service',
-                replacements={'__REPO_ROOT__': str(self.repo)},
-            )
-        if self.profile == PROFILE_FULL:
-            for source_rel, destination_rel in [
-            ('docs/LOOP_INPUT_GUIDE.md', '.agent-loop/docs/LOOP_INPUT_GUIDE.md'),
-            ('docs/HUMAN_SKILL_NAMESPACE.md', '.agent-loop/docs/HUMAN_SKILL_NAMESPACE.md'),
-            ('docs/LLM_ASSISTED_INSTALL.md', '.agent-loop/docs/LLM_ASSISTED_INSTALL.md'),
-            ('docs/MERGE_RULES.md', '.agent-loop/docs/MERGE_RULES.md'),
-            ('docs/SHARED_LAYOUTS.md', '.agent-loop/docs/SHARED_LAYOUTS.md'),
-            ('docs/DESIGN_PHILOSOPHY.md', '.agent-loop/docs/DESIGN_PHILOSOPHY.md'),
-            ('docs/ARCHITECTURE.md', '.agent-loop/docs/ARCHITECTURE.md'),
-            ('docs/OKF_LLMWIKI.md', '.agent-loop/docs/OKF_LLMWIKI.md'),
-            ('docs/INSTALL.md', '.agent-loop/docs/INSTALL.md'),
-            ('docs/RELEASE_AUDIT.md', '.agent-loop/docs/RELEASE_AUDIT.md'),
-            ('docs/RUN_REPORT.md', '.agent-loop/docs/RUN_REPORT.md'),
-            ('docs/REVIEW_CONTRACT.md', '.agent-loop/docs/REVIEW_CONTRACT.md'),
-            ('templates/LOOP_BRIEF.md', '.agent-loop/templates/LOOP_BRIEF.md'),
-            ('templates/OKF_CONCEPT.md', '.agent-loop/templates/OKF_CONCEPT.md'),
-            ('templates/OKF_LOOP_BRIEF_PATTERN.md', '.agent-loop/templates/OKF_LOOP_BRIEF_PATTERN.md'),
-            ('templates/SOP_SKILL_TEMPLATE.md', '.agent-loop/templates/SOP_SKILL_TEMPLATE.md'),
-            ('templates/INSTALL_MERGE_REPORT.md', '.agent-loop/templates/INSTALL_MERGE_REPORT.md'),
-            ]:
-                self.copy_file(SRC / source_rel, self.repo / destination_rel)
-
         if self.profile == PROFILE_FULL and not self.maybe_self_mode():
             self.install_llmwiki_skeleton()
         if self.update_mode:
@@ -2039,11 +1755,6 @@ class Installer:
             if skill_conflicts:
                 raise InstallerError('Skill layout changed after preflight.')
         mappings = list(skill_mappings)
-        if self.profile == PROFILE_FULL:
-            mappings.extend([
-                (SRC / 'adapters/codex/.codex/agents', self.repo / '.codex/agents', 'codex-agents'),
-                (SRC / 'adapters/claude/.claude/agents', self.repo / '.claude/agents', 'claude-agents'),
-            ])
         for source_base, target_base, layout_kind in mappings:
             if layout_kind == 'canonical-shared':
                 if self.dry_run:
@@ -2075,17 +1786,6 @@ class Installer:
             print('Routing profile selected; okfctl build and validation are out of scope.')
 
         self.write_generated_sidecars()
-        if False:  # legacy executable artifacts are not part of the v0.2 manifest
-            (self.repo / '.agent-loop/hooks/loop_hook.py').chmod(0o555)
-            if self.profile == PROFILE_FULL:
-                (self.repo / '.agent-loop/bin/learning_health.py').chmod(0o555)
-                (self.repo / '.agent-loop/bin/next_turn_scheduler.py').chmod(0o555)
-                (self.repo / '.agent-loop/bin/next_turn_scheduler_daemon.py').chmod(0o555)
-                (self.repo / '.agent-loop/bin/loop_status.py').chmod(0o555)
-                (self.repo / '.agent-loop/bin/trigger-dryrun.sh').chmod(0o555)
-                (self.repo / '.agent-loop/bin/trigger-example.sh').chmod(0o555)
-                (self.repo / '.agent-loop/bin/okfctl').chmod(0o555)
-                (self.repo / '.agent-loop/bin/build-okfctl.sh').chmod(0o555)
         if self.update_mode and self.prune and not self.dry_run:
             for rel in self.obsolete_manifest_paths:
                 path = self.repo / rel
@@ -2158,6 +1858,8 @@ def main() -> int:
         if str(destination_dir) not in path_entries:
             print(f'PATH does not include {destination_dir}; add it to PATH to invoke loopeng globally.')
         return 0
+    if args.repo is None and args.self_mode:
+        args.repo = SRC
     if args.repo is None:
         parser.error('--repo is required unless --install-command is used')
     repo = args.repo.expanduser().resolve()
@@ -2213,7 +1915,7 @@ def main() -> int:
         print('Dry-run complete; no files were modified.')
     else:
         if installer.profile == PROFILE_FULL:
-            print('Installed direct routing, SOP routing, Gatekeeper plus Loop Brief Assistant and reusable input-pattern controls, OKF LLMWiki memory governance, learning observability, sanitized OTel telemetry, canonical root-level skills with Codex/Claude symlinks, and LLM-assisted merge guidance.')
+            print('Installed the v0.2 loopeng runtime, audit hooks, canonical frame skills, and Codex/Claude hook sidecars.')
         else:
             print('Installed frame skills, routing scaffolding, canonical root-level skills with Codex/Claude symlinks, and profile-scoped routing safeguards.')
         if installer.backup_root.exists():

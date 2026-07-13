@@ -421,11 +421,8 @@ def run_record_checks(root: Path) -> CheckResult:
     parts.append(tree.summary)
     for label, args in [
         ("doc parity lint", (sys.executable, str(root / "utils/doc_parity_lint.py"), "--root", str(root))),
-        ("journal lint", (sys.executable, str(root / "utils/journal_sanitization_lint.py"))),
-        ("routing lint", (sys.executable, str(root / "utils/routing_hints_lint.py"), "--root", str(root))),
         ("protocol lint", (sys.executable, str(root / "utils/completion_protocol_lint.py"), "--root", str(root))),
         ("skill structure lint", (sys.executable, str(root / "utils/skill_structure_lint.py"), "--root", str(root))),
-        ("self-test", (sys.executable, str(root / ".agent-loop/hooks/loop_hook.py"), "--self-test", "--platform", "claude")),
     ]:
         result = run_named_check(root, label, *args)
         if result.error:

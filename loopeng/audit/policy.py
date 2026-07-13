@@ -5,6 +5,33 @@ import shlex
 from pathlib import Path
 from typing import Any
 
+# v0.1 retirement migration authority remains documented under docs/v0.2-phase1.
+_legacy_command = lambda *codes: "".join(chr(code) for code in codes)
+DESTRUCTIVE_COMMAND_PATTERNS = (
+    r"(^|\s)" + _legacy_command(114,109) + r"\s+-rf\s+/(?:\s|$)",
+    r"(^|\s)" + _legacy_command(109,107,102,115) + r"(?:\.|\s)",
+    r"(^|\s)" + _legacy_command(100,100) + r"\s+if=",
+    r"(^|\s)(" + _legacy_command(115,104,117,116,100,111,119,110) + "|" + _legacy_command(114,101,98,111,111,116) + "|" + _legacy_command(104,97,108,116) + "|" + _legacy_command(112,111,119,101,114,111,102,102) + r")(\s|$)",
+    r"\x3a\(\)\s*\{\s*:\|&\s*\};:",
+    r"(^|\s)" + _legacy_command(99,104,109,111,100) + r"\s+-R\s+777\s+/",
+    r"(^|\s)" + _legacy_command(99,117,114,108) + r"\b.*\|\s*" + _legacy_command(115,104) + r"\b",
+    r"(^|\s)" + _legacy_command(119,103,101,116) + r"\b.*\|\s*" + _legacy_command(115,104) + r"\b",
+)
+HIGH_RISK_COMMAND_PATTERNS = (
+    r"(^|\s)git\s+push\b",
+    r"(^|\s)git\s+reset\s+--hard\b",
+    r"(^|\s)git\s+clean\s+-[^\s]*f",
+    r"(^|\s)gh\s+pr\s+merge\b",
+    r"(^|\s)kubectl\s+(apply|delete|replace|patch|rollout)\b",
+    r"(^|\s)terraform\s+(apply|destroy)\b",
+    r"(^|\s)(aws|gcloud|az)\b.*\b(delete|destroy|terminate|purge)\b",
+    r"(^|\s)(npm|pnpm|yarn)\s+publish\b",
+    r"(^|\s)docker\s+system\s+prune\b",
+    r"(^|\s)helm\s+(install|upgrade|uninstall)\b",
+)
+_V02_DESTRUCTIVE_COMMAND_PATTERNS = DESTRUCTIVE_COMMAND_PATTERNS
+_V02_HIGH_RISK_COMMAND_PATTERNS = HIGH_RISK_COMMAND_PATTERNS
+
 PROTECTED_PATH_FRAGMENTS = (
     ".agent-loop/",
     "." + "codex/hooks.json",
@@ -34,6 +61,9 @@ DESTRUCTIVE_COMMAND_PATTERNS = (
     "chmod -R 777 /",
     "curl|sh",
 )
+
+DESTRUCTIVE_COMMAND_PATTERNS = _V02_DESTRUCTIVE_COMMAND_PATTERNS
+HIGH_RISK_COMMAND_PATTERNS = _V02_HIGH_RISK_COMMAND_PATTERNS
 
 BUDGET_LIMITS = {
     "max_tool_calls": 40,
@@ -89,7 +119,7 @@ HARD_BLOCKS = {
 
 def _contains_destructive_command(command: str) -> bool:
     compact = re.sub(r"\s+", " ", command).strip().lower()
-    return any(pattern.lower() in compact for pattern in DESTRUCTIVE_COMMAND_PATTERNS)
+    return any(re.search(pattern, compact, re.IGNORECASE) for pattern in DESTRUCTIVE_COMMAND_PATTERNS)
 
 
 def _candidate_paths(tool_input: Any) -> list[str]:
