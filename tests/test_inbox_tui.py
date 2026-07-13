@@ -58,6 +58,20 @@ class InboxModelTests(unittest.TestCase):
         with mock.patch("loopeng.inbox_tui._prompt", return_value="y"):
             self.assertTrue(_confirm_exit(screen))
 
+    def test_main_screen_ctrl_c_uses_exit_confirmation(self) -> None:
+        from loopeng.inbox_tui import run
+        holder, root = self.repo()
+        try:
+            screen = mock.Mock()
+            screen.getmaxyx.return_value = (24, 80)
+            screen.getch.side_effect = [KeyboardInterrupt, ord("q")]
+            screen.getstr.side_effect = [b"n", b"y"]
+            with mock.patch("loopeng.inbox_tui.curses.wrapper", side_effect=lambda main: main(screen)), mock.patch("loopeng.inbox_tui.curses.curs_set"), mock.patch("loopeng.inbox_tui.curses.ACS_HLINE", 0, create=True), mock.patch("loopeng.inbox_tui.curses.echo"), mock.patch("loopeng.inbox_tui.curses.noecho"):
+                run(root, "tui-test")
+            self.assertEqual(screen.getstr.call_count, 2)
+        finally:
+            holder.cleanup()
+
     def test_reject_requires_reason_and_interactive_records_session(self) -> None:
         holder, root = self.repo()
         try:

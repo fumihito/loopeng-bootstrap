@@ -156,7 +156,13 @@ def run(repo: Path, run_id: str) -> None:
             if messages:
                 screen.addnstr(max(0, height - 2), 0, _short(messages[-1], max(1, width - 1)), max(1, width - 1))
             screen.refresh()
-            key = screen.getch()
+            try:
+                key = screen.getch()
+            except KeyboardInterrupt:
+                if _confirm_exit(screen):
+                    return
+                messages.append("exit cancelled")
+                continue
             if key in (ord("q"), 27):
                 if _confirm_exit(screen):
                     return
