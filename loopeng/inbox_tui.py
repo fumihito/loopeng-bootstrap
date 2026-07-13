@@ -30,9 +30,12 @@ def _prompt(screen: Any, text: str) -> str:
     screen.clrtoeol()
     screen.addnstr(max(0, height - 2), 0, text, max(1, width - 1))
     curses.echo()
-    value = screen.getstr(max(0, height - 1), 0).decode(errors="replace")
-    curses.noecho()
-    return value
+    try:
+        return screen.getstr(max(0, height - 1), 0).decode(errors="replace")
+    except KeyboardInterrupt:
+        return ""
+    finally:
+        curses.noecho()
 
 
 def _next_completion(value: str, options: tuple[str, ...], index: int) -> tuple[str, int]:
@@ -55,7 +58,10 @@ def _action_prompt(screen: Any, options: tuple[str, ...]) -> str:
             screen.clrtoeol()
             screen.addnstr(max(0, height - 2), 0, f"action {options}: {value}", max(1, width - 1))
             screen.refresh()
-            key = screen.getch()
+            try:
+                key = screen.getch()
+            except KeyboardInterrupt:
+                return ""
             if key in (curses.KEY_ENTER, 10, 13):
                 return value
             if key in (27,):
@@ -116,6 +122,10 @@ def _missing_packet(screen: Any, repo: Path, run_id: str) -> None:
             return
 
 
+def _confirm_exit(screen: Any) -> bool:
+    return _prompt(screen, "exit? [y/N] ").strip().casefold() in {"y", "yes"}
+
+
 def run(repo: Path, run_id: str) -> None:
     def main(screen: Any) -> None:
         curses.curs_set(0)
@@ -148,7 +158,10 @@ def run(repo: Path, run_id: str) -> None:
             screen.refresh()
             key = screen.getch()
             if key in (ord("q"), 27):
-                return
+                if _confirm_exit(screen):
+                    return
+                messages.append("exit cancelled")
+                continue
             if key in (curses.KEY_DOWN, ord("j")):
                 selected = min(max(0, len(items) - 1), selected + 1)
             elif key in (curses.KEY_UP, ord("k")):
@@ -175,6 +188,9 @@ def run(repo: Path, run_id: str) -> None:
                     continue
                 options = actions_for(chosen[0])
                 action = _action_prompt(screen, options)
+                if not action:
+                    messages.append("action input cancelled")
+                    continue
                 if action not in options:
                     messages.append("action unavailable")
                     continue

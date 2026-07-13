@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from loopeng.inbox_model import ACTION_TABLE, actions_for, detail, execute, generate_packet, interactive, packet_detail_lines
-from loopeng.inbox_tui import _available_label, _next_completion
+from loopeng.inbox_tui import _action_prompt, _available_label, _confirm_exit, _next_completion
 from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
 
@@ -46,6 +46,17 @@ class InboxModelTests(unittest.TestCase):
         options = actions_for({"kind": "incoming-review"})
         self.assertEqual(_next_completion("", options, -1), ("intake", 0))
         self.assertEqual(_next_completion("", options, 0), ("detail", 1))
+
+    def test_action_ctrl_c_rejects_input_and_exit_requires_confirmation(self) -> None:
+        screen = mock.Mock()
+        screen.getmaxyx.return_value = (24, 80)
+        screen.getch.side_effect = KeyboardInterrupt
+        with mock.patch("loopeng.inbox_tui.curses.noecho"):
+            self.assertEqual(_action_prompt(screen, ("intake", "detail")), "")
+        with mock.patch("loopeng.inbox_tui._prompt", return_value="n"):
+            self.assertFalse(_confirm_exit(screen))
+        with mock.patch("loopeng.inbox_tui._prompt", return_value="y"):
+            self.assertTrue(_confirm_exit(screen))
 
     def test_reject_requires_reason_and_interactive_records_session(self) -> None:
         holder, root = self.repo()
