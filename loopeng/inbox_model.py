@@ -16,6 +16,7 @@ from .review import record_decision
 from .review_request import build_request, resolve_packet
 from .run import record_human_outcome
 from .audit.report import run_audit_report
+from .audit.export import export_packet
 from ._paths import agent_root
 
 DETAIL_LINES = 20
@@ -97,6 +98,11 @@ def packet_detail_lines(packet: Path) -> list[str]:
             lines.append("(packet detail truncated)")
             break
     return lines[:PACKET_DETAIL_MAX_LINES]
+
+
+def generate_packet(repo: Path, run_id: str) -> Path:
+    """Delegate packet creation to the existing deterministic audit export."""
+    return export_packet(repo.resolve(), run_id)
 
 
 def _establish(repo: Path, items: list[dict[str, Any]], run_id: str) -> dict[str, Any]:

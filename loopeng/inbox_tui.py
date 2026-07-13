@@ -6,7 +6,7 @@ import curses
 from pathlib import Path
 from typing import Any
 
-from .inbox_model import actions_for, detail, execute, list_items, packet_detail_lines
+from .inbox_model import actions_for, detail, execute, generate_packet, list_items, packet_detail_lines
 from .review_request import resolve_packet
 
 
@@ -58,6 +58,27 @@ def _pager(screen: Any, lines: list[str]) -> None:
             offset = max(0, offset - page_size)
 
 
+def _missing_packet(screen: Any, repo: Path, run_id: str) -> None:
+    while True:
+        screen.erase()
+        height, width = screen.getmaxyx()
+        screen.addnstr(0, 0, f"Packet unavailable for {run_id}", max(1, width - 1))
+        screen.addnstr(2, 0, "[e] generate packet with audit export  [q] back", max(1, width - 1))
+        screen.refresh()
+        key = screen.getch()
+        if key in (ord("q"), 27):
+            return
+        if key == ord("e"):
+            try:
+                packet = generate_packet(repo, run_id)
+                _pager(screen, packet_detail_lines(packet))
+            except (OSError, RuntimeError, ValueError) as exc:
+                screen.addnstr(max(4, height - 2), 0, _short(f"export failed: {type(exc).__name__}", max(1, width - 1)), max(1, width - 1))
+                screen.refresh()
+                screen.getch()
+            return
+
+
 def run(repo: Path, run_id: str) -> None:
     def main(screen: Any) -> None:
         curses.curs_set(0)
@@ -103,7 +124,10 @@ def run(repo: Path, run_id: str) -> None:
             elif key == ord("d") and items:
                 if items[selected].get("kind") == "external-review":
                     packet = resolve_packet(repo, str(items[selected]["target"]))
-                    _pager(screen, packet_detail_lines(packet) if packet is not None else detail(repo, items[selected]).splitlines())
+                    if packet is None:
+                        _missing_packet(screen, repo, str(items[selected]["target"]))
+                    else:
+                        _pager(screen, packet_detail_lines(packet))
                 else:
                     detail_lines = detail(repo, items[selected]).splitlines()[:20] or ["(empty detail)"]
                     messages.append(f"showing {len(detail_lines)} detail lines")

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, interactive, packet_detail_lines
+from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, generate_packet, interactive, packet_detail_lines
 from loopeng.inbox_tui import _available_label
 from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
@@ -100,6 +100,16 @@ class InboxModelTests(unittest.TestCase):
             lines = packet_detail_lines(packet)
             self.assertIn("===== journal.json =====", lines)
             self.assertIn("journal content", lines)
+        finally:
+            holder.cleanup()
+
+    def test_generate_packet_delegates_to_audit_export(self) -> None:
+        holder, root = self.repo()
+        try:
+            expected = root / "packet"
+            with mock.patch("loopeng.inbox_model.export_packet", return_value=expected) as export:
+                self.assertEqual(generate_packet(root, "run-1"), expected)
+            export.assert_called_once_with(root.resolve(), "run-1")
         finally:
             holder.cleanup()
 
