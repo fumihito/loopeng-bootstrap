@@ -12,7 +12,10 @@ from ._paths import agent_root
 
 SECRET_PATTERNS = [
     re.compile(r"(?i)\b(password|token|secret|api[_-]?key)\s*=\s*[^ \n\r\t]+"),
-    re.compile(r"(?i)\b(password|token|secret|api[_-]?key)\b"),
+    # Do not rewrite attribute names such as ``token.casefold()`` in source
+    # snapshots; they are not credential values and the rewrite can create a
+    # false sensitive-assignment finding in the publish safety scan.
+    re.compile(r"(?i)\b(password|token|secret|api[_-]?key)\b(?!\s*\.)"),
 ]
 
 SECRET_KEYS = {"password", "token", "secret", "api_key", "api-key", "api key"}
