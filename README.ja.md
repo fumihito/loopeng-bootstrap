@@ -22,8 +22,13 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng learning promote` | learning backlog から検証済み draft を生成(適用はしない) |
 | `loopeng memory curate` | 自律名前空間の provisional UPSERT を最大3件まで適用 |
 | `loopeng memory stats` | LLMWiki の変異窓とバンドル外コミットを集計 |
+| `loopeng memory efficacy` | signature 付き学習の再発・参照効力を突合 |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
+| `loopeng run verify` / `run outcome` | 宣言された受入コマンドの検証、または人間の成果ラベル追記 |
+| `loopeng doctor` | ループ状態を検査し、`--fix` では安全な修復だけを行う |
+| `loopeng inbox` | 承認待ち・保留・未解決成果を人間向けに一覧表示 |
+| `loopeng run stats` | ラン成果と統治コスト比を表示する（アラート化しない） |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
 | `loopeng status` | 直近 Run Report と learning backlog の要約 |
 | `loopeng review` | 直近ランの結果・懸念・前提をレビュー。`--triage` で誘導し、`dag` で Mermaid/SVG のループ図を生成 |

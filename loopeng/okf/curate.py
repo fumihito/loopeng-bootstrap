@@ -41,8 +41,12 @@ def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_
             else:
                 rejected.append({"draft": str(report_path), "error": "; ".join(str(x) for x in result.get("errors", []))})
         except Exception as exc:
-            rejected.append({"draft": str(report_path), "error": str(exc)})
-            append_event(repo, run, {"kind": EVENT_MEMORY_DRAFT, "draft": str(report_path), "status": "rejected", "error": str(exc)})
+            if "instruction smell" in str(exc):
+                pending.append(str(report_path))
+                append_event(repo, run, {"kind": EVENT_MEMORY_DRAFT, "draft": str(report_path), "status": "pending-approval", "reason": str(exc)})
+            else:
+                rejected.append({"draft": str(report_path), "error": str(exc)})
+                append_event(repo, run, {"kind": EVENT_MEMORY_DRAFT, "draft": str(report_path), "status": "rejected", "error": str(exc)})
     established: list[str] = []
     if AUTO_ESTABLISH:
         # Citations are deliberately read from existing journal sidecars only;

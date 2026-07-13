@@ -19,6 +19,11 @@ from .okf.promote import promote, establish
 from .okf.curate import curate
 from .schedule import build_next_turn_prompt
 from .memory_stats import STATS_WINDOWS, collect_stats, render_stats
+from .run import record_human_outcome, verify_run
+from .doctor import doctor
+from .memory_efficacy import collect_efficacy, render_efficacy
+from .inbox import render_inbox
+from .run_stats import collect_run_stats, render_run_stats
 
 
 def _path(value: str) -> Path:
@@ -114,6 +119,10 @@ def build_parser() -> argparse.ArgumentParser:
     stats_cmd.add_argument("--windows", default=",".join(STATS_WINDOWS))
     stats_cmd.add_argument("--format", choices=("text", "json"), default="text")
     stats_cmd.add_argument("--now")
+    efficacy_cmd = memory_sub.add_parser("efficacy", help=t("学習の再発効力を集計", "Measure learning efficacy"), formatter_class=formatter)
+    efficacy_cmd.add_argument("--repo", type=_path, default=Path("."))
+    efficacy_cmd.add_argument("--windows", default="7d,28d")
+    efficacy_cmd.add_argument("--now")
 
     learning = sub.add_parser("learning", help=t("learning 起案を管理", "Manage learning proposals"))
     learning_sub = learning.add_subparsers(dest="learning_command", required=True)
@@ -209,6 +218,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     hook.add_argument("platform", choices=("claude-code", "codex"), help=t("イベントを送信したプラットフォーム", "Platform that sent the event"))
 
+    run = sub.add_parser("run", help=t("成果判定を検証・記録", "Verify and record run outcomes"), formatter_class=formatter)
+    run_sub = run.add_subparsers(dest="run_command", required=True)
+    verify = run_sub.add_parser("verify", help=t("宣言された受入条件を実行", "Execute declared acceptance checks"), formatter_class=formatter)
+    verify.add_argument("--run", required=True)
+    verify.add_argument("--repo", type=_path, default=Path("."))
+    outcome = run_sub.add_parser("outcome", help=t("人間の成果ラベルを追記", "Append a human outcome label"), formatter_class=formatter)
+    outcome.add_argument("--run", required=True)
+    outcome.add_argument("--repo", type=_path, default=Path("."))
+    outcome.add_argument("--status", choices=("pass", "fail"), required=True)
+    outcome.add_argument("--note", required=True)
+    stats = run_sub.add_parser("stats", help=t("ラン数・成果・統治コストを集計", "Summarize runs, outcomes, and governance overhead"), formatter_class=formatter)
+    stats.add_argument("--repo", type=_path, default=Path("."))
+    stats.add_argument("--windows", default="7d,28d")
+    stats.add_argument("--now")
+
+    doctor_cmd = sub.add_parser("doctor", help=t("ループ機構の健全性を検査", "Inspect loop health"), formatter_class=formatter)
+    doctor_cmd.add_argument("--repo", type=_path, default=Path("."))
+    doctor_cmd.add_argument("--fix", action="store_true")
+    inbox_cmd = sub.add_parser("inbox", help=t("人間の非同期受信箱を表示", "Show the human async inbox"), formatter_class=formatter)
+    inbox_cmd.add_argument("--repo", type=_path, default=Path("."))
+
     return parser
 
 
@@ -266,6 +296,7 @@ def main(argv: list[str] | None = None) -> int:
             append_event(Path(args.bundle).resolve().parent, args.run, {
                 "kind": EVENT_OKF_APPLY, "report": str(args.report), "ok": bool(result.get("ok")),
                 "touched": result.get("touched", []),
+                "warnings": result.get("warnings", {}),
             })
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result["ok"] else 1
@@ -296,6 +327,11 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(serializable, indent=2, ensure_ascii=False, sort_keys=True))
         else:
             print(render_stats(stats, windows), end="")
+        return 0
+
+    if args.command == "memory" and args.memory_command == "efficacy":
+        windows = tuple(item.strip() for item in args.windows.split(",") if item.strip())
+        print(render_efficacy(collect_efficacy(args.repo, windows, args.now)), end="")
         return 0
 
     if args.command == "learning" and args.learning_command == "promote":
@@ -392,6 +428,27 @@ def main(argv: list[str] | None = None) -> int:
         event = normalize(payload)
         result = __import__("loopeng.hooks.handler", fromlist=["handle"]).handle(event)
         sys.stdout.write(json.dumps(render(result, event), ensure_ascii=False))
+        return 0
+
+    if args.command == "run" and args.run_command == "verify":
+        print(json.dumps(verify_run(args.repo.resolve(), args.run), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "run" and args.run_command == "outcome":
+        print(str(record_human_outcome(args.repo.resolve(), args.run, args.status, args.note)))
+        return 0
+
+    if args.command == "run" and args.run_command == "stats":
+        windows = tuple(item.strip() for item in args.windows.split(",") if item.strip())
+        print(render_run_stats(collect_run_stats(args.repo, windows, args.now)), end="")
+        return 0
+
+    if args.command == "doctor":
+        print(json.dumps(doctor(args.repo, args.fix), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "inbox":
+        print(render_inbox(args.repo), end="")
         return 0
 
     raise SystemExit("unhandled command")

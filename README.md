@@ -22,8 +22,13 @@ v0.2 consists of four pillars.
 | `loopeng learning promote` | Generate validated memory drafts from learning backlog (does not apply them) |
 | `loopeng memory curate` | Apply at most three provisional UPSERTs from autonomous namespaces after audit |
 | `loopeng memory stats` | Summarize LLMWiki mutation windows and non-LLMWiki commits |
+| `loopeng memory efficacy` | Compare signed learning entries with later recurrence and retrieval |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
+| `loopeng run verify` / `run outcome` | Verify declared acceptance commands or append a human outcome label |
+| `loopeng doctor` | Inspect loop state and apply only safe repairs with `--fix` |
+| `loopeng inbox` | Show pending human approvals, held decisions, and unresolved outcomes |
+| `loopeng run stats` | Display run outcomes and governance-overhead ratios without alerting |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
 | `loopeng status` | Summarize the latest Run Report and learning backlog |
 | `loopeng review` | Review recent run results, concerns, and premises; `--triage` guides review and `dag` renders a Mermaid/SVG loop view |

@@ -9,15 +9,17 @@ from .query import query_bundle
 from .schema import validate_document_text, validate_report_payload
 
 
-def _document(type_name: str, title: str, tags: list[str], authority: str, confidence: float, body: str) -> str:
+def _document(type_name: str, title: str, tags: list[str], authority: str, confidence: float, body: str, signature: str | None = None) -> str:
     def q(value: object) -> str:
         return json.dumps(value, ensure_ascii=False)
-    return "---\n" + "\n".join([
+    fields = [
         f"type: {q(type_name)}", f"title: {q(title)}", f"description: {q(title)}",
         f"tags: {q(tags)}", f"timestamp: {q(datetime.now(timezone.utc).isoformat())}",
         "status: active", "sensitivity: internal", f"authority: {q(authority)}",
-        f"confidence: {confidence}", "---", "", body or f"# {title}\n\nDraft pending review.", "",
-    ])
+        f"confidence: {confidence}"]
+    if signature:
+        fields.append(f"signature: {q(signature)}")
+    return "---\n" + "\n".join([*fields, "---", "", body or f"# {title}\n\nDraft pending review.", ""])
 
 
 def add_tier(document: str, tier: str = "provisional") -> str:

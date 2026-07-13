@@ -16,6 +16,11 @@ from .unreviewed_claim_persisted import check_unreviewed_claim_persisted
 from .retrieval_volume import check_retrieval_volume
 from .provisional_stagnation import check_provisional_stagnation
 from .memory_commit_divergence import check_memory_commit_divergence
+from .outcome_missing import check_outcome_missing
+from .concurrent_runs_detected import check_concurrent_runs_detected
+from .memory_instruction_smell import check_memory_instruction_smell
+from .learning_ineffective import check_learning_ineffective
+from .inbox_stale import check_inbox_stale
 
 
 CHECKS = (
@@ -34,6 +39,11 @@ CHECKS = (
     check_retrieval_volume,
     check_provisional_stagnation,
     check_memory_commit_divergence,
+    check_outcome_missing,
+    check_concurrent_runs_detected,
+    check_memory_instruction_smell,
+    check_learning_ineffective,
+    check_inbox_stale,
 )
 
 

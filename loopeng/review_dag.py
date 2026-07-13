@@ -32,6 +32,11 @@ STAGE_MAP = {
     "memory_commit_divergence": "memory",
     "hook_failure": "hooks",
     "learning_backlog": "learning",
+    "outcome_missing": "audit",
+    "concurrent_runs_detected": "act",
+    "memory_instruction_smell": "memory",
+    "learning_ineffective": "memory",
+    "inbox_stale": "handoff",
 }
 
 CRIT = "✖"

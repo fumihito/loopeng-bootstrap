@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ._paths import agent_root
-from .journal import EVENT_DECISION, EVENT_GO_RESULT, EVENT_REVIEW, EVENT_RUN_END, EVENT_RUN_START, append_event
+from .journal import EVENT_DECISION, EVENT_GO_RESULT, EVENT_OUTCOME, EVENT_REVIEW, EVENT_RUN_END, EVENT_RUN_START, append_event
 from .okf.schema import parse_document
 from .audit.policy import REVIEW_OLDEST_COUNT, REVIEW_RECURRENCE_THRESHOLD
 from .review_catalog import CATALOG_BY_ID, REMEDIATION_CATALOG
@@ -39,6 +39,19 @@ def _reports(repo: Path) -> list[dict[str, Any]]:
         except (OSError, json.JSONDecodeError):
             continue
         if isinstance(value, dict) and value.get("schema") in {1, 2} and value.get("run_id"):
+            if "outcome" not in value:
+                journal = repo / agent_root("state", "journal") / f"{value['run_id']}.jsonl"
+                outcomes = []
+                if journal.is_file():
+                    for line in journal.read_text(encoding="utf-8").splitlines():
+                        try:
+                            event = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if event.get("kind") == EVENT_OUTCOME:
+                            outcomes.append(event)
+                human = [event for event in outcomes if event.get("source") == "human"]
+                value["outcome"] = str((human or outcomes)[-1].get("status")) if (human or outcomes) else "none"
             value["_path"] = path
             values.append(value)
     values.sort(key=lambda item: str(item.get("ended_at") or item.get("started_at") or item["_path"].stat().st_mtime), reverse=True)
@@ -70,7 +83,7 @@ def _clean(value: Any) -> str:
 
 
 def _results(runs: list[dict[str, Any]]) -> list[str]:
-    lines = ["## Results", "| run | agent | goal | duration | critical | warn | memory |", "|---|---|---|---:|---:|---:|---|"]
+    lines = ["## Results", "| run | agent | goal | duration | outcome | critical | warn | memory |", "|---|---|---|---:|---|---:|---:|---|"]
     for run in runs:
         alerts = run.get("alerts") if isinstance(run.get("alerts"), list) else []
         critical = sum(1 for item in alerts if isinstance(item, dict) and item.get("severity") == "critical")
@@ -78,9 +91,9 @@ def _results(runs: list[dict[str, Any]]) -> list[str]:
         memory = run.get("memory") if isinstance(run.get("memory"), dict) else {}
         applied, rejected = int(memory.get("applied", 0) or 0), int(memory.get("rejected", 0) or 0)
         memory_text = f"+{applied} applied" + (f", {rejected} rejected" if rejected else "")
-        lines.append(f"| {_clean(run.get('run_id'))} | {_clean(run.get('agent'))} | {_clean(run.get('goal'))} | {_duration(run)} | {critical} | {warn} | {memory_text} |")
+        lines.append(f"| {_clean(run.get('run_id'))} | {_clean(run.get('agent'))} | {_clean(run.get('goal'))} | {_duration(run)} | {_clean(run.get('outcome', 'none'))} | {critical} | {warn} | {memory_text} |")
     if not runs:
-        lines.append("| none | - | - | - | 0 | 0 | - |")
+        lines.append("| none | - | - | - | none | 0 | 0 | - |")
     return lines
 
 
@@ -95,6 +108,14 @@ def _learning_summary(repo: Path) -> str:
 
 def _concerns(repo: Path, runs: list[dict[str, Any]]) -> list[str]:
     lines = ["## Concerns"]
+    fail_streak = 0
+    for run in runs:
+        if str(run.get("outcome") or "none") == "fail":
+            fail_streak += 1
+        else:
+            break
+    if fail_streak >= 2:
+        lines.append(f"- [RECURRING] outcome fail streak ({fail_streak} consecutive runs)")
     occurrences: defaultdict[str, dict[str, str]] = defaultdict(dict)
     info_count = 0
     for run in runs:
@@ -392,6 +413,8 @@ def _render_item(item: dict[str, Any], index: int, total: int, held: bool = Fals
 
 
 def render_triage(repo: Path, runs: int = DEFAULT_RUNS, *, next_item: bool = False, as_json: bool = False) -> str:
+    from .inbox import collect_inbox
+    inbox_count = len(collect_inbox(repo))
     selected = _reports(repo)[:max(0, runs)]
     items = _triage_items(repo, selected)
     digest_hash = _digest_hash(selected)
@@ -403,13 +426,13 @@ def render_triage(repo: Path, runs: int = DEFAULT_RUNS, *, next_item: bool = Fal
     cursor["presented"] = presented
     _save_cursor(repo, cursor)
     if as_json:
-        output = {"banner": _banner() + "-triage", "findings": sum(item["count"] for item in items), "items": [{k: v for k, v in candidate.items() if k not in {"catalog", "runs"}} | {"runs": sorted(candidate["runs"])} for candidate in items], "presented": presented, "selected_item": item["id"] if item else None}
+        output = {"banner": _banner() + "-triage", "inbox": inbox_count, "findings": sum(item["count"] for item in items), "items": [{k: v for k, v in candidate.items() if k not in {"catalog", "runs"}} | {"runs": sorted(candidate["runs"])} for candidate in items], "presented": presented, "selected_item": item["id"] if item else None}
         return json.dumps(output, indent=2, ensure_ascii=False) + "\n"
     if not items:
-        return f"[{_banner()}-triage]\nfindings: 0 → grouped into 0 items\n"
+        return f"[{_banner()}-triage]\ninbox: {inbox_count} items (details: loopeng inbox)\nfindings: 0 → grouped into 0 items\n"
     critical = sum(candidate["critical"] for candidate in items)
     warns = sum(1 for run in selected for alert in run.get("alerts", []) if isinstance(alert, dict) and alert.get("severity") == "warn")
-    lines = [f"[{_banner()}-triage]", f"findings: {sum(candidate['count'] for candidate in items)} (critical {critical}, warn {warns}) → grouped into {len(items)} items", ""]
+    lines = [f"[{_banner()}-triage]", f"inbox: {inbox_count} items (details: loopeng inbox)", f"findings: {sum(candidate['count'] for candidate in items)} (critical {critical}, warn {warns}) → grouped into {len(items)} items", ""]
     if item:
         lines.append(_render_item(item, items.index(item) + 1, len(items), item["id"] in _held(repo)))
         remaining = len(items) - 1

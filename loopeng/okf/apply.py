@@ -3,11 +3,14 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 import json
+import re
 
 from .backup import backup_tree
 from .index import reindex_bundle
 from .schema import concept_prefix_for_type, load_report, parse_frontmatter, validate_bundle, validate_document_text, validate_report_payload
 from ..audit.policy import AUTONOMOUS_NAMESPACES
+from ..locking import repo_lock
+from ..audit.policy import INSTRUCTION_SMELL_PATTERNS
 from datetime import datetime, timezone
 
 
@@ -15,6 +18,12 @@ def _document_text(document: object) -> str:
     if not isinstance(document, str):
         raise ValueError("operation document must be a string")
     return document if document.endswith("\n") else document + "\n"
+
+
+def _instruction_smells(text: str) -> list[str]:
+    """Coarse false-positive-prone injection net; patterns live in policy.py."""
+    lowered = text.casefold()
+    return [pattern for pattern in INSTRUCTION_SMELL_PATTERNS if re.search(pattern, lowered)]
 
 
 def _bundle_destination(bundle: Path, concept_id: str) -> Path:
@@ -121,7 +130,13 @@ def _memory_log_entry(bundle: Path, report: dict[str, object], operation: dict[s
 
 def apply_report(bundle: Path, report_path: Path, backup_dir: Path, autonomous: bool = False) -> dict[str, object]:
     bundle = bundle.resolve()
+    repo = bundle.parent.resolve()
     backup_dir = backup_dir.resolve()
+    with repo_lock(repo, str(report_path)):
+        return _apply_report_locked(bundle, report_path, backup_dir, autonomous)
+
+
+def _apply_report_locked(bundle: Path, report_path: Path, backup_dir: Path, autonomous: bool = False) -> dict[str, object]:
     bundle_validation = validate_bundle(bundle)
     if not bundle_validation["ok"]:
         return {"ok": False, "errors": bundle_validation["errors"]}
@@ -130,11 +145,17 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path, autonomous: 
     if errors:
         return {"ok": False, "errors": errors}
     operation_errors: list[str] = []
+    smell_warnings: list[str] = []
     for index, operation in enumerate(report.get("operations", [])):
         if not isinstance(operation, dict):
             operation_errors.append(f"operations[{index}] must be an object")
             continue
         try:
+            if isinstance(operation, dict) and operation.get("action") == "UPSERT":
+                matches = _instruction_smells(_document_text(operation.get("document")))
+                if autonomous and matches:
+                    raise ValueError("autonomous apply deferred: memory instruction smell matched: " + ", ".join(matches))
+                smell_warnings.extend(matches)
             _validate_operation(bundle, operation, autonomous=autonomous)
         except Exception as exc:
             operation_errors.append(f"operations[{index}]: {exc}")
@@ -191,4 +212,7 @@ def apply_report(bundle: Path, report_path: Path, backup_dir: Path, autonomous: 
                 source_path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         except (OSError, json.JSONDecodeError):
             pass
-    return {"ok": True, "touched": touched, "backup": str(backup_root)}
+    result = {"ok": True, "touched": touched, "backup": str(backup_root)}
+    if smell_warnings:
+        result["warnings"] = {"memory_instruction_smell": sorted(set(smell_warnings))}
+    return result

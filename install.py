@@ -84,6 +84,12 @@ RUNTIME_MANIFEST = [
     {'path': 'loopeng/_paths.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/cli.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/journal.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/locking.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/run.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/doctor.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/memory_efficacy.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/inbox.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/run_stats.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/learning.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/schedule.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/status.py', 'profiles': {PROFILE_FULL}},
@@ -96,6 +102,13 @@ RUNTIME_MANIFEST = [
     {'path': 'loopeng/audit/__init__.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/audit/policy.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/audit/report.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/__init__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/common.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/outcome_missing.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/concurrent_runs_detected.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/learning_ineffective.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/inbox_stale.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/checks/memory_instruction_smell.py', 'profiles': {PROFILE_FULL}},
 ]
 
 COMMAND_DISPATCHER = '''#!/usr/bin/env python3

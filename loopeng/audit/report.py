@@ -8,7 +8,8 @@ from .._paths import agent_root
 from ..learning import save_learning_entries
 from .checks import collect_context, run_checks
 from .policy import DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
-from ..journal import EVENT_BLOCKED, EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, sanitize_event
+from ..journal import EVENT_BLOCKED, EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, GOVERNANCE_EVENT_KINDS, sanitize_event
+from ..journal import EVENT_OUTCOME
 
 
 def _summarize_findings(findings):
@@ -101,6 +102,10 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     rejected = [event for event in okf_events if not event.get("ok")]
     skill_events = [event for event in context.events if event.get("kind") == EVENT_SKILL_USED]
     blocked_events = [event for event in context.events if event.get("kind") == EVENT_BLOCKED]
+    outcome_events = [event for event in context.events if event.get("kind") == EVENT_OUTCOME]
+    human_outcomes = [event for event in outcome_events if event.get("source") == "human"]
+    selected_outcome = (human_outcomes or outcome_events)[-1] if (human_outcomes or outcome_events) else None
+    outcome_status = str(selected_outcome.get("status")) if selected_outcome else "none"
     skill_counts: dict[str, int] = {}
     skill_sources: dict[str, dict[str, int]] = {}
     for event in skill_events:
@@ -148,6 +153,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         "undeclared_critical": bool(undeclared),
         "memory": {"applied": len(applied), "provisional": len(provisional_applied), "pending": len(curate.get("pending", [])), "rejected": len(rejected)},
         "behavior": {"skills": skill_counts, "blocked": blocked_counts},
+        "outcome": outcome_status,
+        "overhead": {"governance_events": sum(1 for event in context.events if event.get("kind") in GOVERNANCE_EVENT_KINDS), "total_events": len(context.events)},
         "handoff_written": True,
         "schema": 2,
     }
@@ -157,8 +164,13 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         f"- agent-type: {agent}", f"- duration: {duration}",
         f"- handoff source: {prior_handoff.get('source_turn_id', 'none')}",
         f"- journal: {context.journal_path.relative_to(repo) if context.journal_path.exists() else 'missing'}",
-        f"- changed-paths: {len(context.changed_paths)}", "", "## Mutations", "### Declared",
+        f"- changed-paths: {len(context.changed_paths)}", "", "## Outcome", f"- status: {outcome_status}",
     ]
+    if selected_outcome and isinstance(selected_outcome.get("results"), list):
+        for result in selected_outcome["results"]:
+            if isinstance(result, dict):
+                report_lines.append(f"- {result.get('kind', 'result')}: {result.get('status', 'unknown')}" + (f" — {result.get('run')}" if result.get("run") else ""))
+    report_lines.extend(["", "## Mutations", "### Declared"])
     report_lines.extend([f"- changed: {path}" for path in sorted(declared_paths)] or ["- none"])
     report_lines.extend(_format_findings(declared))
     report_lines.extend(["", "### Undeclared"])

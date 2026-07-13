@@ -22,12 +22,14 @@ Run Report is the completion artifact for v0.2. A run is not considered auditabl
    - alert ID
    - severity
    - evidence reference
-6. `Behavior`
+6. `Outcome`
+   - observed command/text acceptance result or human label
+7. `Behavior`
    - skills used, including source and count
    - blocked operations from `blocked` events
-7. `Blocked`
+8. `Blocked`
    - hard-blocks only
-7. `Next`
+9. `Next`
    - handoff content for the next turn
 
 ## Contract
@@ -41,6 +43,8 @@ Use `python3 -m loopeng review dag --stage <stage>` to inspect finding details f
 The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report.
 
 The optional sidecar `behavior` key contains `skills` and `blocked` count maps. The schema version remains unchanged because adding this optional key is backward compatible; raise it only for incompatible changes.
+
+`Outcome` records the latest human `run outcome` label when present, otherwise the observed `run verify` result. Command acceptance checks run in order with a 300-second timeout: all commands passing and no text checks is `pass`; any command failure is `fail`; passing commands with unresolved text checks is `unverified`. Text acceptance is never resolved by agent self-report. The sidecar includes the optional `outcome` key. Handoff is last-write-wins.
 
 The `memory_commit_divergence` inspection compares the 7-day `llmwiki/log.jsonl` operation count with non-LLMWiki commit activity and reports the configured one-sided divergence signals.
 
@@ -66,6 +70,8 @@ that tuple requires updating this section in the same run.
 - `learning-candidate`: a sanitized failure-to-recovery learning capture.
 - `skill-used`: `{"kind":"skill-used","skill":"<name>","source":"tool|path"}`.
 - `blocked`: `{"kind":"blocked","check_id":"<HARD_BLOCK>","summary":"<sanitized, max 200 chars>","tool_name":"<name>"}`.
+- `outcome`: `{"kind":"outcome","status":"pass|fail|unverified","source":"verify|human","results":[...]}`.
+- `recurrence`: `{"kind":"recurrence","concept_id":"...","matched":"..."}`.
 
 Hooks are the standard automatic capture layer for Claude Code and Codex. `loopeng okf apply --run <id>` and `loopeng journal add` remain CLI paths for explicit/headless use. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.
 

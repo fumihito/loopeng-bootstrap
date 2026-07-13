@@ -10,6 +10,7 @@ from .draft import _document, add_tier
 from .query import query_bundle
 from .schema import validate_document_text, validate_report_payload, concept_prefix_for_type
 from .schema import parse_frontmatter
+from ..locking import repo_lock
 
 
 def _entries(repo: Path) -> list[tuple[Path, dict[str, Any]]]:
@@ -52,7 +53,11 @@ def promote(repo: Path, top: int = 3, ids: list[str] | None = None, type_name: s
         overlap = [m for m in matches if len(set(tags).intersection(m.get("tags", []))) >= 2 or str(title).casefold() in str(m.get("title", "")).casefold()]
         concept_id = overlap[0]["concept_id"] if overlap else f"{concept_prefix_for_type(selected_type)}/{re.sub(r'[^a-z0-9]+', '-', title.casefold()).strip('-') or path.stem}"
         notes = f"duplicate candidate: UPSERT existing {concept_id}" if overlap else "new concept candidate"
-        document = _document(selected_type, title, [str(t) for t in tags], str(entry.get("source_run_id") or "learning"), float(entry.get("confidence", 0.7)), body)
+        signature = entry.get("signature")
+        if not signature and entry.get("failed_command"):
+            command_prefix = str(entry["failed_command"]).strip().split(None, 1)[0]
+            signature = json.dumps({"command_prefix": command_prefix, "error_tokens": [str(token) for token in entry.get("error_tokens", [])]}, ensure_ascii=False)
+        document = _document(selected_type, title, [str(t) for t in tags], str(entry.get("source_run_id") or "learning"), float(entry.get("confidence", 0.7)), body, str(signature) if signature else None)
         if autonomous:
             document = add_tier(document, "provisional")
         errors = validate_document_text(document)
@@ -62,9 +67,10 @@ def promote(repo: Path, top: int = 3, ids: list[str] | None = None, type_name: s
         if errors:
             raise ValueError(f"{path}: {'; '.join(errors)}")
         target = target_dir / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + ".json")
-        target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        entry["drafted"] = str(target)
-        path.write_text(json.dumps(entry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        with repo_lock(repo, str(path)):
+            target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            entry["drafted"] = str(target)
+            path.write_text(json.dumps(entry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         out.append({"learning": str(path), "draft": str(target), "concept_id": concept_id, "duplicate": bool(overlap), "namespace": concept_id.split("/", 1)[0], "type": selected_type})
     return out
 

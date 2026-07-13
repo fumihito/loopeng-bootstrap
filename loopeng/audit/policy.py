@@ -68,6 +68,13 @@ REVIEW_OLDEST_COUNT = 3
 DETAIL_MESSAGE_MAX = 200
 DETAIL_PATHS_MAX = 10
 DETAIL_FINDINGS_MAX = 30
+INSTRUCTION_SMELL_PATTERNS = (
+    r"ignore (?:all )?previous",
+    r"you must now",
+    r"system prompt",
+    r"新しい指示",
+    r"以前の指示を無視",
+)
 
 HARD_BLOCKS = {
     "destructive_command": "Categorically destructive command patterns",
@@ -146,4 +153,9 @@ ALERTS = {
     "skill_structure_violation": "warn",
     "provisional_stagnation": "info",
     "memory_commit_divergence": "warn",
+    "outcome_missing": "info",
+    "concurrent_runs_detected": "warn",
+    "memory_instruction_smell": "warn",
+    "learning_ineffective": "info",
+    "inbox_stale": "info",
 }
