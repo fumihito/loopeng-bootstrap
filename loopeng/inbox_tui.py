@@ -15,6 +15,14 @@ def _short(value: str, width: int) -> str:
     return value[:max(1, width - 1)] + "…"
 
 
+def _available_label(items: list[dict[str, Any]], marked: set[int]) -> str:
+    kinds = {str(items[index].get("kind")) for index in marked if index < len(items)}
+    if len(kinds) != 1:
+        return "mixed/none"
+    actions = {action for index in marked if index < len(items) for action in actions_for(items[index])}
+    return ",".join(sorted(actions))
+
+
 def _prompt(screen: Any, text: str) -> str:
     height, width = screen.getmaxyx()
     screen.move(max(0, height - 2), 0)
@@ -44,8 +52,7 @@ def run(repo: Path, run_id: str) -> None:
                 line = f"{prefix} [{mark}] {item.get('kind', ''):<16} {target:<{max(10, width - 36)}} {float(item.get('age_days', 0)):.1f}d"
                 screen.addnstr(index + 2, 0, line, max(1, width - 1))
             screen.hline(max(2, height - 4), 0, curses.ACS_HLINE, max(1, width - 1))
-            kinds = {str(items[i].get("kind")) for i in marked if i < len(items)}
-            available = ",".join(actions_for(items[i]) for i in marked if i < len(items)) if len(kinds) == 1 else "mixed/none"
+            available = _available_label(items, marked)
             screen.addnstr(max(0, height - 3), 0, f"marked: {len(marked)}  available: {available}", max(1, width - 1))
             if messages:
                 screen.addnstr(max(0, height - 2), 0, _short(messages[-1], max(1, width - 1)), max(1, width - 1))

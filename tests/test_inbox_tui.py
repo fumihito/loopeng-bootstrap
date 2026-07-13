@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, interactive
+from loopeng.inbox_tui import _available_label
 from loopeng.okf.index import reindex_bundle
 
 
@@ -35,6 +36,9 @@ class InboxModelTests(unittest.TestCase):
         self.assertEqual(actions_for({"kind": "provisional"}), ACTION_TABLE["provisional"])
         self.assertNotIn("accept", actions_for({"kind": "external-review"}))
         self.assertNotIn("resolve", actions_for({"kind": "external-review"}))
+
+    def test_marked_action_label_flattens_action_tuples(self) -> None:
+        self.assertEqual(_available_label([{"kind": "provisional"}], {0}), "detail,establish,skip")
 
     def test_reject_requires_reason_and_interactive_records_session(self) -> None:
         holder, root = self.repo()
