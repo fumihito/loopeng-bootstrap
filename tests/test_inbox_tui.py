@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+import io
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, interactive
+from loopeng.okf.index import reindex_bundle
+
+
+def _document(concept: str, tier: str = "provisional") -> tuple[str, str]:
+    namespace, name = concept.split("/", 1)
+    type_name = {"failure-patterns": "Failure Pattern", "decisions": "Decision"}[namespace]
+    text = "---\n" + "\n".join((
+        f'type: "{type_name}"', f'title: "{name}"', f'description: "{name}"', "tags: []",
+        'timestamp: "2026-07-13T00:00:00Z"', "status: active", "sensitivity: internal",
+        'authority: "test"', "confidence: 0.7", f"tier: {tier}", 'space: "project"',
+    )) + "\n---\n\n# Summary\n\nbody\n"
+    return namespace, text
+
+
+class InboxModelTests(unittest.TestCase):
+    def repo(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
+        holder = tempfile.TemporaryDirectory()
+        root = Path(holder.name)
+        for namespace in ("concepts", "decisions", "constraints", "failure-patterns", "evaluation-rules", "recovery-patterns", "runbooks", "references"):
+            (root / "llmwiki" / namespace).mkdir(parents=True)
+        reindex_bundle(root / "llmwiki")
+        return holder, root
+
+    def test_action_table_and_external_review_have_no_resolve_action(self) -> None:
+        self.assertEqual(actions_for({"kind": "provisional"}), ACTION_TABLE["provisional"])
+        self.assertNotIn("accept", actions_for({"kind": "external-review"}))
+        self.assertNotIn("resolve", actions_for({"kind": "external-review"}))
+
+    def test_reject_requires_reason_and_interactive_records_session(self) -> None:
+        holder, root = self.repo()
+        try:
+            draft_root = root / ".agent-loop/state/memory-drafts"
+            draft_root.mkdir(parents=True)
+            draft = {"draft_id": "d1", "operations": [{"action": "UPSERT", "concept_id": "decisions/d1", "document": _document("decisions/d1", "established")[1]}]}
+            (draft_root / "d1.json").write_text(json.dumps(draft), encoding="utf-8")
+            item = {"kind": "draft", "target": "d1", "path": ".agent-loop/state/memory-drafts/d1.json"}
+            result = execute(root, item, "reject", "tui-test", "")
+            self.assertTrue(result["cancelled"])
+            output = io.StringIO()
+            interactive(root, io.StringIO("1\nreject\n\nq\nn\n"), output)
+            journal = next((root / ".agent-loop/state/journal").glob("tui-*.jsonl"))
+            text = journal.read_text(encoding="utf-8")
+            self.assertIn('"kind": "run-start"', text)
+            self.assertIn('"kind": "run-end"', text)
+            self.assertIn("Cancelled", output.getvalue())
+        finally:
+            holder.cleanup()
+
+    def test_bulk_establish_rejects_mixed_kinds(self) -> None:
+        holder, root = self.repo()
+        try:
+            result = execute(root, [{"kind": "provisional", "target": "llmwiki/decisions/a.md"}, {"kind": "draft", "target": "d"}], "establish", "tui-test")
+            self.assertFalse(result["ok"])
+            self.assertIn("provisional", result["error"])
+        finally:
+            holder.cleanup()
+
+    def test_external_request_delegates_and_does_not_accept(self) -> None:
+        holder, root = self.repo()
+        try:
+            with mock.patch("loopeng.inbox_model.build_request", return_value="request") as request:
+                result = execute(root, {"kind": "external-review", "target": "run-1"}, "request", "tui-test")
+            request.assert_called_once_with(root, "run-1")
+            self.assertEqual(result["request"], "request")
+            self.assertNotIn("accepted", result)
+        finally:
+            holder.cleanup()
+
+
+if __name__ == "__main__":
+    unittest.main()

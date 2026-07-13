@@ -478,12 +478,15 @@ def execute_go(repo: Path, item_id: str, run_id: str | None = None) -> str:
     return result + "\n"
 
 
-def record_decision(repo: Path, item_id: str, choice: str, run_id: str | None = None) -> str:
+def record_decision(repo: Path, item_id: str, choice: str, run_id: str | None = None, authorization: str | None = None) -> str:
     if choice not in {"go", "alt", "hold"}:
         raise ValueError("choice must be go, alt, or hold")
     run_id = run_id or "review-decision-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     append_event(repo, run_id, {"kind": EVENT_RUN_START, "agent": "review", "goal": f"review: {choice} {item_id}"})
-    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": item_id, "choice": choice})
+    event = {"kind": EVENT_DECISION, "item": item_id, "choice": choice}
+    if authorization:
+        event["authorization"] = authorization
+    append_event(repo, run_id, event)
     append_event(repo, run_id, {"kind": EVENT_RUN_END, "agent": "review"})
     return f"[{item_id}] choice={choice} を記録しました。停止します。\n"
 

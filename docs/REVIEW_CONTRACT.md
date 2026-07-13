@@ -18,7 +18,9 @@ dimension requires at least one evidence pointer; D5 always requires a
 
 `review intake` checks contract fields, packet SHA-256 identity, journal/file/
 report/sidecar pointer existence, D2 outcome consistency, D3 memory-write
-claims, D4 critical/warn counts, and external reviewer relation. A reviewer
+claims, D4 critical/warn counts, and external reviewer relation. Direct
+`tui-interactive` decision events are valid without a quote; the direct user
+operation is the authorization record. A reviewer
 model matching the run agent is accepted with a `self_review` warning. On
 acceptance it appends `external-review`; only that event resolves the due item.
 

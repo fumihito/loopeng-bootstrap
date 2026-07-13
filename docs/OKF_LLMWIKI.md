@@ -8,6 +8,8 @@
 
 Each repository-local bundle has a semantic space: the bootstrap source tree (identified by `loopeng/__main__.py`, `install.py`, and `utils/phase1_gate.py`) is `framework`; an installed target repository is `project`. Documents written by apply, draft, promote, or reindex carry `space: framework|project`. Queries default to the current space and accept `--space all` (or `framework`/`project`) when cross-space reading is intentional. The `wiki_space_mismatch` audit is a warning that lists mislabeled entries; it does not block cleanup. Stats and efficacy are scoped by space.
 
+The inbox can be processed with `loopeng inbox --tui` or `--interactive`. Both are thin frontends over the existing approval, promotion, review-request, decision, and outcome functions; curses automatically falls back to the line-oriented mode when no TTY or curses support is available.
+
 The old multi-role memory pipeline is gone. In v0.2, any agent may prepare a report, but the bundle itself changes only when `python3 -m loopeng okf apply <report.md>` validates and applies the report successfully.
 
 ## What belongs here

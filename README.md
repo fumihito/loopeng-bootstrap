@@ -25,6 +25,7 @@ Pending durable-memory drafts are listed with `python3 -m loopeng memory drafts 
 | `loopeng memory curate` | Apply at most three provisional UPSERTs from autonomous namespaces after audit |
 | `loopeng memory stats` | Summarize LLMWiki mutation windows and non-LLMWiki commits |
 | `loopeng memory efficacy` | Compare signed learning entries with later recurrence and retrieval (`--space current|framework|project|all`) |
+| `loopeng inbox --tui` / `--interactive` | Process inbox items with curses or line-oriented fallback |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
 | `loopeng run verify` / `run outcome` | Verify declared acceptance commands or append a human outcome label |

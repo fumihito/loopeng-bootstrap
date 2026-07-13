@@ -271,6 +271,8 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_cmd.add_argument("--fix", action="store_true")
     inbox_cmd = sub.add_parser("inbox", help=t("人間の非同期受信箱を表示", "Show the human async inbox"), formatter_class=formatter)
     inbox_cmd.add_argument("--repo", type=_path, default=Path("."))
+    inbox_cmd.add_argument("--tui", action="store_true", help=t("TTY の対話画面", "Launch curses inbox UI"))
+    inbox_cmd.add_argument("--interactive", action="store_true", help=t("行指向の対話画面", "Launch line-oriented inbox UI"))
 
     return parser
 
@@ -391,7 +393,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "learning" and args.learning_command == "promote":
         result = establish(args.repo.resolve(), args.establish) if args.establish is not None else promote(args.repo.resolve(), args.top, args.ids, args.type_name)
         if args.run:
-            append_event(args.repo.resolve(), args.run, {"kind": EVENT_MEMORY_DRAFT, "drafts": [item["draft"] for item in result], "proposals": [item["concept_id"] for item in result]})
+            entries = result.get("drafts", []) if isinstance(result, dict) else result
+            proposals = [concept for item in entries for concept in (item.get("concept_ids", [item.get("concept_id")]) if isinstance(item, dict) else []) if concept]
+            append_event(args.repo.resolve(), args.run, {"kind": EVENT_MEMORY_DRAFT, "drafts": [item["draft"] for item in entries], "proposals": proposals})
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
@@ -517,6 +521,33 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "inbox":
+        if args.tui or args.interactive:
+            from .inbox_model import interactive
+            if args.interactive:
+                return interactive(args.repo, sys.stdin, sys.stdout)
+            try:
+                import curses  # noqa: F401
+                if not (sys.stdin.isatty() and sys.stdout.isatty()):
+                    print("TTY unavailable; falling back to --interactive.")
+                    return interactive(args.repo, sys.stdin, sys.stdout)
+                from .inbox_tui import run
+                from .inbox_model import start_session, end_session
+                run_id = start_session(args.repo.resolve())
+                try:
+                    run(args.repo.resolve(), run_id)
+                finally:
+                    end_session(args.repo.resolve(), run_id)
+                from .audit.report import run_audit_report as run_tui_audit_report
+                answer = input("Run audit now? [Y/n] ").strip().casefold()
+                if answer not in {"n", "no"}:
+                    print(f"audit: {run_tui_audit_report(args.repo.resolve(), run_id)}")
+                return 0
+            except ImportError:
+                print("curses unavailable; falling back to --interactive.")
+                return interactive(args.repo, sys.stdin, sys.stdout)
+            except curses.error:
+                print("curses unavailable; falling back to --interactive.")
+                return interactive(args.repo, sys.stdin, sys.stdout)
         print(render_inbox(args.repo), end="")
         return 0
 

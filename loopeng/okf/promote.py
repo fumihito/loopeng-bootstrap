@@ -81,6 +81,7 @@ def promote(repo: Path, top: int = 3, ids: list[str] | None = None, type_name: s
 def establish(repo: Path, concept_ids: list[str]) -> dict[str, Any]:
     """Create explicit-user approval reports; do not apply them here."""
     out = []
+    operations: list[dict[str, Any]] = []
     target_dir = repo / ".agent-loop" / "state" / "memory-drafts"
     target_dir.mkdir(parents=True, exist_ok=True)
     for concept_id in concept_ids:
@@ -98,8 +99,11 @@ def establish(repo: Path, concept_ids: list[str]) -> dict[str, Any]:
         for key, value in frontmatter.items():
             rendered.append(f"{key}: {json.dumps(value, ensure_ascii=False) if isinstance(value, (str, list)) else value}")
         rendered.extend(["---", "", body.rstrip("\n"), ""])
-        report = {"schema": "okf-report-v1", "role": "explicit-establish", "authority": "user", "operations": [{"action": "UPSERT", "proposal_id": f"establish-{concept_id.replace('/', '-')}", "concept_id": concept_id, "document": "\n".join(rendered)}]}
-        target = target_dir / f"establish-{concept_id.replace('/', '-')}.json"
+        operations.append({"action": "UPSERT", "proposal_id": f"establish-{concept_id.replace('/', '-')}", "concept_id": concept_id, "document": "\n".join(rendered)})
+    for batch_index in range(0, len(operations), 20):
+        batch = operations[batch_index:batch_index + 20]
+        report = {"schema": "okf-report-v1", "role": "explicit-establish", "authority": "user", "operations": batch}
+        target = target_dir / f"establish-{batch_index // 20 + 1}.json"
         target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        out.append({"concept_id": concept_id, "draft": str(target)})
+        out.append({"concept_ids": [str(item["concept_id"]) for item in batch], "draft": str(target)})
     return {"drafts": out}

@@ -4,12 +4,15 @@ title: "Alert not block scope"
 description: "Keep alerts observable without expanding hard blocking."
 tags: ["policy", "alerts"]
 timestamp: "2026-07-13T00:00:00Z"
-status: active
-sensitivity: internal
+status: "active"
+sensitivity: "internal"
 authority: "user"
 confidence: 0.7
-tier: provisional
+tier: "established"
+space: "framework"
 ---
+
+
 
 # Summary
 Reserve blocking for enumerated catastrophic cases.

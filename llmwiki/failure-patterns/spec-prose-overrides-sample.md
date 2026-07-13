@@ -4,12 +4,15 @@ title: "Specification prose overrides sample"
 description: "Normative prose wins when a sample conflicts."
 tags: ["specification", "review"]
 timestamp: "2026-07-13T00:00:00Z"
-status: active
-sensitivity: internal
+status: "active"
+sensitivity: "internal"
 authority: "user"
 confidence: 0.7
-tier: provisional
+tier: "established"
+space: "framework"
 ---
+
+
 
 # Summary
 Follow governing prose or executable semantics when examples conflict.

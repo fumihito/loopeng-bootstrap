@@ -86,8 +86,8 @@ def show_draft(repo: Path, draft_id: str) -> dict[str, Any]:
     return {"id": item["id"], "path": str(item["path"]), "type": item["type"], "concept_id": item["concept_id"], "report": item["report"]}
 
 
-def approve(repo: Path, draft_ids: list[str], quote: str, run_id: str | None = None, all_drafts: bool = False) -> dict[str, Any]:
-    if not quote or len(quote) > 200:
+def approve(repo: Path, draft_ids: list[str], quote: str = "", run_id: str | None = None, all_drafts: bool = False, authorization: str | None = None) -> dict[str, Any]:
+    if authorization != "tui-interactive" and (not quote or len(quote) > 200):
         raise ValueError("--quote is required and must be 200 characters or fewer")
     repo = repo.resolve()
     items = pending(repo)
@@ -111,9 +111,12 @@ def approve(repo: Path, draft_ids: list[str], quote: str, run_id: str | None = N
             append_event(repo, run_id or "memory-approval", {"kind": EVENT_MEMORY_DRAFT, "draft": item["id"], "status": "applied"})
         else:
             failed.append({"id": item["id"], "error": "; ".join(map(str, result.get("errors", [])))})
-    append_event(repo, run_id or "memory-approval", {"kind": EVENT_DECISION, "item": "memory-approval", "choice": "approve",
-                                                       "drafts": [item["id"] for item in selected], "applied": applied,
-                                                       "failed": failed, "quote": quote})
+    decision = {"kind": EVENT_DECISION, "item": "memory-approval", "choice": "approve",
+                "drafts": [item["id"] for item in selected], "applied": applied,
+                "failed": failed, "quote": quote}
+    if authorization:
+        decision["authorization"] = authorization
+    append_event(repo, run_id or "memory-approval", decision)
     return {"ok": not failed, "applied": applied, "failed": failed}
 
 

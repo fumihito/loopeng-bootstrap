@@ -18,3 +18,4 @@
 - applied d-20260713-06.json author=seed-draft proposals=seed-06
 - applied d-20260713-07.json author=seed-draft proposals=seed-07
 - applied d-20260713-08.json author=seed-draft proposals=seed-08
+- applied establish-1.json author=explicit-establish proposals=establish-failure-patterns-requester-supplier-split-deadlock,establish-failure-patterns-requirement-named-vacuous-test,establish-failure-patterns-process-compliance-is-not-spec-conformance,establish-failure-patterns-spec-prose-overrides-sample,establish-constraints-stdlib-only-and-single-declaration,establish-decisions-autonomous-memory-namespaces,establish-decisions-alert-not-block-scope,establish-decisions-gate-freeze-and-extend

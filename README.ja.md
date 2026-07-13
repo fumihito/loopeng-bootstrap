@@ -25,6 +25,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng memory curate` | 自律名前空間の provisional UPSERT を最大3件まで適用 |
 | `loopeng memory stats` | LLMWiki の変異窓とバンドル外コミットを集計 |
 | `loopeng memory efficacy` | signature 付き学習の再発・参照効力を突合 (`--space current|framework|project|all`) |
+| `loopeng inbox --tui` / `--interactive` | curses または行指向フォールバックで inbox を対話処理 |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
 | `loopeng run verify` / `run outcome` | 宣言された受入コマンドの検証、または人間の成果ラベル追記 |
