@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from loopeng.inbox_model import ACTION_TABLE, actions_for, detail, execute, generate_packet, interactive, packet_detail_lines
-from loopeng.inbox_tui import _available_label
+from loopeng.inbox_tui import _available_label, _next_completion
 from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
 
@@ -40,6 +40,12 @@ class InboxModelTests(unittest.TestCase):
 
     def test_marked_action_label_flattens_action_tuples(self) -> None:
         self.assertEqual(_available_label([{"kind": "provisional"}], {0}), "detail,establish,skip")
+
+    def test_incoming_review_exposes_intake_and_tab_completion_cycles_actions(self) -> None:
+        self.assertIn("intake", actions_for({"kind": "incoming-review"}))
+        options = actions_for({"kind": "incoming-review"})
+        self.assertEqual(_next_completion("", options, -1), ("intake", 0))
+        self.assertEqual(_next_completion("", options, 0), ("detail", 1))
 
     def test_reject_requires_reason_and_interactive_records_session(self) -> None:
         holder, root = self.repo()

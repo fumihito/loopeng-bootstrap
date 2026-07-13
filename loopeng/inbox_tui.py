@@ -35,6 +35,43 @@ def _prompt(screen: Any, text: str) -> str:
     return value
 
 
+def _next_completion(value: str, options: tuple[str, ...], index: int) -> tuple[str, int]:
+    matches = [option for option in options if option.startswith(value)]
+    if not matches:
+        return value, index
+    next_index = (index + 1) % len(matches)
+    return matches[next_index], next_index
+
+
+def _action_prompt(screen: Any, options: tuple[str, ...]) -> str:
+    """Read an action, cycling matching actions with Tab."""
+    height, width = screen.getmaxyx()
+    value = ""
+    completion_index = -1
+    curses.noecho()
+    try:
+        while True:
+            screen.move(max(0, height - 2), 0)
+            screen.clrtoeol()
+            screen.addnstr(max(0, height - 2), 0, f"action {options}: {value}", max(1, width - 1))
+            screen.refresh()
+            key = screen.getch()
+            if key in (curses.KEY_ENTER, 10, 13):
+                return value
+            if key in (27,):
+                return ""
+            if key in (curses.KEY_BACKSPACE, 8, 127):
+                value = value[:-1]
+                completion_index = -1
+            elif key in (9,):
+                value, completion_index = _next_completion(value, options, completion_index)
+            elif 0 <= key < 256:
+                value += chr(key)
+                completion_index = -1
+    finally:
+        curses.noecho()
+
+
 def _pager(screen: Any, lines: list[str]) -> None:
     offset = 0
     while True:
@@ -90,7 +127,7 @@ def run(repo: Path, run_id: str) -> None:
             items = list_items(repo)
             screen.erase()
             height, width = screen.getmaxyx()
-            screen.addnstr(0, 0, f"Inbox ({len(items)})  [space]=mark [a]=act [d]=detail [A]=act-all-marked [q]=quit", max(1, width - 1))
+            screen.addnstr(0, 0, f"Inbox ({len(items)})  [x]=mark [a]=act [d]=detail [A]=act-all-marked [q]=quit", max(1, width - 1))
             list_limit = max(0, height - 6) if not detail_lines else max(0, height - min(len(detail_lines), 8) - 6)
             for index, item in enumerate(items[:list_limit]):
                 prefix = ">" if index == selected else " "
@@ -116,7 +153,7 @@ def run(repo: Path, run_id: str) -> None:
                 selected = min(max(0, len(items) - 1), selected + 1)
             elif key in (curses.KEY_UP, ord("k")):
                 selected = max(0, selected - 1)
-            elif key == ord(" ") and items:
+            elif key == ord("x") and items:
                 if selected in marked:
                     marked.remove(selected)
                 else:
@@ -137,7 +174,7 @@ def run(repo: Path, run_id: str) -> None:
                     messages.append("bulk action requires one kind")
                     continue
                 options = actions_for(chosen[0])
-                action = _prompt(screen, f"action {options}: ")
+                action = _action_prompt(screen, options)
                 if action not in options:
                     messages.append("action unavailable")
                     continue
