@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +12,77 @@ from .journal import EVENT_OUTCOME, append_event
 
 VERIFY_TIMEOUT_SECONDS = 300
 RESULT_TEXT_MAX = 500
+RESERVED_RUN_SELECTORS = ("latest", "latest-due", "latest-fail")
+
+
+def _run_start(repo: Path, run_id: str) -> dict[str, Any] | None:
+    for event in _events(repo, run_id):
+        if event.get("kind") == "run-start":
+            return event
+    return None
+
+
+def _run_start_time(repo: Path, run_id: str, event: dict[str, Any]) -> tuple[str, str]:
+    value = str(event.get("timestamp") or event.get("ts") or "")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.isoformat(), run_id
+    except ValueError:
+        path = repo / agent_root("state", "journal") / f"{run_id}.jsonl"
+        return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), run_id
+
+
+def _selector_candidates(repo: Path) -> list[tuple[str, dict[str, Any]]]:
+    root = repo.resolve() / agent_root("state", "journal")
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    for path in sorted(root.glob("*.jsonl")) if root.is_dir() else ():
+        run_id = path.stem
+        event = _run_start(repo, run_id)
+        if event is not None:
+            candidates.append((run_id, event))
+    return candidates
+
+
+def _is_due(repo: Path, run_id: str) -> bool:
+    report = repo.resolve() / agent_root("state", "reports") / f"{run_id}.json"
+    try:
+        value = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    alerts = value.get("alerts", []) if isinstance(value, dict) else []
+    if not any(isinstance(alert, dict) and alert.get("check_id") == "external_review_due" for alert in alerts):
+        return False
+    return not any(event.get("kind") == "external-review" and event.get("accepted_by") == "loopeng review intake" for event in _events(repo, run_id))
+
+
+def _is_fail(repo: Path, run_id: str) -> bool:
+    if any(event.get("kind") == EVENT_OUTCOME and event.get("status") == "fail" for event in _events(repo, run_id)):
+        return True
+    report = repo.resolve() / agent_root("state", "reports") / f"{run_id}.json"
+    try:
+        value = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return isinstance(value, dict) and value.get("outcome") == "fail"
+
+
+def resolve_run_selector(repo: Path, token: str) -> str:
+    """Resolve a reserved run selector, or pass through an explicit run id."""
+    if token not in RESERVED_RUN_SELECTORS:
+        return token
+    repo = repo.resolve()
+    candidates = _selector_candidates(repo)
+    if token == "latest-due":
+        candidates = [(run_id, event) for run_id, event in candidates if _is_due(repo, run_id)]
+    elif token == "latest-fail":
+        candidates = [(run_id, event) for run_id, event in candidates if _is_fail(repo, run_id)]
+    if not candidates:
+        raise ValueError(f"no run matches selector '{token}'")
+    selected = max(candidates, key=lambda item: _run_start_time(repo, item[0], item[1]))[0]
+    print(f"selector '{token}' -> {selected}", file=sys.stderr)
+    return selected
 
 
 def _events(repo: Path, run_id: str) -> list[dict[str, Any]]:

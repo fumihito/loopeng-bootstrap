@@ -40,7 +40,7 @@ Run Report is descriptive, not justificatory. It reports what happened and what 
 
 Use `python3 -m loopeng review dag --stage <stage>` to inspect finding details from schema 2 sidecars; schema 1 sidecars remain readable and are marked as detail unavailable. The detail view is text/JSON only and does not alter the overview diagrams.
 
-The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report.
+The canonical generator is `python3 -m loopeng audit run --run <id>`, which consumes the journal plus the git worktree and writes a markdown report. `<id>` may also be `latest`, `latest-due`, or `latest-fail`; the resolved ID is written to stderr.
 
 The optional sidecar `behavior` key contains `skills` and `blocked` count maps. The schema version remains unchanged because adding this optional key is backward compatible; raise it only for incompatible changes.
 

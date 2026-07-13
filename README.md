@@ -109,6 +109,7 @@ none
 <!-- ongoing-end -->
 
 Memory retrieval follows `index.md → okf query → top K (default 5) document reads`; do not bulk-read `llmwiki/`.
+Commands that accept `--run` also accept `latest`, `latest-due`, and `latest-fail`; the resolved run ID is printed to stderr. `latest-due` excludes runs already accepted by `review intake`.
 `okf query` defaults to the current framework/project space; use `--space all` for an explicit cross-space read. `memory stats` and `memory efficacy` likewise support `--space` and report only the selected space.
 Provisional entries are observations; prefer established entries as the basis for constraints and decisions. `memory curate` may apply only bounded provisional UPSERTs in autonomous namespaces; other drafts require explicit user instruction.
 

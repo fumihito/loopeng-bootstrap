@@ -100,6 +100,8 @@ def journal_path(repo: Path, run_id: str) -> Path:
 
 
 def append_event(repo: Path, run_id: str, event: dict[str, Any]) -> Path:
+    if str(event.get("kind") or "").strip().lower() == EVENT_RUN_START and run_id in {"latest", "latest-due", "latest-fail"}:
+        raise ValueError(f"run-id '{run_id}' is reserved as a selector and cannot be used for run-start")
     path = journal_path(repo, run_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(sanitize_event(event))

@@ -21,6 +21,7 @@ from .okf.approval import approve, list_drafts, reject, show_draft, snooze
 from .schedule import build_next_turn_prompt
 from .memory_stats import STATS_WINDOWS, collect_stats, render_stats
 from .run import record_human_outcome, verify_run
+from .run import RESERVED_RUN_SELECTORS, resolve_run_selector
 from .doctor import doctor
 from .memory_efficacy import collect_efficacy, render_efficacy
 from .inbox import render_inbox
@@ -41,6 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     def t(japanese: str, english_text: str) -> str:
         return english_text if english else japanese
+
+    run_selector_help = t("run ID または selector (latest / latest-due / latest-fail)", "run ID or selector (latest / latest-due / latest-fail)")
 
     parser = argparse.ArgumentParser(
         prog="loopeng",
@@ -99,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply_cmd.add_argument("report", type=_path, help=t("適用する JSON レポート", "JSON report to apply"))
     apply_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"), help=t("更新対象の LLMWiki (既定: llmwiki)", "LLMWiki to update (default: llmwiki)"))
     apply_cmd.add_argument("--backup-dir", type=_path, default=Path(agent_root("runtime", "okf-backups")), help=t("バックアップ先", "Backup directory"))
-    apply_cmd.add_argument("--run", help=t("適用イベントを追記する run ID", "Run ID for recording the apply event"))
+    apply_cmd.add_argument("--run", help=run_selector_help)
 
     query = okf_sub.add_parser("query", help=t("決定論的にメモリを検索", "Deterministically query memory"))
     query.add_argument("bundle", type=_path)
@@ -108,7 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--grep")
     query.add_argument("--status", choices=("active", "deprecated", "all"), default="active")
     query.add_argument("--limit", type=int, default=10)
-    query.add_argument("--run")
+    query.add_argument("--run", help=run_selector_help)
     query.add_argument("--tier", choices=("all", "provisional", "established"), default="all")
     query.add_argument("--space", choices=("current", "framework", "project", "all"), default="current")
 
@@ -116,7 +119,7 @@ def build_parser() -> argparse.ArgumentParser:
     memory_sub = memory.add_subparsers(dest="memory_command", required=True)
     curate_cmd = memory_sub.add_parser("curate", help=t("learning を起案し安全な provisional のみ適用", "Promote learning and apply safe provisional entries"))
     curate_cmd.add_argument("--repo", type=_path, default=Path("."))
-    curate_cmd.add_argument("--run")
+    curate_cmd.add_argument("--run", help=run_selector_help)
     curate_cmd.add_argument("--top", type=int, default=3)
     drafts_cmd = memory_sub.add_parser("drafts", help=t("承認待ち draft を一覧・表示", "List or show pending memory drafts"))
     drafts_sub = drafts_cmd.add_subparsers(dest="drafts_command", required=True)
@@ -129,16 +132,16 @@ def build_parser() -> argparse.ArgumentParser:
     approve_cmd.add_argument("ids", nargs="*")
     approve_cmd.add_argument("--all", action="store_true")
     approve_cmd.add_argument("--quote", required=True)
-    approve_cmd.add_argument("--run")
+    approve_cmd.add_argument("--run", help=run_selector_help)
     approve_cmd.add_argument("--repo", type=_path, default=Path("."))
     reject_cmd = memory_sub.add_parser("reject", help=t("draft を却下して保存", "Reject and retain a draft"))
     reject_cmd.add_argument("id")
     reject_cmd.add_argument("--reason", required=True)
-    reject_cmd.add_argument("--run")
+    reject_cmd.add_argument("--run", help=run_selector_help)
     reject_cmd.add_argument("--repo", type=_path, default=Path("."))
     snooze_cmd = memory_sub.add_parser("snooze", help=t("承認要請を一時停止", "Snooze approval requests"))
     snooze_cmd.add_argument("--days", type=int, default=3)
-    snooze_cmd.add_argument("--run")
+    snooze_cmd.add_argument("--run", help=run_selector_help)
     snooze_cmd.add_argument("--repo", type=_path, default=Path("."))
     stats_cmd = memory_sub.add_parser("stats", help=t("メモリ更新とコミット活動を集計", "Summarize memory updates and commit activity"))
     stats_cmd.add_argument("--repo", type=_path, default=Path("."))
@@ -160,7 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
     promote_cmd.add_argument("--top", type=int, default=3)
     promote_cmd.add_argument("--ids", nargs="*")
     promote_cmd.add_argument("--type", dest="type_name", default="Concept")
-    promote_cmd.add_argument("--run")
+    promote_cmd.add_argument("--run", help=run_selector_help)
     promote_cmd.add_argument("--establish", nargs="*")
 
     draft_cmd = okf_sub.add_parser("draft", help=t("一般知識の draft を生成", "Generate a knowledge draft"))
@@ -181,7 +184,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=t("JSON イベントをサニタイズして run の journal に追記します。", "Sanitize a JSON event and append it to a run journal."),
         formatter_class=formatter,
     )
-    journal_add.add_argument("--run", required=True, help=t("イベントを属させる run ID", "Run ID that owns the event"))
+    journal_add.add_argument("--run", required=True, help=run_selector_help)
     journal_add.add_argument("--event", required=True, help=t("追記する JSON イベント", "JSON event to append"))
     journal_add.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
 
@@ -209,10 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
         description=t("指定した run の監査結果を .agent-loop/state/reports に保存します。", "Save the audit result for a run under .agent-loop/state/reports."),
         formatter_class=formatter,
     )
-    audit_run.add_argument("--run", required=True, help=t("監査対象の run ID", "Run ID to audit"))
+    audit_run.add_argument("--run", required=True, help=run_selector_help)
     audit_run.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
     audit_export = audit_sub.add_parser("export", help=t("レビューパケットを出力", "Export a review packet"), formatter_class=formatter)
-    audit_export.add_argument("--run", required=True)
+    audit_export.add_argument("--run", required=True, help=run_selector_help)
     audit_export.add_argument("--repo", type=_path, default=Path("."))
 
     review = sub.add_parser(
@@ -225,7 +228,7 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--runs", type=int, default=5, help=t("表示対象にする直近 run 数 (既定: 5)", "Number of recent runs to show (default: 5)"))
     review.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
     review.add_argument("--section", choices=("results", "concerns", "premises"), help=t("表示するセクションだけに絞る", "Show only one section"))
-    review.add_argument("--run", help=t("レビュー記録を関連付ける run ID", "Run ID to associate with the review"))
+    review.add_argument("--run", help=run_selector_help)
     review.add_argument("--triage", action="store_true", help=t("未確認項目をトリアージ表示", "Show unreviewed items for triage"))
     review.add_argument("--next", dest="next_item", action="store_true", help=t("次のトリアージ項目だけを表示", "Show only the next triage item"))
     review.add_argument("--full", action="store_true", help=t("完全なレビュー表示を要求", "Request the full review"))
@@ -254,10 +257,10 @@ def build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help=t("成果判定を検証・記録", "Verify and record run outcomes"), formatter_class=formatter)
     run_sub = run.add_subparsers(dest="run_command", required=True)
     verify = run_sub.add_parser("verify", help=t("宣言された受入条件を実行", "Execute declared acceptance checks"), formatter_class=formatter)
-    verify.add_argument("--run", required=True)
+    verify.add_argument("--run", required=True, help=run_selector_help)
     verify.add_argument("--repo", type=_path, default=Path("."))
     outcome = run_sub.add_parser("outcome", help=t("人間の成果ラベルを追記", "Append a human outcome label"), formatter_class=formatter)
-    outcome.add_argument("--run", required=True)
+    outcome.add_argument("--run", required=True, help=run_selector_help)
     outcome.add_argument("--repo", type=_path, default=Path("."))
     outcome.add_argument("--status", choices=("pass", "fail"), required=True)
     outcome.add_argument("--note", required=True)
@@ -279,6 +282,25 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if getattr(args, "run", None):
+        skip_reserved_start = False
+        if args.command == "journal" and args.journal_command == "add" and args.run in RESERVED_RUN_SELECTORS:
+            try:
+                event_value = json.loads(args.event)
+                skip_reserved_start = isinstance(event_value, dict) and event_value.get("kind") == "run-start"
+            except json.JSONDecodeError:
+                pass
+        if not skip_reserved_start:
+            if hasattr(args, "repo"):
+                selector_repo = args.repo
+            elif hasattr(args, "bundle"):
+                selector_repo = args.bundle.resolve().parent
+            else:
+                selector_repo = Path(".")
+            try:
+                args.run = resolve_run_selector(selector_repo, args.run)
+            except ValueError as exc:
+                raise SystemExit(str(exc))
 
     if args.command == "okf" and args.okf_command == "validate":
         result = validate_bundle(args.bundle)
@@ -408,7 +430,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "journal" and args.journal_command == "add":
         event = json.loads(args.event)
-        path = append_event(args.repo, args.run, event)
+        try:
+            path = append_event(args.repo, args.run, event)
+        except ValueError as exc:
+            raise SystemExit(str(exc))
         print(str(path))
         return 0
 

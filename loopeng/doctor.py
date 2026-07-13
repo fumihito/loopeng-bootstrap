@@ -9,6 +9,7 @@ from typing import Any
 
 from ._paths import agent_root
 from .journal import EVENT_COMMAND, append_event
+from .run import RESERVED_RUN_SELECTORS
 from .locking import _stale
 from .okf.schema import validate_bundle
 
@@ -75,9 +76,11 @@ def inspect(repo: Path) -> dict[str, Any]:
         run_id = sidecar.stem
         if not (journals / f"{run_id}.jsonl").is_file():
             mismatches.append(run_id)
-    return {"ok": not (parse_errors or orphaned or mismatches or not bundle.get("ok")),
+    reserved_run_ids = [path.stem for path in (journals.glob("*.jsonl") if journals.is_dir() else ()) if path.stem in RESERVED_RUN_SELECTORS]
+    return {"ok": not (parse_errors or orphaned or mismatches or reserved_run_ids or not bundle.get("ok")),
             "json_errors": parse_errors, "stale_lock": stale_lock, "orphaned_active_runs": orphaned,
-            "bundle": bundle, "drafts": drafts, "sidecar_journal_mismatches": mismatches}
+            "bundle": bundle, "drafts": drafts, "sidecar_journal_mismatches": mismatches,
+            "reserved_run_ids": reserved_run_ids}
 
 
 def doctor(repo: Path, fix: bool = False) -> dict[str, Any]:
