@@ -51,6 +51,12 @@ class HookTests(unittest.TestCase):
             denied = handler.handle(normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_input": {"command": "rm -rf /"}}))
             self.assertEqual(denied["response"]["hookSpecificOutput"]["permissionDecision"], "deny")
             allowed = handler.handle(normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_input": {"command": "echo hello"}}))
+            self.assertNotIn("permissionDecision", allowed["response"].get("hookSpecificOutput", {}))
+
+    def test_claude_pre_tool_explicitly_allows_non_blocked_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            allowed = handler.handle(normalize_claude({"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_input": {"command": "echo hello"}}))
             self.assertEqual(allowed["response"]["hookSpecificOutput"]["permissionDecision"], "allow")
 
     def test_skill_used_records_tool_and_path_sources_with_consecutive_suppression(self) -> None:

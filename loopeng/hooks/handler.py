@@ -372,7 +372,11 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
                     pass
                 result["response"] = {"hookSpecificOutput": {"permissionDecision": "deny", "permissionDecisionReason": _banner(event) + reason}}
             else:
-                result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}
+                # Codex treats an omitted permissionDecision as approval and
+                # rejects the explicit value "allow". Claude Code accepts
+                # the explicit decision, so keep that platform contract.
+                if event.platform != "codex":
+                    result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}
             return result
         if event.kind is EventKind.POST_TOOL:
             _post_tool(event, run_id)
@@ -410,5 +414,6 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
         if event.kind is EventKind.RUN_STOP:
             result["response"] = {"continue": True}
         elif event.kind is EventKind.PRE_TOOL:
-            result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}
+            if event.platform != "codex":
+                result["response"] = {"hookSpecificOutput": {"permissionDecision": "allow"}}
         return result
