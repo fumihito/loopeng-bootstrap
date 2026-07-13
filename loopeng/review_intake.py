@@ -63,15 +63,25 @@ def incoming_preview(path: Path) -> str:
     if value is None:
         return "unreadable incoming review"
     reviewer = value.get("reviewer") if isinstance(value.get("reviewer"), dict) else {}
+    packet = value.get("packet") if isinstance(value.get("packet"), dict) else {}
     dimensions = value.get("dimensions") if isinstance(value.get("dimensions"), list) else []
     lines = [
+        f"packet.run_id: {packet.get('run_id', '(missing)')}",
+        f"packet_hash: {packet.get('packet_hash', '(missing)')}",
         f"reviewer.model: {reviewer.get('model', '(missing)')}",
+        f"reviewer.session: {reviewer.get('session', '(missing)')}",
+        f"reviewer.relation: {reviewer.get('relation', '(missing)')}",
         f"overall: {value.get('overall', '(missing)')}",
         "dimensions:",
     ]
     for dimension in dimensions:
         if isinstance(dimension, dict):
-            lines.append(f"  {dimension.get('id', '?')}: {dimension.get('verdict', '(missing)')}")
+            lines.append(f"  {dimension.get('id', '?')} verdict: {dimension.get('verdict', '(missing)')}")
+            lines.append(f"    note: {dimension.get('note', '(none)')}")
+            evidence = dimension.get("evidence") if isinstance(dimension.get("evidence"), list) else []
+            for pointer in evidence:
+                if isinstance(pointer, dict):
+                    lines.append(f"    evidence: {pointer.get('ref', '(missing)')} — {pointer.get('note', '')}")
     findings = value.get("findings") if isinstance(value.get("findings"), list) else []
     if findings:
         lines.append("findings:")
