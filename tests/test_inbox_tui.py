@@ -41,11 +41,9 @@ class InboxModelTests(unittest.TestCase):
     def test_marked_action_label_flattens_action_tuples(self) -> None:
         self.assertEqual(_available_label([{"kind": "provisional"}], {0}), "detail,establish,skip")
 
-    def test_incoming_review_exposes_intake_and_tab_completion_cycles_actions(self) -> None:
-        self.assertIn("intake", actions_for({"kind": "incoming-review"}))
-        options = actions_for({"kind": "incoming-review"})
-        self.assertEqual(_next_completion("", options, -1), ("intake", 0))
-        self.assertEqual(_next_completion("", options, 0), ("detail", 1))
+    def test_incoming_review_requires_human_confirmation_before_intake(self) -> None:
+        self.assertEqual(actions_for({"kind": "incoming-review"}), ("confirm", "detail", "skip"))
+        self.assertEqual(actions_for({"kind": "incoming-review", "human_confirmed": True}), ("intake", "detail", "skip"))
 
     def test_request_and_review_cycle_from_shared_prefix(self) -> None:
         options = ("request", "review", "packet")
@@ -92,6 +90,19 @@ class InboxModelTests(unittest.TestCase):
             self.assertEqual(value["reviewer"]["model"], "human-tui")
             self.assertEqual([item["id"] for item in value["dimensions"]], ["D1", "D2", "D3", "D4", "D5"])
             self.assertEqual(value["overall"], "blocked-on-info")
+        finally:
+            holder.cleanup()
+
+    def test_confirm_marks_ai_review_before_intake(self) -> None:
+        holder, root = self.repo()
+        try:
+            path = root / ".agent-loop/state/reviews/incoming/ai.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps({"reviewer": {"model": "codex"}}), encoding="utf-8")
+            item = {"kind": "incoming-review", "target": "r1", "path": str(path.relative_to(root)), "human_confirmed": False}
+            result = execute(root, item, "confirm", "tui-test")
+            self.assertTrue(result["ok"])
+            self.assertTrue(json.loads(path.read_text(encoding="utf-8"))["human_confirmation"]["confirmed"])
         finally:
             holder.cleanup()
 

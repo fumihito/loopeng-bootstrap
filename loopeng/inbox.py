@@ -7,7 +7,7 @@ from typing import Any
 
 from ._paths import agent_root
 from .okf.schema import parse_document
-from .review_intake import incoming_candidates, incoming_matches, incoming_run_id
+from .review_intake import incoming_candidates, incoming_is_confirmed, incoming_matches, incoming_run_id
 
 INBOX_STALE_DAYS = 14
 INBOX_MAX_ITEMS = 100
@@ -34,11 +34,11 @@ def collect_inbox(repo: Path, now: datetime | None = None) -> list[dict[str, Any
             value = None
         run_id = incoming_run_id(path)
         matched = isinstance(value, dict) and incoming_matches(repo, value)
-        if matched and run_id:
+        if matched and run_id and incoming_is_confirmed(path):
             incoming_matched_runs.add(run_id)
         items.append({"kind":"incoming-review", "target": run_id or "(unmatched)",
                       "path": str(path.relative_to(repo)), "label": "intake",
-                      "run_id": run_id, "matched": matched,
+                      "run_id": run_id, "matched": matched, "human_confirmed": incoming_is_confirmed(path),
                       "timestamp": _age_timestamp(None, path.stat().st_mtime)})
     draft_root = repo / agent_root("state", "memory-drafts")
     for path in sorted(draft_root.glob("*.json")) if draft_root.is_dir() else ():

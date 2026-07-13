@@ -14,7 +14,7 @@ from .okf.apply import apply_report
 from .okf.promote import establish
 from .review import record_decision
 from .review_request import build_request, resolve_packet
-from .review_intake import ACCEPTED_REL, incoming_preview, intake, intake_auto, _move_intake_file
+from .review_intake import ACCEPTED_REL, confirm_incoming, incoming_preview, intake, intake_auto, _move_intake_file
 from .run import record_human_outcome
 from .audit.report import run_audit_report
 from .audit.export import export_packet
@@ -61,13 +61,15 @@ ACTION_TABLE = {
     "provisional": ("establish", "detail", "skip"),
     "draft": ("approve", "reject", "detail", "skip"),
     "external-review": ("request", "packet", "detail", "skip"),
-    "incoming-review": ("intake", "detail", "skip"),
+    "incoming-review": ("confirm", "detail", "skip"),
     "held": ("go", "alt", "hold", "detail", "skip"),
     "outcome": ("pass", "fail", "detail", "skip"),
 }
 
 
 def actions_for(item: dict[str, Any]) -> tuple[str, ...]:
+    if item.get("kind") == "incoming-review":
+        return ("intake", "detail", "skip") if item.get("human_confirmed") else ACTION_TABLE["incoming-review"]
     if item.get("kind") == "external-review" and item.get("incoming_candidate"):
         return ("request", "packet", "intake", "detail", "skip")
     return ACTION_TABLE.get(str(item.get("kind")), ("skip",))
@@ -190,6 +192,9 @@ def execute(repo: Path, item: dict[str, Any] | list[dict[str, Any]], action: str
         if result.get("accepted"):
             result["path"] = _move_intake_file(_path(repo, items[0]), repo / ACCEPTED_REL)
         return {"ok": bool(result.get("accepted")), **result}
+    if action == "confirm" and all(item.get("kind") == "incoming-review" for item in items):
+        results = [confirm_incoming(_path(repo, current)) for current in items]
+        return {"ok": all(result.get("confirmed") for result in results), "confirmed": results}
     if len(items) != 1:
         return {"ok": False, "error": "bulk actions require one kind and a supported bulk action"}
     current = items[0]

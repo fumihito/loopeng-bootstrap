@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,7 @@ def incoming_preview(path: Path) -> str:
     if value is None:
         return "unreadable incoming review"
     reviewer = value.get("reviewer") if isinstance(value.get("reviewer"), dict) else {}
+    confirmation = value.get("human_confirmation") if isinstance(value.get("human_confirmation"), dict) else {}
     packet = value.get("packet") if isinstance(value.get("packet"), dict) else {}
     dimensions = value.get("dimensions") if isinstance(value.get("dimensions"), list) else []
     lines = [
@@ -71,6 +73,7 @@ def incoming_preview(path: Path) -> str:
         f"reviewer.model: {reviewer.get('model', '(missing)')}",
         f"reviewer.session: {reviewer.get('session', '(missing)')}",
         f"reviewer.relation: {reviewer.get('relation', '(missing)')}",
+        f"human_confirmation: {'confirmed' if confirmation.get('confirmed') else 'required'}",
         f"overall: {value.get('overall', '(missing)')}",
         "dimensions:",
     ]
@@ -90,6 +93,21 @@ def incoming_preview(path: Path) -> str:
         for finding in findings[:10]:
             lines.extend(f"  {line}" for line in str(finding).splitlines()[:10])
     return "\n".join(lines)
+
+
+def incoming_is_confirmed(path: Path) -> bool:
+    value = _incoming_value(path)
+    confirmation = value.get("human_confirmation") if value else None
+    return isinstance(confirmation, dict) and confirmation.get("confirmed") is True
+
+
+def confirm_incoming(path: Path, actor: str = "tui-human") -> dict[str, Any]:
+    value = _incoming_value(path)
+    if value is None:
+        return {"confirmed": False, "error": "incoming review is not valid JSON"}
+    value["human_confirmation"] = {"confirmed": True, "actor": actor, "timestamp": datetime.now(timezone.utc).isoformat()}
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {"confirmed": True, "path": str(path)}
 
 
 def _find_packet(repo: Path, run_id: str, expected_hash: str) -> tuple[Path | None, list[str]]:
@@ -168,6 +186,15 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
     if errors:
         return {"accepted": False, "errors": errors, "warnings": warnings}
     assert isinstance(report, dict)
+    incoming_root = repo / INCOMING_REL
+    try:
+        report_path.resolve().relative_to(incoming_root.resolve())
+    except ValueError:
+        pass
+    else:
+        if not incoming_is_confirmed(report_path):
+            packet = report.get("packet") if isinstance(report.get("packet"), dict) else {}
+            return {"accepted": False, "errors": ["human confirmation required"], "warnings": [], "run_id": packet.get("run_id")}
     run_id = report["packet"]["run_id"]
     packet, packet_errors = _find_packet(repo, run_id, report["packet"]["packet_hash"])
     errors.extend(f"packet: {error}" for error in packet_errors)
