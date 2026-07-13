@@ -33,7 +33,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng inbox` | 承認待ち・保留・未解決成果を人間向けに一覧表示 |
 | `loopeng run stats` | ラン成果と統治コスト比を表示する（アラート化しない） |
 | `loopeng audit export` | sanitize 済みの journal・report・sidecar・git diff レビューパケットを出力 |
-| `loopeng review intake` / `request` | 外部エージェントレビューの決定論的受理、または依頼文生成 |
+| `loopeng review intake` / `request` | 外部エージェントレビューの決定論的受理、または依頼文生成。`intake --auto` は投函ディレクトリを走査 |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
 | `loopeng status` | 直近 Run Report と learning backlog の要約 |
 | `loopeng review` | 直近ランの結果・懸念・前提をレビュー。`--triage` で誘導し、`dag` で Mermaid/SVG のループ図を生成 |

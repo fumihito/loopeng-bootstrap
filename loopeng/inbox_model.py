@@ -14,6 +14,7 @@ from .okf.apply import apply_report
 from .okf.promote import establish
 from .review import record_decision
 from .review_request import build_request, resolve_packet
+from .review_intake import ACCEPTED_REL, incoming_preview, intake, intake_auto, _move_intake_file
 from .run import record_human_outcome
 from .audit.report import run_audit_report
 from .audit.export import export_packet
@@ -27,12 +28,15 @@ ACTION_TABLE = {
     "provisional": ("establish", "detail", "skip"),
     "draft": ("approve", "reject", "detail", "skip"),
     "external-review": ("request", "packet", "detail", "skip"),
+    "incoming-review": ("intake", "detail", "skip"),
     "held": ("go", "alt", "hold", "detail", "skip"),
     "outcome": ("pass", "fail", "detail", "skip"),
 }
 
 
 def actions_for(item: dict[str, Any]) -> tuple[str, ...]:
+    if item.get("kind") == "external-review" and item.get("incoming_candidate"):
+        return ("request", "packet", "intake", "detail", "skip")
     return ACTION_TABLE.get(str(item.get("kind")), ("skip",))
 
 
@@ -65,6 +69,8 @@ def detail(repo: Path, item: dict[str, Any]) -> str:
             return (f"packet unavailable for run {item['target']}\n"
                     f"Generate it with: python3 -m loopeng audit export --run {item['target']}")
         return "\n".join(packet_detail_lines(packet))
+    if kind == "incoming-review":
+        return incoming_preview(_path(repo, item))
     return json.dumps({key: item.get(key) for key in ("kind", "target", "label", "age_days")}, ensure_ascii=False, indent=2)
 
 
@@ -144,6 +150,13 @@ def execute(repo: Path, item: dict[str, Any] | list[dict[str, Any]], action: str
         return {"ok": True, "action": action, "detail": detail(repo, items[0]) if action == "detail" else ""}
     if action == "establish":
         return _establish(repo, items, run_id)
+    if action == "intake" and all(item.get("kind") == "incoming-review" for item in items):
+        if len(items) > 1:
+            return {"ok": True, "action": action, **intake_auto(repo)}
+        result = intake(repo, _path(repo, items[0]))
+        if result.get("accepted"):
+            result["path"] = _move_intake_file(_path(repo, items[0]), repo / ACCEPTED_REL)
+        return {"ok": bool(result.get("accepted")), **result}
     if len(items) != 1:
         return {"ok": False, "error": "bulk actions require one kind and a supported bulk action"}
     current = items[0]
@@ -158,6 +171,12 @@ def execute(repo: Path, item: dict[str, Any] | list[dict[str, Any]], action: str
         request = build_request(repo, str(current["target"]))
         append_event(repo, run_id, {"kind": EVENT_EXTERNAL_REVIEW, "run_id": str(current["target"]), "status": "request-generated", "authorization": "tui-interactive"})
         return {"ok": True, "request": request}
+    if action == "intake" and kind == "external-review" and current.get("incoming_candidate"):
+        candidates = [candidate for candidate in list_items(repo)
+                      if candidate.get("kind") == "incoming-review" and candidate.get("run_id") == current.get("target")]
+        if not candidates:
+            return {"ok": False, "error": "incoming review no longer exists"}
+        return execute(repo, candidates[0], action, run_id, value)
     if action == "packet" and kind == "external-review":
         packet = resolve_packet(repo, str(current["target"]))
         if packet is None:
@@ -245,5 +264,8 @@ def interactive(repo: Path, input_stream: Any, output_stream: Any) -> int:
         output_stream.write("\nInbox interactive session interrupted during audit prompt; session closed.\n")
         return 0
     if answer not in {"n", "no"}:
-        output_stream.write(f"audit: {run_audit_report(repo, run_id)}\n")
+        try:
+            output_stream.write(f"audit: {run_audit_report(repo, run_id)}\n")
+        except KeyboardInterrupt:
+            output_stream.write("\nInbox interactive session interrupted during audit; session closed.\n")
     return 0

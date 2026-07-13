@@ -232,6 +232,7 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--triage", action="store_true", help=t("未確認項目をトリアージ表示", "Show unreviewed items for triage"))
     review.add_argument("--next", dest="next_item", action="store_true", help=t("次のトリアージ項目だけを表示", "Show only the next triage item"))
     review.add_argument("--full", action="store_true", help=t("完全なレビュー表示を要求", "Request the full review"))
+    review.add_argument("--auto", action="store_true", help=t("incoming review を決定的順序で取り込む", "Intake incoming reviews in deterministic order"))
     review.add_argument("--go", help=t("指定したカタログ項目の remediation を実行", "Execute remediation for a catalog item"))
     review.add_argument("--decision", help=t("判断 ID を記録", "Record a decision ID"))
     review.add_argument("--choice", choices=("go", "alt", "hold"), help=t("判断: go / alt / hold", "Decision: go / alt / hold"))
@@ -459,6 +460,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.check and not args.stage:
             raise SystemExit("--check requires --stage")
         if args.review_view == "intake":
+            if args.auto:
+                from .review_intake import intake_auto
+                result = intake_auto(args.repo)
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+                return 1 if result["rejected"] or result["quarantined"] else 0
             if args.review_target is None:
                 raise SystemExit("review intake requires a report JSON path")
             result = intake(args.repo, args.review_target)
@@ -572,7 +578,10 @@ def main(argv: list[str] | None = None) -> int:
                     print("\nInbox TUI interrupted during audit prompt; session closed.")
                     return 0
                 if answer not in {"n", "no"}:
-                    print(f"audit: {run_tui_audit_report(args.repo.resolve(), run_id)}")
+                    try:
+                        print(f"audit: {run_tui_audit_report(args.repo.resolve(), run_id)}")
+                    except KeyboardInterrupt:
+                        print("\nInbox TUI interrupted during audit; session closed.")
                 return 0
             except ImportError:
                 print("curses unavailable; falling back to --interactive.")

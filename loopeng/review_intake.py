@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -10,9 +11,73 @@ from .audit.export import packet_hash
 from .journal import EVENT_EXTERNAL_REVIEW, append_event
 from .review_contract import validate_contract
 
+INCOMING_REL = agent_root("state", "reviews", "incoming")
+ACCEPTED_REL = agent_root("state", "reviews", "accepted")
+REJECTED_REL = agent_root("state", "reviews", "rejected-intake")
+
 
 def _load_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _incoming_value(path: Path) -> dict[str, Any] | None:
+    try:
+        value = _load_json(path)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def incoming_dir(repo: Path) -> Path:
+    path = repo.resolve() / INCOMING_REL
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def incoming_candidates(repo: Path) -> list[Path]:
+    root = repo.resolve() / INCOMING_REL
+    return sorted(root.glob("*.json")) if root.is_dir() else []
+
+
+def incoming_matches(repo: Path, value: dict[str, Any]) -> bool:
+    packet = value.get("packet")
+    if not isinstance(packet, dict):
+        return False
+    run_id = str(packet.get("run_id") or "")
+    expected_hash = str(packet.get("packet_hash") or "")
+    if not run_id or not expected_hash:
+        return False
+    found, errors = _find_packet(repo.resolve(), run_id, expected_hash)
+    return found is not None and not errors
+
+
+def incoming_run_id(path: Path) -> str | None:
+    value = _incoming_value(path)
+    packet = value.get("packet") if value else None
+    run_id = packet.get("run_id") if isinstance(packet, dict) else None
+    return str(run_id) if run_id else None
+
+
+def incoming_preview(path: Path) -> str:
+    value = _incoming_value(path)
+    if value is None:
+        return "unreadable incoming review"
+    reviewer = value.get("reviewer") if isinstance(value.get("reviewer"), dict) else {}
+    dimensions = value.get("dimensions") if isinstance(value.get("dimensions"), list) else []
+    lines = [
+        f"reviewer.model: {reviewer.get('model', '(missing)')}",
+        f"overall: {value.get('overall', '(missing)')}",
+        "dimensions:",
+    ]
+    for dimension in dimensions:
+        if isinstance(dimension, dict):
+            lines.append(f"  {dimension.get('id', '?')}: {dimension.get('verdict', '(missing)')}")
+    findings = value.get("findings") if isinstance(value.get("findings"), list) else []
+    if findings:
+        lines.append("findings:")
+        for finding in findings[:10]:
+            lines.extend(f"  {line}" for line in str(finding).splitlines()[:10])
+    return "\n".join(lines)
 
 
 def _find_packet(repo: Path, run_id: str, expected_hash: str) -> tuple[Path | None, list[str]]:
@@ -145,3 +210,36 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
         pass
     append_event(repo, run_id, {"kind": EVENT_EXTERNAL_REVIEW, "run_id": run_id, "overall": report["overall"], "report": relative_report, "warnings": warnings, "accepted_by": "loopeng review intake"})
     return {"accepted": True, "errors": [], "warnings": warnings, "run_id": run_id, "overall": report["overall"]}
+
+
+def _move_intake_file(path: Path, destination: Path) -> str:
+    destination.mkdir(parents=True, exist_ok=True)
+    target = destination / path.name
+    if target.exists():
+        target = destination / f"{path.stem}-{path.stat().st_mtime_ns}{path.suffix}"
+    shutil.move(str(path), str(target))
+    return str(target)
+
+
+def intake_auto(repo: Path) -> dict[str, Any]:
+    repo = repo.resolve()
+    incoming = incoming_dir(repo)
+    accepted_dir = repo / ACCEPTED_REL
+    rejected_dir = repo / REJECTED_REL
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    quarantined: list[dict[str, Any]] = []
+    for path in sorted(incoming.glob("*.json")):
+        if _incoming_value(path) is None:
+            moved = _move_intake_file(path, rejected_dir)
+            quarantined.append({"file": path.name, "path": moved, "errors": ["schema: invalid JSON"]})
+            continue
+        result = intake(repo, path)
+        entry = {"file": path.name, **result}
+        if result.get("accepted"):
+            entry["path"] = _move_intake_file(path, accepted_dir)
+            accepted.append(entry)
+        else:
+            rejected.append(entry)
+    return {"accepted": accepted, "rejected": rejected, "quarantined": quarantined,
+            "processed": len(accepted) + len(rejected) + len(quarantined)}

@@ -26,6 +26,8 @@ def resolve_packet(repo: Path, run_id: str) -> Path | None:
 
 
 def build_request(repo: Path, run_id: str) -> str:
+    incoming = repo.resolve() / agent_root("state", "reviews", "incoming")
+    incoming.mkdir(parents=True, exist_ok=True)
     root = resolve_packet(repo, run_id)
     packet_hash = "unknown"
     if root is not None:
@@ -41,4 +43,6 @@ def build_request(repo: Path, run_id: str) -> str:
             f"Contract: v{CONTRACT_VERSION}; packet_hash={packet_hash}\n"
             "Reviewer skill: frame-loop-audit-review\n"
             f"Required dimensions: {', '.join(REVIEW_DIMENSIONS)}\n"
-            "Submit contract JSON only, then return it to loopeng review intake.\n")
+            "Submit contract JSON only, then return it to loopeng review intake.\n"
+            f"Incoming drop-off: {incoming}\n"
+            "Save the contract JSON in this directory.\n")

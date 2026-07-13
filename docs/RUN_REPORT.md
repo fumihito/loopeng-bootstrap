@@ -92,6 +92,8 @@ submission that fails intake remains pending.
 
 Use `loopeng review request --run <id>` to generate the external-agent request
 and `loopeng review intake <report.json>` to perform deterministic acceptance.
+Requests also create `.agent-loop/state/reviews/incoming/`; `loopeng review intake --auto`
+scans that directory in filename order, moving accepted reports to `accepted/`.
 
 Hooks are the standard automatic capture layer for Claude Code and Codex. `loopeng okf apply --run <id>` and `loopeng journal add` remain CLI paths for explicit/headless use. `audit run` writes the next-turn handoff with `source_turn_id`, `goal`, `summary`, `alerts_summary`, and `generated_at`.
 

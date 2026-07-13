@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from loopeng.inbox_model import ACTION_TABLE, actions_for, execute, generate_packet, interactive, packet_detail_lines
+from loopeng.inbox_model import ACTION_TABLE, actions_for, detail, execute, generate_packet, interactive, packet_detail_lines
 from loopeng.inbox_tui import _available_label
 from loopeng.review_request import build_request
 from loopeng.okf.index import reindex_bundle
@@ -87,6 +87,8 @@ class InboxModelTests(unittest.TestCase):
             request = build_request(root, "missing-run")
             self.assertIn("Review packet: unavailable", request)
             self.assertNotIn("review-packets/missing-run/manifest.json", request)
+            self.assertTrue((root / ".agent-loop/state/reviews/incoming").is_dir())
+            self.assertIn("Incoming drop-off:", request)
         finally:
             holder.cleanup()
 
@@ -149,6 +151,16 @@ class InboxModelTests(unittest.TestCase):
         finally:
             holder.cleanup()
 
+    def test_tui_keyboard_interrupt_during_audit_closes_without_traceback(self) -> None:
+        holder, root = self.repo()
+        try:
+            from loopeng.cli import main
+            with mock.patch("loopeng.cli.sys.stdin.isatty", return_value=True), mock.patch("loopeng.cli.sys.stdout.isatty", return_value=True), mock.patch("loopeng.inbox_tui.run", return_value=None), mock.patch("builtins.input", return_value="y"), mock.patch("loopeng.audit.report.run_audit_report", side_effect=KeyboardInterrupt), mock.patch("builtins.print") as printed:
+                self.assertEqual(main(["inbox", "--tui", "--repo", str(root)]), 0)
+            self.assertTrue(any("during audit" in str(call) for call in printed.call_args_list))
+        finally:
+            holder.cleanup()
+
     def test_interactive_keyboard_interrupt_closes_without_traceback(self) -> None:
         holder, root = self.repo()
         try:
@@ -159,6 +171,30 @@ class InboxModelTests(unittest.TestCase):
             output = io.StringIO()
             self.assertEqual(interactive(root, InterruptingInput(), output), 0)
             self.assertIn("interactive session interrupted", output.getvalue())
+        finally:
+            holder.cleanup()
+
+    def test_incoming_review_preview_and_auto_quarantine_are_side_effect_free_or_idempotent(self) -> None:
+        holder, root = self.repo()
+        try:
+            incoming = root / ".agent-loop/state/reviews/incoming"
+            incoming.mkdir(parents=True)
+            report = {"reviewer": {"model": "reviewer-x"}, "overall": "pass",
+                      "dimensions": [{"id": "D1", "verdict": "pass"}],
+                      "findings": ["first finding\nwith detail"]}
+            path = incoming / "arbitrary-name.json"
+            path.write_text(json.dumps(report), encoding="utf-8")
+            item = {"kind": "incoming-review", "target": "(unmatched)", "path": str(path.relative_to(root))}
+            preview = detail(root, item)
+            self.assertIn("reviewer.model: reviewer-x", preview)
+            self.assertIn("D1: pass", preview)
+            result = __import__("loopeng.review_intake", fromlist=["intake_auto"]).intake_auto(root)
+            self.assertEqual(result["processed"], 1)
+            self.assertEqual(len(result["rejected"]), 1)
+            self.assertTrue(path.is_file())
+            again = __import__("loopeng.review_intake", fromlist=["intake_auto"]).intake_auto(root)
+            self.assertEqual(len(again["accepted"]), 0)
+            self.assertEqual(len(again["rejected"]), 1)
         finally:
             holder.cleanup()
 

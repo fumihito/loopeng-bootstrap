@@ -26,3 +26,16 @@ acceptance it appends `external-review`; only that event resolves the due item.
 
 The configured review actor is a separate agent. Review execution and result
 return are outside this deterministic mechanism.
+
+Standard handoff: `python3 -m loopeng review request --run <run-id>` creates
+the incoming drop-off directory; save the contract JSON there, then run
+`python3 -m loopeng review intake --auto`. Incoming filenames are arbitrary.
+Accepted files move to `accepted/`, malformed JSON to `rejected-intake/`, and
+valid but rejected contracts remain in `incoming/`.
+
+```bash
+./loopeng.py review request --run latest-due
+# deliver the request to the reviewer; the JSON is saved under incoming/
+./loopeng.py inbox --tui
+# or: ./loopeng.py review intake --auto
+```
