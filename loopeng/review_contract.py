@@ -2,6 +2,13 @@ from __future__ import annotations
 
 CONTRACT_VERSION = 1
 REVIEW_DIMENSIONS = ("D1", "D2", "D3", "D4", "D5")
+DIMENSION_DESCRIPTIONS = {
+    "D1": "process consistency",
+    "D2": "outcome validity",
+    "D3": "memory-write quality",
+    "D4": "alert handling",
+    "D5": "implementation claim inspection",
+}
 VERDICTS = ("pass", "fail", "unable")
 OVERALLS = ("pass", "fail", "blocked-on-info")
 

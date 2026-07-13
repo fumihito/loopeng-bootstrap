@@ -241,7 +241,8 @@ class InboxModelTests(unittest.TestCase):
             item = {"kind": "incoming-review", "target": "(unmatched)", "path": str(path.relative_to(root))}
             preview = detail(root, item)
             self.assertIn("reviewer.model: reviewer-x", preview)
-            self.assertIn("D1 verdict: pass", preview)
+            self.assertIn("D1 (process consistency)", preview)
+            self.assertIn("verdict: pass", preview)
             self.assertIn("D1", preview)
             result = __import__("loopeng.review_intake", fromlist=["intake_auto"]).intake_auto(root)
             self.assertEqual(result["processed"], 1)

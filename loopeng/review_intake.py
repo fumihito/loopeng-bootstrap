@@ -9,7 +9,7 @@ from typing import Any
 from ._paths import agent_root
 from .audit.export import packet_hash
 from .journal import EVENT_EXTERNAL_REVIEW, append_event
-from .review_contract import validate_contract
+from .review_contract import DIMENSION_DESCRIPTIONS, validate_contract
 
 INCOMING_REL = agent_root("state", "reviews", "incoming")
 ACCEPTED_REL = agent_root("state", "reviews", "accepted")
@@ -76,7 +76,9 @@ def incoming_preview(path: Path) -> str:
     ]
     for dimension in dimensions:
         if isinstance(dimension, dict):
-            lines.append(f"  {dimension.get('id', '?')} verdict: {dimension.get('verdict', '(missing)')}")
+            identifier = str(dimension.get("id", "?"))
+            lines.append(f"  {identifier} ({DIMENSION_DESCRIPTIONS.get(identifier, 'unknown dimension')})")
+            lines.append(f"    verdict: {dimension.get('verdict', '(missing)')}")
             lines.append(f"    note: {dimension.get('note', '(none)')}")
             evidence = dimension.get("evidence") if isinstance(dimension.get("evidence"), list) else []
             for pointer in evidence:

@@ -9,7 +9,7 @@ from typing import Any
 
 from .inbox_model import actions_for as model_actions_for, detail, execute, generate_packet, list_items, packet_detail_lines
 from .review_request import resolve_packet
-from .review_contract import CONTRACT_VERSION, REVIEW_DIMENSIONS, validate_contract
+from .review_contract import CONTRACT_VERSION, DIMENSION_DESCRIPTIONS, REVIEW_DIMENSIONS, validate_contract
 
 
 def _short(value: str, width: int) -> str:
@@ -195,7 +195,8 @@ def human_review_wizard(screen: Any, repo: Path, run_id: str) -> Path | None:
             screen.erase()
             _, width = screen.getmaxyx()
             screen.addnstr(0, 0, f"Human review {run_id}", max(1, width - 1))
-            screen.addnstr(2, 0, f"{identifier}: verdict [p]ass / [f]ail / [u]nable  [q] cancel", max(1, width - 1))
+            screen.addnstr(2, 0, f"{identifier} ({DIMENSION_DESCRIPTIONS[identifier]})", max(1, width - 1))
+            screen.addnstr(3, 0, "verdict [p]ass / [f]ail / [u]nable  [q] cancel", max(1, width - 1))
             screen.refresh()
             try:
                 key = screen.getch()
