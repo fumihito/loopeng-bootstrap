@@ -11,6 +11,8 @@ v0.2 consists of four pillars.
 1. **Autonomous operation** — Agents can execute runs without sequential human approval. The next turn's input is constructed deterministically from the handoff and Run Report written by the previous run; the model's self-reported memory is not carried forward.
 2. **Auditability** — Each run's operations are recorded in a sanitized, append-only journal, and `audit run` performs inspections in a fixed order to generate a Run Report. A completion claim is made only when the Run Report has been generated.
 3. **alert-not-block** — Pre-execution blocking is limited to an enumerated set of hard blocks (destructive commands, persistent storage of secrets, invalid memory application, and writes outside the repository). Other deviations do not stop the work and are recorded as alerts in the Run Report. A protected-path change is a warn when intent was declared in advance during the run, and critical when undeclared.
+
+Pending durable-memory drafts are listed with `python3 -m loopeng memory drafts list`; explicit approval uses `memory approve <id> --quote "..."`, while `memory reject` and `memory snooze` retain the audit trail.
 4. **OKF LLMWiki memory** — Durable-memory writes are limited to `okf apply` transactions that pass schema validation, namespace containment, proposal_id, and operation-count and document-size limits. Nothing is deleted; history is retained by reversing status with `DEPRECATE`.
 
 ## Components

@@ -12,10 +12,29 @@ from .schema import load_report
 from .schema import parse_frontmatter
 
 
+def _import_seed_drafts(repo: Path) -> list[str]:
+    """Copy repository seed history into runtime pending state exactly once."""
+    source = repo / "docs" / "v0.2-phase1" / "seed-drafts"
+    marker = repo / ".agent-loop" / "state" / "seed-drafts-imported.json"
+    if not source.is_dir() or marker.exists():
+        return []
+    target = repo / ".agent-loop" / "state" / "memory-drafts"
+    target.mkdir(parents=True, exist_ok=True)
+    imported: list[str] = []
+    for path in sorted(source.glob("*.json")):
+        destination = target / path.name
+        if not destination.exists():
+            destination.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+            imported.append(path.stem)
+    marker.write_text(json.dumps({"imported": imported}, indent=2) + "\n", encoding="utf-8")
+    return imported
+
+
 def curate(repo: Path, run_id: str | None = None, top: int = AUTONOMOUS_APPLIES_PER_RUN) -> dict[str, Any]:
     """Promote learning once, then apply only the bounded safe subset."""
     repo = repo.resolve()
     run = run_id or "curate"
+    _import_seed_drafts(repo)
     # Draft generation may exceed the apply cap so excess candidates remain
     # visible as pending approval rather than disappearing from the run.
     promoted = promote(repo, max(0, top), autonomous=True)

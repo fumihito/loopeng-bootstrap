@@ -17,6 +17,7 @@ from .okf.query import query_bundle
 from .okf.draft import make_draft
 from .okf.promote import promote, establish
 from .okf.curate import curate
+from .okf.approval import approve, list_drafts, reject, show_draft, snooze
 from .schedule import build_next_turn_prompt
 from .memory_stats import STATS_WINDOWS, collect_stats, render_stats
 from .run import record_human_outcome, verify_run
@@ -116,6 +117,28 @@ def build_parser() -> argparse.ArgumentParser:
     curate_cmd.add_argument("--repo", type=_path, default=Path("."))
     curate_cmd.add_argument("--run")
     curate_cmd.add_argument("--top", type=int, default=3)
+    drafts_cmd = memory_sub.add_parser("drafts", help=t("承認待ち draft を一覧・表示", "List or show pending memory drafts"))
+    drafts_sub = drafts_cmd.add_subparsers(dest="drafts_command", required=True)
+    drafts_list = drafts_sub.add_parser("list")
+    drafts_list.add_argument("--repo", type=_path, default=Path("."))
+    drafts_show = drafts_sub.add_parser("show")
+    drafts_show.add_argument("id")
+    drafts_show.add_argument("--repo", type=_path, default=Path("."))
+    approve_cmd = memory_sub.add_parser("approve", help=t("明示承認した draft を適用", "Apply explicitly approved drafts"))
+    approve_cmd.add_argument("ids", nargs="*")
+    approve_cmd.add_argument("--all", action="store_true")
+    approve_cmd.add_argument("--quote", required=True)
+    approve_cmd.add_argument("--run")
+    approve_cmd.add_argument("--repo", type=_path, default=Path("."))
+    reject_cmd = memory_sub.add_parser("reject", help=t("draft を却下して保存", "Reject and retain a draft"))
+    reject_cmd.add_argument("id")
+    reject_cmd.add_argument("--reason", required=True)
+    reject_cmd.add_argument("--run")
+    reject_cmd.add_argument("--repo", type=_path, default=Path("."))
+    snooze_cmd = memory_sub.add_parser("snooze", help=t("承認要請を一時停止", "Snooze approval requests"))
+    snooze_cmd.add_argument("--days", type=int, default=3)
+    snooze_cmd.add_argument("--run")
+    snooze_cmd.add_argument("--repo", type=_path, default=Path("."))
     stats_cmd = memory_sub.add_parser("stats", help=t("メモリ更新とコミット活動を集計", "Summarize memory updates and commit activity"))
     stats_cmd.add_argument("--repo", type=_path, default=Path("."))
     stats_cmd.add_argument("--bundle", type=_path, default=Path("llmwiki"))
@@ -322,6 +345,27 @@ def main(argv: list[str] | None = None) -> int:
         if args.top < 0:
             raise SystemExit("--top must be non-negative")
         print(json.dumps(curate(args.repo, args.run, args.top), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "memory" and args.memory_command == "drafts":
+        if args.drafts_command == "list":
+            print(json.dumps(list_drafts(args.repo), indent=2, ensure_ascii=False))
+        else:
+            print(json.dumps(show_draft(args.repo, args.id), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "memory" and args.memory_command == "approve":
+        if args.all and args.ids:
+            raise SystemExit("memory approve: use --all or draft IDs, not both")
+        print(json.dumps(approve(args.repo, args.ids, args.quote, args.run, args.all), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "memory" and args.memory_command == "reject":
+        print(json.dumps(reject(args.repo, args.id, args.reason, args.run), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "memory" and args.memory_command == "snooze":
+        print(json.dumps(snooze(args.repo, args.run, args.days), indent=2, ensure_ascii=False))
         return 0
 
     if args.command == "memory" and args.memory_command == "stats":

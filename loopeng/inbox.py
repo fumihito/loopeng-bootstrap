@@ -32,7 +32,8 @@ def collect_inbox(repo: Path, now: datetime | None = None) -> list[dict[str, Any
             continue
         if isinstance(value, dict):
             timestamp = _age_timestamp(value.get("created_at"), path.stat().st_mtime)
-            items.append({"kind":"draft", "target": str(path.relative_to(repo)), "label": "approval", "timestamp": timestamp})
+            draft_id = str(value.get("draft_id") or path.stem)
+            items.append({"kind":"draft", "target": draft_id, "path": str(path.relative_to(repo)), "label": "approval", "timestamp": timestamp})
     bundle = repo / "llmwiki"
     for path in bundle.rglob("*.md") if bundle.is_dir() else ():
         if path.name in {"index.md", "log.md"}:

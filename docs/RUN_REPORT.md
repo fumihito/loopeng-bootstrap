@@ -73,6 +73,7 @@ that tuple requires updating this section in the same run.
 - `command`: a tool command captured by a hook.
 - `review_failure`: a hook could not obtain review context.
 - `hook_failure`: a hook audit or processing failure.
+- `approval-request`: a hook asked the user to review pending memory drafts.
 - `retrieval`: `{"kind":"retrieval","query":"<summary>","read_ids":[...]}`
 - `memory-draft`: `{"kind":"memory-draft","draft":"<path>","proposals":[...],"status":"pending-approval|rejected"}`
 - `okf-apply`: includes `tier: provisional` for autonomous applies.

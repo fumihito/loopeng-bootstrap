@@ -16,6 +16,7 @@ from ..journal import append_event
 from ..review import MODE_PREFIX
 from ..journal import BLOCKED_SUMMARY_MAX, EVENT_BLOCKED, EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_LEARNING_CANDIDATE, EVENT_MUTATION, EVENT_RECURRENCE, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, sanitize_event
 from ..run import verify_run
+from ..okf.approval import approval_context
 from .events import EventKind, NormalizedEvent
 
 HANDOFF_CONTEXT_LIMIT = 2000
@@ -352,6 +353,12 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
                 contexts.append(handoff)
             if review:
                 contexts.append(review)
+            # Approval requests are generated only in hook-backed operation;
+            # failures are swallowed by the outer fail-open boundary.
+            if event.kind is EventKind.PROMPT_SUBMIT:
+                approval = approval_context(event.repo, event.payload.get("session_id") or run_id, run_id)
+                if approval:
+                    contexts.append(_banner(event).replace(event.event_name, "approval-request") + approval)
             if contexts:
                 injected = _banner(event) + "\n\n".join(contexts)
                 if review is not None and review_instruction:

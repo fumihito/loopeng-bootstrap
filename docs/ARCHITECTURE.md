@@ -19,6 +19,12 @@ The frame-* skill family remains as the only skill family kept from the previous
 
 The design principle is simple: block only what directly threatens safety or bundle integrity, and report everything else as a post-run alert.
 
+Memory approval is intentionally explicit: hooks may request approval for a
+pending draft, but the system cannot mechanically establish that a quoted
+approval was genuinely authored by the user. The quote is an audit trace, not
+proof of authenticity. External review D3 compares the approval decision quote
+with the applied content.
+
 ## Hook invariants and standard operation
 
 Hooks are the standard automatic event layer for both Claude Code and Codex. The

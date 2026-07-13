@@ -13,6 +13,8 @@ v0.2 は 4 つの柱で構成されます。
 3. **alert-not-block** — 事前に抑止するのは限定列挙された hard block(破壊的コマンド、秘密情報の永続化、不正なメモリ適用、リポジトリ外書き込み)のみです。それ以外の逸脱は作業を止めず、Run Report にアラートとして記録されます。protected path の変更は、ラン内で intent を事前宣言していれば warn、未宣言なら critical になります。
 4. **OKF LLMWiki メモリ** — 耐久メモリの書き込みは、スキーマ検証・名前空間封じ込め・proposal_id・操作数と文書サイズの上限を通過した `okf apply` トランザクションのみです。削除は行わず、`DEPRECATE` による status 反転で履歴を保持します。
 
+承認待ちの durable-memory draft は `python3 -m loopeng memory drafts list` で確認します。明示承認は `memory approve <id> --quote "..."`、却下は `memory reject`、保留は `memory snooze` です。
+
 ## Components
 
 | 対象 | 内容 |

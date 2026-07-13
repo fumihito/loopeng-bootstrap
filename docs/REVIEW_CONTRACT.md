@@ -10,7 +10,7 @@ evidence-pointer resolution, and deterministic cross-checks.
 ```
 
 The fixed dimensions are D1 process consistency, D2 outcome validity, D3
-memory-write quality, D4 alert handling, and D5 one randomly selected
+memory-write quality (including approval decision quote validity), D4 alert handling, and D5 one randomly selected
 implementation claim inspected at a named file and line. Every non-`unable`
 dimension requires at least one evidence pointer; D5 always requires a
 `file:<path>:<line>` pointer. Three or more `unable` verdicts require

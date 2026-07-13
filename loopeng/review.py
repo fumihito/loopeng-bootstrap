@@ -206,6 +206,8 @@ def _premises(repo: Path) -> list[str]:
         if frontmatter.get("status", "active") == "active" and frontmatter.get("tier", "established") == "provisional":
             entries.append({"path": path, "frontmatter": frontmatter, "body": body, "due": False, "pending": False, "timestamp": str(frontmatter.get("timestamp") or "9999-12-31"), "provisional": True})
     lines = ["## Premises to revisit"]
+    if "memory-approval" in _held(repo):
+        lines.append("- [HELD] memory-approval — approval request snoozed; pending drafts remain in inbox")
     marked: set[Path] = set()
     for entry in sorted((item for item in entries if item.get("provisional")), key=lambda item: item["timestamp"]):
         marked.add(entry["path"])
