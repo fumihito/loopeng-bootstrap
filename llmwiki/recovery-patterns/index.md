@@ -1,3 +1,1 @@
-# Recovery Patterns
-
-Generated progressive-disclosure index.
+# recovery-patterns

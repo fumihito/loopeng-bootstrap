@@ -1,3 +1,1 @@
-# Concepts
-
-Generated progressive-disclosure index.
+# concepts

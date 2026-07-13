@@ -1,3 +1,1 @@
-# Evaluation Rules
-
-Generated progressive-disclosure index.
+# evaluation-rules

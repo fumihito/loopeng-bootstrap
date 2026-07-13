@@ -1,3 +1,1 @@
-# Runbooks
-
-Generated progressive-disclosure index.
+# runbooks

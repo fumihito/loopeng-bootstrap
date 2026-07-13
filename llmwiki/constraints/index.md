@@ -1,3 +1,3 @@
-# Constraints
+# constraints
 
-Generated progressive-disclosure index.
+- [stdlib-only-and-single-declaration](stdlib-only-and-single-declaration.md)
