@@ -44,6 +44,10 @@ The canonical generator is `python3 -m loopeng audit run --run <id>`, which cons
 
 The optional sidecar `behavior` key contains `skills` and `blocked` count maps. The schema version remains unchanged because adding this optional key is backward compatible; raise it only for incompatible changes.
 
+Every tenth completed run is sampled with an informational `external_review_due` marker; `audit export` creates the sanitized packet. The packet mechanism does not decide who reviews it or how a review establishes the loop.
+
+For this deployment, the external review actor is a separate agent. Review execution and result return remain outside the loop mechanism; the exported packet is the handoff boundary.
+
 `Outcome` records the latest human `run outcome` label when present, otherwise the observed `run verify` result. Command acceptance checks run in order with a 300-second timeout: all commands passing and no text checks is `pass`; any command failure is `fail`; passing commands with unresolved text checks is `unverified`. Text acceptance is never resolved by agent self-report. The sidecar includes the optional `outcome` key. Handoff is last-write-wins.
 
 The `memory_commit_divergence` inspection compares the 7-day `llmwiki/log.jsonl` operation count with non-LLMWiki commit activity and reports the configured one-sided divergence signals.

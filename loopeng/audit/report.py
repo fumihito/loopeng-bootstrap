@@ -102,6 +102,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     rejected = [event for event in okf_events if not event.get("ok")]
     skill_events = [event for event in context.events if event.get("kind") == EVENT_SKILL_USED]
     blocked_events = [event for event in context.events if event.get("kind") == EVENT_BLOCKED]
+    completed_reports = len(list((repo / agent_root("state", "reports")).glob("*.json")))
+    external_review_due = (completed_reports + 1) % 10 == 0
     outcome_events = [event for event in context.events if event.get("kind") == EVENT_OUTCOME]
     human_outcomes = [event for event in outcome_events if event.get("source") == "human"]
     selected_outcome = (human_outcomes or outcome_events)[-1] if (human_outcomes or outcome_events) else None
@@ -158,6 +160,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         "handoff_written": True,
         "schema": 2,
     }
+    if external_review_due:
+        sidecar["alerts"].append({"check_id": "external_review_due", "severity": "info", "declared": True, "message": "sampling interval reached; external review packet is due"})
 
     report_lines = [
         f"# Run Report {run_id}", "", "## What ran", f"- run-id: {run_id}",
@@ -190,6 +194,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         report_lines.append("- blocked operations: none")
     report_lines.extend(["", "## Alerts"])
     report_lines.extend(_format_findings(alerts))
+    if external_review_due:
+        report_lines.append("- external_review_due [info]: sampling interval reached; external review packet is due (see audit export)")
     report_lines.extend(["", "## Blocked"])
     report_lines.extend(_format_findings(blocked))
     report_lines.extend([

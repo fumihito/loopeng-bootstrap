@@ -108,6 +108,7 @@ RUNTIME_MANIFEST = [
     {'path': 'loopeng/audit/checks/concurrent_runs_detected.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/audit/checks/learning_ineffective.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/audit/checks/inbox_stale.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng/audit/export.py', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng/audit/checks/memory_instruction_smell.py', 'profiles': {PROFILE_FULL}},
 ]
 

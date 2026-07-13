@@ -24,6 +24,7 @@ from .doctor import doctor
 from .memory_efficacy import collect_efficacy, render_efficacy
 from .inbox import render_inbox
 from .run_stats import collect_run_stats, render_run_stats
+from .audit.export import export_packet
 
 
 def _path(value: str) -> Path:
@@ -182,6 +183,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     audit_run.add_argument("--run", required=True, help=t("監査対象の run ID", "Run ID to audit"))
     audit_run.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
+    audit_export = audit_sub.add_parser("export", help=t("レビューパケットを出力", "Export a review packet"), formatter_class=formatter)
+    audit_export.add_argument("--run", required=True)
+    audit_export.add_argument("--repo", type=_path, default=Path("."))
 
     review = sub.add_parser(
         "review", help=t("過去の run 結果・懸念・前提をレビュー", "Review past run results, concerns, and premises"),
@@ -361,6 +365,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "audit" and args.audit_command == "run":
         report_path = run_audit_report(args.repo, args.run)
         print(str(report_path))
+        return 0
+
+    if args.command == "audit" and args.audit_command == "export":
+        print(str(export_packet(args.repo, args.run)))
         return 0
 
     if args.command == "review":

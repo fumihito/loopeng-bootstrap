@@ -352,9 +352,10 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
             if review:
                 contexts.append(review)
             if contexts:
-                result["response"] = {"hookSpecificOutput": {"additionalContext": _banner(event) + "\n\n".join(contexts) + "\n" + INJECTED_DATA_END}}
-            if review is not None and review_instruction:
-                result["response"]["hookSpecificOutput"]["additionalContext"] += "\n\n" + review_instruction
+                injected = _banner(event) + "\n\n".join(contexts)
+                if review is not None and review_instruction:
+                    injected += "\n\n" + review_instruction
+                result["response"] = {"hookSpecificOutput": {"additionalContext": injected + "\n" + INJECTED_DATA_END}}
             return result
         active = _load_active(event.repo)
         run_id = str(active.get("run_id")) if active else _run_id(event)

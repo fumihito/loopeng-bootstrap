@@ -60,6 +60,8 @@ def collect_inbox(repo: Path, now: datetime | None = None) -> list[dict[str, Any
             continue
         if isinstance(value, dict) and value.get("outcome") == "unverified":
             items.append({"kind":"outcome", "target": str(value.get("run_id") or path.stem), "label": "unverified", "timestamp": _age_timestamp(value.get("ended_at"), path.stat().st_mtime)})
+        if isinstance(value, dict) and any(isinstance(alert, dict) and alert.get("check_id") == "external_review_due" for alert in value.get("alerts", [])):
+            items.append({"kind":"external-review", "target": str(value.get("run_id") or path.stem), "label": "review", "timestamp": _age_timestamp(value.get("ended_at"), path.stat().st_mtime)})
     items.sort(key=lambda item: item["timestamp"])
     for item in items:
         item["age_days"] = max(0, (now - item["timestamp"]).total_seconds() / 86400)
