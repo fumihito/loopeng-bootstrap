@@ -127,7 +127,19 @@ def _confirm_exit(screen: Any) -> bool:
     # Do not let the Ctrl-C that triggered this confirmation immediately
     # cancel the confirmation input itself.
     curses.flushinp()
-    return _prompt(screen, "exit? [y/N] ").strip().casefold() in {"y", "yes"}
+    height, width = screen.getmaxyx()
+    screen.move(max(0, height - 2), 0)
+    screen.clrtoeol()
+    screen.addnstr(max(0, height - 2), 0, "exit? [y/N] ", max(1, width - 1))
+    screen.refresh()
+    try:
+        curses.noecho()
+        key = screen.getch()
+        return key in (ord("y"), ord("Y"))
+    except KeyboardInterrupt:
+        return False
+    finally:
+        curses.noecho()
 
 
 def run(repo: Path, run_id: str) -> None:

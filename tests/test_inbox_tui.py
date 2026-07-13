@@ -53,9 +53,12 @@ class InboxModelTests(unittest.TestCase):
         screen.getch.side_effect = KeyboardInterrupt
         with mock.patch("loopeng.inbox_tui.curses.noecho"):
             self.assertEqual(_action_prompt(screen, ("intake", "detail")), "")
-        with mock.patch("loopeng.inbox_tui._prompt", return_value="n"), mock.patch("loopeng.inbox_tui.curses.flushinp"):
+        screen.getch.return_value = ord("n")
+        screen.getch.side_effect = None
+        with mock.patch("loopeng.inbox_tui.curses.flushinp"), mock.patch("loopeng.inbox_tui.curses.noecho"):
             self.assertFalse(_confirm_exit(screen))
-        with mock.patch("loopeng.inbox_tui._prompt", return_value="y"), mock.patch("loopeng.inbox_tui.curses.flushinp"):
+        screen.getch.return_value = ord("y")
+        with mock.patch("loopeng.inbox_tui.curses.flushinp"), mock.patch("loopeng.inbox_tui.curses.noecho"):
             self.assertTrue(_confirm_exit(screen))
 
     def test_main_screen_ctrl_c_uses_exit_confirmation(self) -> None:
@@ -64,11 +67,10 @@ class InboxModelTests(unittest.TestCase):
         try:
             screen = mock.Mock()
             screen.getmaxyx.return_value = (24, 80)
-            screen.getch.side_effect = [KeyboardInterrupt, ord("q")]
-            screen.getstr.side_effect = [b"n", b"y"]
+            screen.getch.side_effect = [KeyboardInterrupt, ord("n"), ord("q"), ord("y")]
             with mock.patch("loopeng.inbox_tui.curses.wrapper", side_effect=lambda main: main(screen)), mock.patch("loopeng.inbox_tui.curses.curs_set"), mock.patch("loopeng.inbox_tui.curses.ACS_HLINE", 0, create=True), mock.patch("loopeng.inbox_tui.curses.echo"), mock.patch("loopeng.inbox_tui.curses.noecho"), mock.patch("loopeng.inbox_tui.curses.flushinp"):
                 run(root, "tui-test")
-            self.assertEqual(screen.getstr.call_count, 2)
+            self.assertEqual(screen.getch.call_count, 4)
         finally:
             holder.cleanup()
 
