@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from loopeng._paths import agent_root
 from loopeng.audit.export import export_packet
@@ -13,6 +14,8 @@ from loopeng.journal import append_event
 from loopeng.review_contract import CONTRACT_VERSION
 from loopeng.review_intake import intake, intake_auto
 from loopeng.review_request import build_request
+from loopeng.inbox_tui import meta_review_lines
+from loopeng.review_calibration import summarize
 
 
 class ReviewCompromiseTests(unittest.TestCase):
@@ -58,6 +61,27 @@ class ReviewCompromiseTests(unittest.TestCase):
 
     def test_self_family_is_explicit_in_inbox_actions(self):
         self.assertIn("meta-review", actions_for({"kind": "incoming-review", "relation": "self-family"}))
+
+    def test_meta_review_spot_is_selected_at_display_time(self):
+        repo, packet_hash, dims = self.fixture()
+        path = self.report(repo, packet_hash, dims)
+        with patch("loopeng.inbox_tui.secrets.choice", side_effect=["D2", "D5"]) as choice:
+            first = meta_review_lines(repo, path)
+            second = meta_review_lines(repo, path)
+        self.assertEqual(first[1], "D2")
+        self.assertEqual(second[1], "D5")
+        self.assertEqual(choice.call_count, 2)
+        self.assertNotEqual(first[1], second[1])
+
+    def test_calibration_reports_due_and_dimension_rates(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td); reports = repo / agent_root("state", "reports"); reports.mkdir(parents=True)
+            sidecar = {"schema": 2, "run_id": "r1", "alerts": [{"check_id": "external_review_due"}], "review_requirement": {"due": True, "relation": "external"}, "review": {"relation": "self-family", "dimensions": [{"id": "D1", "verdict": "pass"}, {"id": "D2", "verdict": "unable"}], "findings": []}}
+            (reports / "r1.json").write_text(json.dumps(sidecar), encoding="utf-8")
+            value = summarize(repo)
+            self.assertEqual(value["due"], 1)
+            self.assertEqual(value["required_external"], 1)
+            self.assertEqual(value["by_relation"]["self-family"]["dimensions"]["D2"]["unable"], 1)
 
 
 if __name__ == "__main__":

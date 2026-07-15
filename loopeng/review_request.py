@@ -51,12 +51,24 @@ def build_request(repo: Path, run_id: str) -> str:
     packet_line = (f"Review packet manifest: {root / 'manifest.json'}\n" if root is not None else
                    f"Review packet: unavailable for run {run_id}\n"
                    f"Generate it with: python3 -m loopeng audit export --run {run_id}\n")
-    return (packet_line +
-            f"Contract: v{CONTRACT_VERSION}; packet_hash={packet_hash}\n"
-            "Reviewer skill: frame-loop-audit-review\n"
-            f"Required dimensions: {', '.join(REVIEW_DIMENSIONS)}\n"
-            f"D5 target (must be inspected exactly): {d5_target}\n"
-            "Use a new session. Do not bring context from the implementation session. Record a new session identifier in reviewer.session.\n"
-            "Submit contract JSON only, then return it to loopeng review intake.\n"
-            f"Incoming drop-off: {incoming}\n"
-            "Save the contract JSON in this directory.\n")
+    send_back_reason = ""
+    journal = repo.resolve() / agent_root("state", "journal") / f"{run_id}.jsonl"
+    if journal.is_file():
+        try:
+            events = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines() if line.strip()]
+            for event in reversed(events):
+                if isinstance(event, dict) and event.get("kind") == "decision" and event.get("item") == "meta-review" and event.get("choice") == "send-back":
+                    send_back_reason = str(event.get("reason") or "")
+                    break
+        except (OSError, json.JSONDecodeError):
+            pass
+    suffix = (f"Contract: v{CONTRACT_VERSION}; packet_hash={packet_hash}\n"
+              "Reviewer skill: frame-loop-audit-review\n"
+              f"Required dimensions: {', '.join(REVIEW_DIMENSIONS)}\n"
+              f"D5 target (must be inspected exactly): {d5_target}\n"
+              "Use a new session. Do not bring context from the implementation session. Record a new session identifier in reviewer.session.\n"
+              + (f"Previous meta-review send-back reason: {send_back_reason}\n" if send_back_reason else "")
+              + "Submit contract JSON only, then return it to loopeng review intake.\n"
+              + f"Incoming drop-off: {incoming}\n"
+              + "Save the contract JSON in this directory.\n")
+    return packet_line + suffix

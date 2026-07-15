@@ -467,7 +467,16 @@ def main(argv: list[str] | None = None) -> int:
                 return 1 if result["rejected"] or result["quarantined"] else 0
             if args.review_target is None:
                 raise SystemExit("review intake requires a report JSON path")
-            result = intake(args.repo, args.review_target)
+            report_value = None
+            try:
+                report_value = json.loads(args.review_target.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                pass
+            if isinstance(report_value, dict) and isinstance(report_value.get("reviewer"), dict) and report_value["reviewer"].get("relation") == "self-family" and sys.stdin.isatty():
+                from .review_intake import interactive_meta_review
+                result = interactive_meta_review(args.repo, args.review_target, sys.stdin, sys.stdout)
+            else:
+                result = intake(args.repo, args.review_target)
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0 if result.get("accepted") else 1
         if args.review_view == "request":

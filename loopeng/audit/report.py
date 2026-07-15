@@ -139,7 +139,8 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
             prior_value = json.loads(prior.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        if isinstance(prior_value, dict) and isinstance(prior_value.get("review_requirement"), dict) and prior_value["review_requirement"].get("due"):
+        legacy_due = any(isinstance(alert, dict) and alert.get("check_id") == "external_review_due" for alert in prior_value.get("alerts", [])) if isinstance(prior_value, dict) else False
+        if isinstance(prior_value, dict) and ((isinstance(prior_value.get("review_requirement"), dict) and prior_value["review_requirement"].get("due")) or legacy_due):
             prior_due += 1
     review_requirement = {"due": external_review_due, "relation": "external" if external_review_due and (prior_due + 1) % CROSS_FAMILY_EVERY_N == 0 else "self-family", "sequence": prior_due + 1}
     skill_counts: dict[str, int] = {}

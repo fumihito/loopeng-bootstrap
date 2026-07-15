@@ -288,13 +288,16 @@ def meta_review_wizard(screen: Any, repo: Path, path: Path) -> dict[str, Any] | 
     decision = {ord("a"): "accept", ord("s"): "send-back", ord("x"): "defer"}.get(choice)
     if not decision:
         return None
+    reason = _prompt(screen, "send-back reason (required for s; empty cancels): ") if decision == "send-back" else ""
+    if decision == "send-back" and not reason.strip():
+        return None
     value = json.loads(path.read_text(encoding="utf-8"))
     value["meta_review"] = {"decision": decision, "spot_dim": spot_dim, "spot_result": spot_result, "authorization": "tui-interactive"}
     if decision == "accept":
         value["human_confirmation"] = {"confirmed": True, "actor": "tui-meta-review", "authorization": "tui-interactive"}
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     run_id = str(value.get("packet", {}).get("run_id") or "meta-review")
-    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": "meta-review", "run_id": run_id, "choice": decision, "spot_dim": spot_dim, "spot_result": spot_result, "authorization": "tui-interactive"})
+    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": "meta-review", "run_id": run_id, "choice": decision, "spot_dim": spot_dim, "spot_result": spot_result, "reason": reason, "authorization": "tui-interactive"})
     if decision == "accept":
         result = intake(repo, path)
         if result.get("accepted"):

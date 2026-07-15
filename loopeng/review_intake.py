@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,8 +10,8 @@ from typing import Any
 
 from ._paths import agent_root
 from .audit.export import packet_hash
-from .journal import EVENT_EXTERNAL_REVIEW, append_event
-from .review_contract import DIMENSION_DESCRIPTIONS, validate_contract
+from .journal import EVENT_DECISION, EVENT_EXTERNAL_REVIEW, append_event
+from .review_contract import DIMENSION_DESCRIPTIONS, REVIEW_DIMENSIONS, validate_contract
 
 INCOMING_REL = agent_root("state", "reviews", "incoming")
 ACCEPTED_REL = agent_root("state", "reviews", "accepted")
@@ -307,3 +308,42 @@ def intake_auto(repo: Path) -> dict[str, Any]:
             rejected.append(entry)
     return {"accepted": accepted, "rejected": rejected, "quarantined": quarantined,
             "processed": len(accepted) + len(rejected) + len(quarantined)}
+
+
+def interactive_meta_review(repo: Path, report_path: Path, input_stream: Any, output_stream: Any) -> dict[str, Any]:
+    """CLI fallback for self-family reports when a TUI is unavailable."""
+    value = _incoming_value(report_path)
+    if value is None:
+        return {"accepted": False, "errors": ["schema: invalid JSON"], "warnings": []}
+    dimensions = {str(item.get("id")): item for item in value.get("dimensions", []) if isinstance(item, dict)}
+    output_stream.write("Meta-review\n")
+    for identifier in REVIEW_DIMENSIONS:
+        item = dimensions.get(identifier, {})
+        evidence = item.get("evidence") if isinstance(item.get("evidence"), list) else []
+        output_stream.write(f"{identifier}: {item.get('verdict', '?')} / {len(evidence)} evidence / {str(item.get('note') or '')[:80]}\n")
+    spot_dim = secrets.choice(list(REVIEW_DIMENSIONS))
+    spot = dimensions.get(spot_dim, {}).get("evidence", [])
+    pointer = spot[0].get("ref") if spot and isinstance(spot[0], dict) else "none"
+    output_stream.write(f"spot {spot_dim}: {pointer}\nEvidence supports verdict? [y/n]: ")
+    output_stream.flush()
+    spot_result = "ok" if input_stream.readline().strip().casefold() == "y" else "mismatch"
+    output_stream.write("decision [a]ccept/[s]end-back/[x]defer: "); output_stream.flush()
+    decision_key = input_stream.readline().strip().casefold()[:1]
+    decision = {"a": "accept", "s": "send-back", "x": "defer"}.get(decision_key)
+    if not decision:
+        return {"accepted": False, "errors": ["meta-review cancelled"], "warnings": []}
+    reason = ""
+    if decision == "send-back":
+        output_stream.write("send-back reason: "); output_stream.flush()
+        reason = input_stream.readline().rstrip("\n")
+        if not reason.strip():
+            return {"accepted": False, "errors": ["send-back reason required"], "warnings": []}
+    value["meta_review"] = {"decision": decision, "spot_dim": spot_dim, "spot_result": spot_result, "authorization": "cli-interactive"}
+    if decision == "accept":
+        value["human_confirmation"] = {"confirmed": True, "actor": "cli-meta-review", "authorization": "cli-interactive"}
+    report_path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    run_id = str(value.get("packet", {}).get("run_id") or "meta-review")
+    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": "meta-review", "run_id": run_id, "choice": decision, "spot_dim": spot_dim, "spot_result": spot_result, "reason": reason, "authorization": "cli-interactive"})
+    if decision == "accept":
+        return intake(repo, report_path)
+    return {"accepted": False, "errors": [], "warnings": [], "decision": decision, "spot_dim": spot_dim, "spot_result": spot_result}
