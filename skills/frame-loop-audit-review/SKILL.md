@@ -35,6 +35,13 @@ user-invocable: true
 - 実装リポジトリへ書き込まない。
 - レビュー対象エージェントと対話しない。
 
+## Self-family review
+
+`self-family` を申告する場合も新規セッションで実施し、実装セッションの
+文脈を持ち込まない。自分の実装への評価では、各次元の一次 evidence を
+厚くし、D5 は request の `d5_target` と完全一致させる。受理には人間の
+meta-review が必要であり、判断前提を推測して補わない。
+
 ## Exit
 
 契約 JSON を出力して終了する。意味的判断はこの skill の仕事であり、受理と事実照合は `loopeng review intake` が行う。

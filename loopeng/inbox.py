@@ -36,9 +36,10 @@ def collect_inbox(repo: Path, now: datetime | None = None) -> list[dict[str, Any
         matched = isinstance(value, dict) and incoming_matches(repo, value)
         if matched and run_id and incoming_is_confirmed(path):
             incoming_matched_runs.add(run_id)
+        relation = value.get("reviewer", {}).get("relation") if isinstance(value, dict) and isinstance(value.get("reviewer"), dict) else None
         items.append({"kind":"incoming-review", "target": run_id or "(unmatched)",
                       "path": str(path.relative_to(repo)), "label": "intake",
-                      "run_id": run_id, "matched": matched, "human_confirmed": incoming_is_confirmed(path),
+                      "run_id": run_id, "matched": matched, "relation": relation, "human_confirmed": incoming_is_confirmed(path),
                       "timestamp": _age_timestamp(None, path.stat().st_mtime)})
     draft_root = repo / agent_root("state", "memory-drafts")
     for path in sorted(draft_root.glob("*.json")) if draft_root.is_dir() else ():

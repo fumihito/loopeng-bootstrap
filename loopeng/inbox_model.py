@@ -61,7 +61,7 @@ ACTION_TABLE = {
     "provisional": ("establish", "detail", "skip"),
     "draft": ("approve", "reject", "detail", "skip"),
     "external-review": ("request", "packet", "detail", "skip"),
-    "incoming-review": ("confirm", "detail", "skip"),
+    "incoming-review": ("confirm", "meta-review", "detail", "skip"),
     "held": ("go", "alt", "hold", "detail", "skip"),
     "outcome": ("pass", "fail", "detail", "skip"),
 }
@@ -69,7 +69,9 @@ ACTION_TABLE = {
 
 def actions_for(item: dict[str, Any]) -> tuple[str, ...]:
     if item.get("kind") == "incoming-review":
-        return ("intake", "detail", "skip") if item.get("human_confirmed") else ACTION_TABLE["incoming-review"]
+        if item.get("relation") == "self-family":
+            return ("meta-review", "detail", "skip")
+        return ("intake", "detail", "skip") if item.get("human_confirmed") else ("confirm", "detail", "skip")
     if item.get("kind") == "external-review" and item.get("incoming_candidate"):
         return ("request", "packet", "intake", "detail", "skip")
     return ACTION_TABLE.get(str(item.get("kind")), ("skip",))

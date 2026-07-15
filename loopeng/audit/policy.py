@@ -107,6 +107,7 @@ INSTRUCTION_SMELL_PATTERNS = (
 )
 REVIEW_REQUIRED_TRIGGERS = ("established_memory_change", "outcome_fail_streak_2", "instruction_smell_present")
 SAMPLING_EVERY_N_RUNS = 10
+CROSS_FAMILY_EVERY_N = 5
 REVIEW_OVERDUE_DAYS = 7
 
 HARD_BLOCKS = {

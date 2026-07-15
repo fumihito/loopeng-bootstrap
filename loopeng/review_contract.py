@@ -2,6 +2,7 @@ from __future__ import annotations
 
 CONTRACT_VERSION = 1
 REVIEW_DIMENSIONS = ("D1", "D2", "D3", "D4", "D5")
+REVIEWER_RELATIONS = ("external", "self-family")
 DIMENSION_DESCRIPTIONS = {
     "D1": "process consistency",
     "D2": "outcome validity",
@@ -22,6 +23,8 @@ def validate_contract(value: object) -> list[str]:
     reviewer = value.get("reviewer")
     if not isinstance(reviewer, dict) or not all(isinstance(reviewer.get(key), str) and reviewer[key] for key in ("model", "session", "relation")):
         errors.append("reviewer.model/session/relation are required strings")
+    elif reviewer.get("relation") not in REVIEWER_RELATIONS:
+        errors.append("reviewer.relation must be external or self-family")
     packet = value.get("packet")
     if not isinstance(packet, dict) or not isinstance(packet.get("run_id"), str) or not isinstance(packet.get("packet_hash"), str):
         errors.append("packet.run_id and packet.packet_hash are required strings")
@@ -60,4 +63,11 @@ def validate_contract(value: object) -> list[str]:
         errors.append(f"invalid overall: {value.get('overall')}")
     if sum(1 for item in dimensions if isinstance(item, dict) and item.get("verdict") == "unable") >= 3 and value.get("overall") != "blocked-on-info":
         errors.append("three or more unable dimensions require overall blocked-on-info")
+    meta = value.get("meta_review")
+    if meta is not None and (not isinstance(meta, dict) or meta.get("decision") not in {"accept", "send-back", "defer"}):
+        errors.append("meta_review.decision must be accept, send-back, or defer")
+    if isinstance(meta, dict) and meta.get("decision") == "accept" and meta.get("spot_result") not in {"ok", "mismatch"}:
+        errors.append("accepted meta_review requires spot_result ok or mismatch")
+    if isinstance(meta, dict) and meta.get("decision") == "accept" and meta.get("spot_dim") not in REVIEW_DIMENSIONS:
+        errors.append("accepted meta_review requires spot_dim D1 through D5")
     return errors

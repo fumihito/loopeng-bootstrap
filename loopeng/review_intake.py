@@ -127,6 +127,15 @@ def _find_packet(repo: Path, run_id: str, expected_hash: str) -> tuple[Path | No
     return None, ["packet_hash mismatch"]
 
 
+def _d5_target(packet: Path) -> str | None:
+    try:
+        value = _load_json(packet / "manifest.json")
+        target = value.get("d5_target") if isinstance(value, dict) else None
+        return str(target) if target else None
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def _pointer_exists(packet: Path, ref: str) -> bool:
     if ref.startswith("journal:"):
         parts = ref.split(":")
@@ -192,7 +201,8 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
     except ValueError:
         pass
     else:
-        if not incoming_is_confirmed(report_path):
+        incoming_reviewer = report.get("reviewer") if isinstance(report.get("reviewer"), dict) else {}
+        if incoming_reviewer.get("relation") != "self-family" and not incoming_is_confirmed(report_path):
             packet = report.get("packet") if isinstance(report.get("packet"), dict) else {}
             return {"accepted": False, "errors": ["human confirmation required"], "warnings": [], "run_id": packet.get("run_id")}
     run_id = report["packet"]["run_id"]
@@ -204,6 +214,10 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
         for evidence in dimension.get("evidence", []):
             if not _pointer_exists(packet, evidence["ref"]):
                 errors.append(f"evidence: unresolved {evidence['ref']}")
+    target = _d5_target(packet)
+    d5 = _dimension(report, "D5")
+    if target and d5 and not any(pointer.get("ref") == target for pointer in d5.get("evidence", []) if isinstance(pointer, dict)):
+        errors.append(f"d5_target mismatch: expected {target}")
     sidecars = [path for path in packet.glob("*.json") if path.name not in {"manifest.json", "journal.json", "source-index.json"}]
     sidecar: dict[str, Any] = {}
     if sidecars:
@@ -229,6 +243,9 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
     no_memory = d3 and "no memory" in str(d3.get("note") or "").casefold()
     if no_memory and (int(sidecar.get("memory", {}).get("applied", 0) or 0) > 0):
         errors.append("cross-check: D3 says no memory write but sidecar records applied memory")
+    requirement = sidecar.get("review_requirement") if isinstance(sidecar.get("review_requirement"), dict) else {}
+    if requirement.get("relation") == "external" and report.get("reviewer", {}).get("relation") != "external":
+        errors.append("calibration: this due requires relation=external")
     try:
         journal = _load_json(packet / "journal.json")
     except (OSError, json.JSONDecodeError):
@@ -236,9 +253,15 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
     starts = [event for event in journal if isinstance(event, dict) and event.get("kind") == "run-start"]
     agent = str(starts[0].get("agent") or "") if starts else ""
     reviewer = report["reviewer"]
-    if reviewer.get("relation") != "external":
-        errors.append("independence: reviewer.relation must be external")
-    if reviewer.get("model") == agent:
+    relation = reviewer.get("relation")
+    meta = report.get("meta_review") if isinstance(report.get("meta_review"), dict) else None
+    if relation == "self-family":
+        if meta and meta.get("decision") == "accept":
+            warnings.append("self_review_info")
+        else:
+            warnings.append("self_review")
+            errors.append("meta-review required for self-family review")
+    elif reviewer.get("model") == agent:
         warnings.append("self_review")
     if errors:
         return {"accepted": False, "errors": errors, "warnings": warnings, "run_id": run_id}
@@ -247,7 +270,7 @@ def intake(repo: Path, report_path: Path) -> dict[str, Any]:
         relative_report = str(report_path.resolve().relative_to(repo))
     except ValueError:
         pass
-    append_event(repo, run_id, {"kind": EVENT_EXTERNAL_REVIEW, "run_id": run_id, "overall": report["overall"], "report": relative_report, "warnings": warnings, "accepted_by": "loopeng review intake"})
+    append_event(repo, run_id, {"kind": EVENT_EXTERNAL_REVIEW, "run_id": run_id, "overall": report["overall"], "report": relative_report, "relation": relation, "dimensions": report["dimensions"], "findings": report.get("findings", []), "meta_review": meta, "warnings": warnings, "accepted_by": "loopeng review intake"})
     return {"accepted": True, "errors": [], "warnings": warnings, "run_id": run_id, "overall": report["overall"]}
 
 
@@ -275,6 +298,8 @@ def intake_auto(repo: Path) -> dict[str, Any]:
             continue
         result = intake(repo, path)
         entry = {"file": path.name, **result}
+        if any("meta-review required" in str(error) for error in result.get("errors", [])):
+            entry["route"] = "meta-review required — use inbox --tui"
         if result.get("accepted"):
             entry["path"] = _move_intake_file(path, accepted_dir)
             accepted.append(entry)

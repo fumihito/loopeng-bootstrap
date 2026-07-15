@@ -110,6 +110,8 @@ none
 
 耐久メモリ参照は `index.md → okf query → 上位 K 件(既定 5)の本文読み込み` の順とし、`llmwiki/` の一括読み込みは行いません。
 `--run` を受けるコマンドでは `latest` / `latest-due` / `latest-fail` を使えます。解決後の run-id は stderr に表示され、`latest-due` は `review intake` 受理済みのランを除外します。
+
+レビューは同系レビューを許容する妥協設計です。Codex は `self-family` を申告し、新規セッションで実施したうえで、人間の TUI メタレビュー（表示時のランダム抜き取り実査）を通します。5 件に 1 件は `external` を維持し、`review calibration` で比較します。
 `okf query` は現リポジトリの framework/project 空間を既定範囲とし、横断参照は `--space all` を明示します。`memory stats` と `memory efficacy` も `--space` で空間別に集計します。
 provisional エントリは観測記録として扱い、行動の制約・決定の根拠としては established を優先します。自律名前空間の provisional UPSERT は `memory curate` が適用し、それ以外の `memory-drafts` 適用は当該ランでユーザーが明示指示した場合のみ行います。
 

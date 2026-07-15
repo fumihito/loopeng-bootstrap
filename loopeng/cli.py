@@ -223,7 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=t("Run Report の結果を一覧・トリアージし、判断や remediation を記録します。", "List and triage Run Report results, then record decisions or remediation."),
         formatter_class=formatter,
     )
-    review.add_argument("review_view", nargs="?", choices=("dag", "intake", "request"), help=t("ループ模式図または外部レビュー操作", "Loop diagram or external review operation"))
+    review.add_argument("review_view", nargs="?", choices=("dag", "intake", "request", "calibration"), help=t("ループ模式図または外部レビュー操作", "Loop diagram or external review operation"))
     review.add_argument("review_target", nargs="?", type=_path, help=t("intake 対象 report JSON", "intake report JSON"))
     review.add_argument("--runs", type=int, default=5, help=t("表示対象にする直近 run 数 (既定: 5)", "Number of recent runs to show (default: 5)"))
     review.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
@@ -474,6 +474,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.run is None:
                 raise SystemExit("review request requires --run")
             print(build_request(args.repo, args.run), end="")
+            return 0
+        if args.review_view == "calibration":
+            from .review_calibration import render
+            print(render(args.repo), end="")
             return 0
         if args.review_view == "dag":
             from .review_dag import DETAIL_GUIDE, render_dag, render_detail, render_summary, write_dag

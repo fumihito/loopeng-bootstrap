@@ -108,6 +108,11 @@ def _learning_summary(repo: Path) -> str:
 
 def _concerns(repo: Path, runs: list[dict[str, Any]]) -> list[str]:
     lines = ["## Concerns"]
+    from .review_calibration import summarize as calibration_summary
+    calibration = calibration_summary(repo)
+    if calibration.get("by_relation"):
+        parts = [f"{relation}:fail={metrics['fail']},unable={metrics['unable']}" for relation, metrics in sorted(calibration["by_relation"].items())]
+        lines.append("- calibration: " + "; ".join(parts))
     fail_streak = 0
     for run in runs:
         if str(run.get("outcome") or "none") == "fail":

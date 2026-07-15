@@ -9,7 +9,7 @@ from ..learning import save_learning_entries
 from .checks import collect_context, run_checks
 from .policy import DETAIL_MESSAGE_MAX, DETAIL_PATHS_MAX
 from ..journal import EVENT_BLOCKED, EVENT_EXTERNAL_REVIEW, EVENT_OKF_APPLY, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, GOVERNANCE_EVENT_KINDS, sanitize_event
-from .policy import REVIEW_REQUIRED_TRIGGERS, SAMPLING_EVERY_N_RUNS
+from .policy import CROSS_FAMILY_EVERY_N, REVIEW_REQUIRED_TRIGGERS, SAMPLING_EVERY_N_RUNS
 from ..journal import EVENT_OUTCOME
 
 
@@ -131,6 +131,17 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
     if sampling_due:
         trigger_reasons.append(f"sampling_{SAMPLING_EVERY_N_RUNS}")
     external_review_due = not reviews and bool(trigger_reasons)
+    prior_due = 0
+    for prior in (repo / agent_root("state", "reports")).glob("*.json"):
+        if prior.name == f"{run_id}.json":
+            continue
+        try:
+            prior_value = json.loads(prior.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(prior_value, dict) and isinstance(prior_value.get("review_requirement"), dict) and prior_value["review_requirement"].get("due"):
+            prior_due += 1
+    review_requirement = {"due": external_review_due, "relation": "external" if external_review_due and (prior_due + 1) % CROSS_FAMILY_EVERY_N == 0 else "self-family", "sequence": prior_due + 1}
     skill_counts: dict[str, int] = {}
     skill_sources: dict[str, dict[str, int]] = {}
     for event in skill_events:
@@ -181,6 +192,7 @@ def run_audit_report(repo: Path, run_id: str) -> Path:
         "outcome": outcome_status,
         "overhead": {"governance_events": sum(1 for event in context.events if event.get("kind") in GOVERNANCE_EVENT_KINDS), "total_events": len(context.events)},
         "review": reviews[-1] if reviews else None,
+        "review_requirement": review_requirement,
         "handoff_written": True,
         "schema": 2,
     }

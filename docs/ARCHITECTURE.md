@@ -1,5 +1,17 @@
 # Architecture
 
+## Review-family compromise
+
+We explicitly accept the loss caused by using a same-family reviewer: correlated
+model blind spots, with especially weaker assurance for D5. The compensation is
+session independence (a new session must review and record its identifier),
+unpredictable human meta-review with a one-dimension evidence spot check, human
+selection authority for D5, and a calibration channel that requires one
+`external` review every five due reviews. Session independence is a recorded
+discipline, not mechanically provable. If all of the latest three non-family
+reviews identify a fail-level issue in a dimension that self-family reviews
+passed, raise the non-family ratio or redesign the regime.
+
 v0.2 removes the old role-pipeline contract and replaces it with four deterministic concerns:
 
 1. autonomous execution without step-by-step human approval;

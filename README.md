@@ -110,6 +110,8 @@ none
 
 Memory retrieval follows `index.md → okf query → top K (default 5) document reads`; do not bulk-read `llmwiki/`.
 Commands that accept `--run` also accept `latest`, `latest-due`, and `latest-fail`; the resolved run ID is printed to stderr. `latest-due` excludes runs already accepted by `review intake`.
+
+Reviews use a deliberate same-family compromise: Codex reviews declare `self-family` and must be performed in a new session, then pass human TUI meta-review with a random evidence spot check. One in every five due reviews remains reserved for an `external` reviewer; `review calibration` reports the comparison.
 `okf query` defaults to the current framework/project space; use `--space all` for an explicit cross-space read. `memory stats` and `memory efficacy` likewise support `--space` and report only the selected space.
 Provisional entries are observations; prefer established entries as the basis for constraints and decisions. `memory curate` may apply only bounded provisional UPSERTs in autonomous namespaces; other drafts require explicit user instruction.
 

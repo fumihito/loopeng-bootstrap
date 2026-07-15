@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import curses
 import json
+import secrets
 from pathlib import Path
 from typing import Any
 
 from .inbox_model import actions_for as model_actions_for, detail, execute, generate_packet, list_items, packet_detail_lines
+from .journal import EVENT_DECISION, append_event
+from .review_intake import intake, _move_intake_file, ACCEPTED_REL
 from .review_request import resolve_packet
 from .review_contract import CONTRACT_VERSION, DIMENSION_DESCRIPTIONS, REVIEW_DIMENSIONS, validate_contract
 
@@ -233,6 +236,73 @@ def human_review_wizard(screen: Any, repo: Path, run_id: str) -> Path | None:
     return target
 
 
+def meta_review_lines(repo: Path, path: Path, spot_dim: str | None = None) -> tuple[list[str], str, str]:
+    """Build the one-screen table and a non-deterministic evidence spot check."""
+    value = json.loads(path.read_text(encoding="utf-8"))
+    dimensions = {str(item.get("id")): item for item in value.get("dimensions", []) if isinstance(item, dict)}
+    chosen = spot_dim or secrets.choice(list(REVIEW_DIMENSIONS))
+    selected = dimensions.get(chosen, {})
+    evidence = selected.get("evidence", []) if isinstance(selected.get("evidence"), list) else []
+    pointer = evidence[0] if evidence else {}
+    packet = resolve_packet(repo, str(value.get("packet", {}).get("run_id", "")))
+    expanded = "unavailable"
+    if packet and isinstance(pointer, dict):
+        ref = str(pointer.get("ref") or "")
+        if ref.startswith("file:"):
+            parts = ref.split(":")
+            try:
+                source = packet / "source" / parts[1]
+                expanded = source.read_text(encoding="utf-8").splitlines()[int(parts[2]) - 1]
+            except (OSError, ValueError, IndexError):
+                pass
+        elif ref.startswith("journal:"):
+            try:
+                expanded = (packet / "journal.json").read_text(encoding="utf-8").splitlines()[int(ref.rsplit(":", 1)[1]) - 1]
+            except (OSError, ValueError, IndexError):
+                pass
+    lines = ["Meta-review: self-family review", "", "dim | verdict | evidence | note"]
+    for identifier in REVIEW_DIMENSIONS:
+        item = dimensions.get(identifier, {})
+        note = str(item.get("note") or "")[:70].replace("\n", " ")
+        count = len(item.get("evidence", [])) if isinstance(item.get("evidence"), list) else 0
+        lines.append(f"{identifier} | {item.get('verdict', '?')} | {count} | {note}")
+    lines.extend(["", f"overall: {value.get('overall')}", "findings:"])
+    lines.extend(f"- {str(item)[:100]}" for item in value.get("findings", [])[:10])
+    lines.extend(["", f"SPOT {chosen}: {pointer.get('ref', 'none') if isinstance(pointer, dict) else 'none'}", f"evidence: {expanded}"])
+    return lines, chosen, expanded
+
+
+def meta_review_wizard(screen: Any, repo: Path, path: Path) -> dict[str, Any] | None:
+    lines, spot_dim, _ = meta_review_lines(repo, path)
+    screen.erase()
+    height, width = screen.getmaxyx()
+    for index, line in enumerate(lines[:max(1, height - 2)]):
+        screen.addnstr(index, 0, _short(line, max(1, width - 1)), max(1, width - 1))
+    screen.addnstr(max(0, height - 2), 0, "Spot evidence supports verdict? [y/n]", max(1, width - 1)); screen.refresh()
+    key = screen.getch()
+    if key not in (ord("y"), ord("n")):
+        return None
+    spot_result = "ok" if key == ord("y") else "mismatch"
+    screen.erase(); screen.addnstr(0, 0, "Meta decision: [a]ccept [s]end-back [x]defer", max(1, width - 1)); screen.refresh()
+    choice = screen.getch()
+    decision = {ord("a"): "accept", ord("s"): "send-back", ord("x"): "defer"}.get(choice)
+    if not decision:
+        return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    value["meta_review"] = {"decision": decision, "spot_dim": spot_dim, "spot_result": spot_result, "authorization": "tui-interactive"}
+    if decision == "accept":
+        value["human_confirmation"] = {"confirmed": True, "actor": "tui-meta-review", "authorization": "tui-interactive"}
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    run_id = str(value.get("packet", {}).get("run_id") or "meta-review")
+    append_event(repo, run_id, {"kind": EVENT_DECISION, "item": "meta-review", "run_id": run_id, "choice": decision, "spot_dim": spot_dim, "spot_result": spot_result, "authorization": "tui-interactive"})
+    if decision == "accept":
+        result = intake(repo, path)
+        if result.get("accepted"):
+            result["path"] = _move_intake_file(path, repo / ACCEPTED_REL)
+        return result
+    return {"accepted": False, "decision": decision, "spot_dim": spot_dim, "spot_result": spot_result}
+
+
 def run(repo: Path, run_id: str) -> None:
     def main(screen: Any) -> None:
         curses.curs_set(0)
@@ -327,6 +397,11 @@ def run(repo: Path, run_id: str) -> None:
                 if action == "review":
                     response = human_review_wizard(screen, repo, str(chosen[0]["target"]))
                     messages.append("review response saved" if response else "review response cancelled")
+                    marked.clear()
+                    continue
+                if action == "meta-review" and chosen[0].get("kind") == "incoming-review":
+                    result = meta_review_wizard(screen, repo, Path(repo / str(chosen[0]["path"])))
+                    messages.append(json_result(result or {"ok": False, "error": "meta-review cancelled"}))
                     marked.clear()
                     continue
                 value = _prompt(screen, "reason/note (empty cancels): ") if action in {"reject", "fail"} else ""
