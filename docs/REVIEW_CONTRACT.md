@@ -32,6 +32,9 @@ acceptance it appends `external-review`; only that event resolves the due item.
 The configured review actor is a separate agent. Review execution and result
 return are outside this deterministic mechanism.
 
+The HTML review view is a read-only, HTTPS-only escape hatch from the TUI for
+the dimension table and resolved evidence excerpts.
+
 Standard handoff: `python3 -m loopeng review request --run <run-id>` creates
 the incoming drop-off directory; save the contract JSON there, then run
 `python3 -m loopeng review intake --auto`. Incoming filenames are arbitrary.

@@ -223,7 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=t("Run Report の結果を一覧・トリアージし、判断や remediation を記録します。", "List and triage Run Report results, then record decisions or remediation."),
         formatter_class=formatter,
     )
-    review.add_argument("review_view", nargs="?", choices=("dag", "intake", "request", "calibration"), help=t("ループ模式図または外部レビュー操作", "Loop diagram or external review operation"))
+    review.add_argument("review_view", nargs="?", choices=("dag", "html", "serve", "intake", "request", "calibration"), help=t("ループ模式図または外部レビュー操作", "Loop diagram or external review operation"))
     review.add_argument("review_target", nargs="?", type=_path, help=t("intake 対象 report JSON", "intake report JSON"))
     review.add_argument("--runs", type=int, default=5, help=t("表示対象にする直近 run 数 (既定: 5)", "Number of recent runs to show (default: 5)"))
     review.add_argument("--repo", type=_path, default=Path("."), help=t("対象リポジトリ (既定: .)", "Target repository (default: .)"))
@@ -237,6 +237,8 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--decision", help=t("判断 ID を記録", "Record a decision ID"))
     review.add_argument("--choice", choices=("go", "alt", "hold"), help=t("判断: go / alt / hold", "Decision: go / alt / hold"))
     review.add_argument("--format", choices=("text", "html", "json", "mermaid", "svg"), default="text", help=t("出力形式 (既定: text; dag は mermaid)", "Output format (default: text; mermaid for dag)"))
+    review.add_argument("--serve", action="store_true", help=t("HTML を生成して HTTPS 配信する", "Serve rendered HTML over HTTPS"))
+    review.add_argument("--port", type=int, default=8443, help=t("HTTPS ポート (既定: 8443)", "HTTPS port (default: 8443)"))
     review.add_argument("--out", help=t("dag 成果物の出力先 (reports 配下)", "dag output path (under reports)"))
     review.add_argument("--stage", choices=("intake", "retrieve", "act", "record", "memory", "audit", "handoff", "hooks", "learning"), help=t("dag 明細のステージ", "DAG detail stage"))
     review.add_argument("--check", help=t("dag 明細を検査 ID で絞り込み", "Filter DAG details by check ID"))
@@ -488,6 +490,35 @@ def main(argv: list[str] | None = None) -> int:
         if args.review_view == "calibration":
             from .review_calibration import render
             print(render(args.repo), end="")
+            return 0
+        if args.review_view == "html" or args.serve:
+            if args.run is None:
+                raise SystemExit("review html requires --run (use latest-due or an explicit run id)")
+            run_id = resolve_run_selector(args.repo.resolve(), args.run)
+            from .htmlview import render_index, render_review as render_html_review
+            path = render_html_review(args.repo.resolve(), run_id)
+            render_index(args.repo.resolve())
+            if not args.serve:
+                print(str(path))
+                return 0
+            from .webserve import serve
+            server = serve(args.repo.resolve(), args.port)
+            print(f"{server.url}review/{run_id}/")
+            print("self-signed certificate: your browser will show a trust warning")
+            try:
+                server.thread.join() if server.thread else None
+            except KeyboardInterrupt:
+                server.stop()
+            return 0
+        if args.review_view == "serve":
+            from .webserve import serve
+            server = serve(args.repo.resolve(), args.port)
+            print(server.url)
+            print("self-signed certificate: your browser will show a trust warning")
+            try:
+                server.thread.join() if server.thread else None
+            except KeyboardInterrupt:
+                server.stop()
             return 0
         if args.review_view == "dag":
             from .review_dag import DETAIL_GUIDE, render_dag, render_detail, render_summary, write_dag

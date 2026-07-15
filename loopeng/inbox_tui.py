@@ -8,7 +8,7 @@ import secrets
 from pathlib import Path
 from typing import Any
 
-from .inbox_model import actions_for as model_actions_for, detail, execute, generate_packet, list_items, packet_detail_lines
+from .inbox_model import actions_for as model_actions_for, detail, execute, generate_packet, list_items, packet_detail_lines, stop_web_server
 from .journal import EVENT_DECISION, append_event
 from .review_intake import intake, _move_intake_file, ACCEPTED_REL
 from .review_request import resolve_packet
@@ -326,7 +326,7 @@ def run(repo: Path, run_id: str) -> None:
             detail_offset = min(detail_offset, max(0, len(detail_lines) - detail_page_size))
             screen.erase()
             height, width = screen.getmaxyx()
-            screen.addnstr(0, 0, f"Inbox ({len(items)})  [x]=mark [a]=act [d]=detail [A]=act-all-marked [q]=quit", max(1, width - 1))
+            screen.addnstr(0, 0, f"Inbox ({len(items)})  [x]=mark [a]=act [d]=detail [w]=web [A]=act-all-marked [q]=quit", max(1, width - 1))
             list_limit = max(0, height - detail_page_size - 6)
             for index, item in enumerate(items[:list_limit]):
                 prefix = ">" if index == selected else " "
@@ -381,12 +381,20 @@ def run(repo: Path, run_id: str) -> None:
                         _pager(screen, packet_detail_lines(packet))
                 else:
                     _pager(screen, detail_lines)
+            elif key == ord("w") and items:
+                result = execute(repo, items[selected], "web", run_id)
+                if result.get("ok"):
+                    messages.append(f"URL: {result['url']} (self-signed certificate: browser trust warning)")
+                else:
+                    messages.append("failed: " + str(result.get("error")))
             elif key in (ord("a"), ord("A")) and items:
                 chosen = [items[i] for i in sorted(marked)] if key == ord("A") and marked else [items[selected]]
                 if key == ord("A") and len({str(item.get("kind")) for item in chosen}) != 1:
                     messages.append("bulk action requires one kind")
                     continue
                 options = actions_for(chosen[0])
+                if chosen[0].get("kind") in {"external-review", "incoming-review"}:
+                    options = (*options, "web")
                 action = _action_prompt(screen, options)
                 if not action:
                     messages.append("action input cancelled")
@@ -417,7 +425,10 @@ def run(repo: Path, run_id: str) -> None:
                 messages.append(json_result(result))
                 marked.clear()
 
-    curses.wrapper(main)
+    try:
+        curses.wrapper(main)
+    finally:
+        stop_web_server(repo)
 
 
 def json_result(value: dict[str, Any]) -> str:

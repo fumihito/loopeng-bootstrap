@@ -36,7 +36,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng review intake` / `request` | 外部エージェントレビューの決定論的受理、または依頼文生成。`intake --auto` は投函ディレクトリを走査 |
 | `loopeng schedule next` | 前ランの handoff から次ターンの前文を生成 |
 | `loopeng status` | 直近 Run Report と learning backlog の要約 |
-| `loopeng review` | 直近ランの結果・懸念・前提をレビュー。`--triage` で誘導し、`dag` で Mermaid/SVG のループ図を生成 |
+| `loopeng review` | 直近ランの結果・懸念・前提をレビュー。`--triage` で誘導し、`review html --run <id>` で HTML ビューを生成、`review serve` で HTTPS 限定配信 |
 | `loopeng hook` | Claude Code / Codex の hook 入口。journal 自動取得と hard block の事前執行を担う |
 | `./loopeng.py` | `python3 -m loopeng` と同等の短縮ランチャ |
 | `skills/frame-*` | 思考フレーム skill 群(唯一の配布 skill。編集点は `adapters/shared/skills/`) |

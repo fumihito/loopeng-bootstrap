@@ -92,6 +92,8 @@ submission that fails intake remains pending.
 
 Use `loopeng review request --run <id>` to generate the external-agent request
 and `loopeng review intake <report.json>` to perform deterministic acceptance.
+Use `loopeng review html --run <id>` for the packet-backed HTML view and
+`loopeng review serve` for HTTPS-only local delivery.
 Use `loopeng review calibration` to view relation-specific fail/unable rates and
 same-family-only findings. `self-family` submissions require TUI meta-review;
 the calibration channel reserves every fifth due review for `external`.

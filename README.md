@@ -36,7 +36,7 @@ Pending durable-memory drafts are listed with `python3 -m loopeng memory drafts 
 | `loopeng review intake` / `request` | Deterministically accept an external-agent review or generate its request; `intake --auto` scans the incoming drop-off |
 | `loopeng schedule next` | Generate the next turn's preamble from the previous run's handoff |
 | `loopeng status` | Summarize the latest Run Report and learning backlog |
-| `loopeng review` | Review recent run results, concerns, and premises; `--triage` guides review and `dag` renders a Mermaid/SVG loop view |
+| `loopeng review` | Review recent run results, concerns, and premises; `--triage` guides review, `review html --run <id>` renders a packet-backed HTML view, and `review serve` provides HTTPS-only local delivery |
 | `loopeng hook` | Claude Code / Codex hook entry point for automatic journal capture and pre-execution hard-block enforcement |
 | `./loopeng.py` | Short launcher equivalent to `python3 -m loopeng` |
 | `skills/frame-*` | Thinking-framework skill family (the only distributed skills; edit point: `adapters/shared/skills/`) |

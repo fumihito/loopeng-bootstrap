@@ -240,18 +240,8 @@ def render_review(repo: Path, runs: int = DEFAULT_RUNS, section: str | None = No
 
 
 def _html_document(title: str, body: str) -> str:
-    escaped = html.escape(body)
-    return (
-        "<!doctype html>\n"
-        '<html lang="ja">\n'
-        "<head>\n"
-        '  <meta charset="utf-8">\n'
-        f"  <title>{html.escape(title)}</title>\n"
-        "  <style>body{margin:2rem;background:#111827;color:#f3f4f6;font:16px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto}pre{white-space:pre-wrap;background:#1f2937;padding:1.25rem;border-radius:.5rem;overflow:auto}</style>\n"
-        "</head>\n"
-        f"<body><main><pre>{escaped}</pre></main></body>\n"
-        "</html>\n"
-    )
+    from .htmlview import _page
+    return _page(title, f"<pre>{html.escape(body)}</pre>")
 
 
 def render_review_html(repo: Path, runs: int = DEFAULT_RUNS, section: str | None = None) -> str:

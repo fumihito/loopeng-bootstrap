@@ -23,6 +23,7 @@ from ._paths import agent_root
 DETAIL_LINES = 20
 ESTABLISH_BATCH = 20
 PACKET_DETAIL_MAX_LINES = 20000
+_WEB_SERVERS: dict[Path, Any] = {}
 
 
 def read_one_key_confirmation(input_stream: Any, output_stream: Any, prompt: str) -> str:
@@ -197,6 +198,23 @@ def execute(repo: Path, item: dict[str, Any] | list[dict[str, Any]], action: str
     if action == "confirm" and all(item.get("kind") == "incoming-review" for item in items):
         results = [confirm_incoming(_path(repo, current)) for current in items]
         return {"ok": all(result.get("confirmed") for result in results), "confirmed": results}
+    if action == "web" and all(item.get("kind") in {"external-review", "incoming-review"} for item in items):
+        if len(items) != 1:
+            return {"ok": False, "error": "web view requires one review"}
+        from .htmlview import render_index, render_review
+        from .webserve import serve
+        current = items[0]
+        target = str(current.get("target") or current.get("run_id") or "")
+        if not target:
+            return {"ok": False, "error": "review run id unavailable"}
+        path = render_review(repo.resolve(), target)
+        render_index(repo.resolve())
+        key = repo.resolve()
+        server = _WEB_SERVERS.get(key)
+        if server is None or server.httpd is None:
+            server = serve(key)
+            _WEB_SERVERS[key] = server
+        return {"ok": True, "action": "web", "path": str(path), "url": f"{server.url}review/{target}/", "note": "self-signed certificate: browser trust warning"}
     if len(items) != 1:
         return {"ok": False, "error": "bulk actions require one kind and a supported bulk action"}
     current = items[0]
@@ -241,6 +259,12 @@ def start_session(repo: Path) -> str:
 
 def end_session(repo: Path, run_id: str) -> None:
     append_event(repo, run_id, {"kind": EVENT_RUN_END, "agent": "human", "mode": "standard"})
+
+
+def stop_web_server(repo: Path) -> None:
+    server = _WEB_SERVERS.pop(repo.resolve(), None)
+    if server is not None:
+        server.stop()
 
 
 def interactive(repo: Path, input_stream: Any, output_stream: Any) -> int:
