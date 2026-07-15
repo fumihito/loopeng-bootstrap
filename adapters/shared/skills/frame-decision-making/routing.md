@@ -31,6 +31,11 @@ phrase = "tripwire"
 aliases = ["見直し条件", "再検討", "分岐点"]
 weight = 2
 
+[[bad_for]]
+phrase = "artifact review"
+aliases = ["完成文書", "成果物の校正", "主張の検証"]
+weight = -2
+
 [[signals]]
 phrase = "決める"
 weight = 1

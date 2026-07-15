@@ -56,6 +56,10 @@ when the source kit is available.
 planned payload changes without modifying the repository. Re-running an update
 from the same kit is idempotent and reports no payload changes.
 
+To verify the routing metadata for every shared frame skill, run
+`python3 utils/routing_hints_lint.py --root .`. The check is also part of the
+completion audit, so a missing or malformed `routing.md` blocks `record`.
+
 ## Hooks
 
 Installation registers the managed hook entry points for Claude Code and Codex

@@ -20,4 +20,14 @@ weight = 3
 phrase = "implement a fix"
 aliases = ["修正実装", "コード変更"]
 weight = -5
+
+[[bad_for]]
+phrase = "same-session implementation review"
+aliases = ["同じセッション", "自己レビュー"]
+weight = -3
+
+[[signals]]
+phrase = "監査 packet"
+aliases = ["audit export", "外部レビュー"]
+weight = 1
 ```
