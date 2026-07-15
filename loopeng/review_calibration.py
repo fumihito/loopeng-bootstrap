@@ -27,7 +27,12 @@ def summarize(repo: Path) -> dict[str, Any]:
         legacy_due = any(isinstance(alert, dict) and alert.get("check_id") == "external_review_due" for alert in sidecar.get("alerts", [])) if isinstance(sidecar, dict) else False
         if (isinstance(requirement, dict) and requirement.get("due")) or legacy_due:
             due += 1
-            required_external += int(requirement.get("relation") == "external")
+            # Legacy reports predate review_requirement; retain the same
+            # every-fifth calibration obligation while migrating them.
+            required_external += int(
+                requirement.get("relation") == "external"
+                or (not requirement and due % 5 == 0)
+            )
         review = sidecar.get("review") if isinstance(sidecar, dict) else None
         if not isinstance(review, dict):
             continue
