@@ -31,46 +31,16 @@ MANAGED_HOOK_MARKER = '.agent-loop/hooks/loop_hook.py'
 PROFILE_FULL = 'full'
 PROFILE_ROUTING = 'routing'
 INSTALL_PROFILES = {PROFILE_FULL, PROFILE_ROUTING}
-# v0.2 distribution manifest: the legacy runtime is intentionally not shipped.
+# Distribution boundary (single declaration point): full ships the complete
+# loopeng Python package, launcher, VERSION, frame-* skills, the skill lint,
+# state skeleton, and hook sidecars.  Tests, development gates/lints, docs,
+# and adapter source are kit-only and are never runtime payload.
+EXPECTED_DISTRIBUTED_PACKAGES = ('loopeng',)
 RUNTIME_MANIFEST = [
-    {'path': 'loopeng/__init__.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'loopeng', 'kind': 'package', 'profiles': {PROFILE_FULL}},
     {'path': 'loopeng.py', 'profiles': {PROFILE_FULL}},
+    {'path': 'VERSION', 'profiles': {PROFILE_FULL}},
     {'path': 'utils/skill_structure_lint.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/__main__.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/_paths.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/cli.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/journal.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/locking.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/run.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/doctor.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/memory_efficacy.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/inbox.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/run_stats.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/learning.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/schedule.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/status.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/memory_stats.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/hooks/__init__.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/hooks/events.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/hooks/handler.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/hooks/claude_code.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/hooks/codex.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/__init__.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/policy.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/report.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/__init__.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/common.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/outcome_missing.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/concurrent_runs_detected.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/learning_ineffective.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/inbox_stale.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/external_review_overdue.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/external_review_failed.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/export.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/review_contract.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/review_intake.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/review_request.py', 'profiles': {PROFILE_FULL}},
-    {'path': 'loopeng/audit/checks/memory_instruction_smell.py', 'profiles': {PROFILE_FULL}},
 ]
 
 COMMAND_DISPATCHER = '''#!/usr/bin/env python3
@@ -373,7 +343,49 @@ class Installer:
         return [entry for entry in RUNTIME_MANIFEST if self.profile in entry['profiles']]
 
     def runtime_manifest_paths(self) -> list[Path]:
-        return [self.repo / str(entry['path']) for entry in self.manifest_entries()]
+        paths: list[Path] = []
+        for entry in self.manifest_entries():
+            rel = str(entry['path'])
+            source = SRC / rel
+            if entry.get('kind') == 'package':
+                paths.extend(self.repo / path.relative_to(SRC) for path in sorted(source.rglob('*.py')))
+            else:
+                paths.append(self.repo / rel)
+        return paths
+
+    def runtime_distribution_sources(self) -> list[tuple[Path, Path]]:
+        pairs: list[tuple[Path, Path]] = []
+        for entry in self.manifest_entries():
+            rel = str(entry['path'])
+            source = SRC / rel
+            if entry.get('kind') == 'package':
+                pairs.extend((path, self.repo / path.relative_to(SRC)) for path in sorted(source.rglob('*.py')))
+            else:
+                pairs.append((source, self.repo / rel))
+        return pairs
+
+    def print_update_diff(self) -> None:
+        if not (self.dry_run and self.update_mode):
+            return
+        previous = set()
+        if isinstance(self.manifest, dict) and isinstance(self.manifest.get('distributed'), list):
+            previous = {str(item) for item in self.manifest['distributed']}
+        planned = {destination.relative_to(self.repo).as_posix() for _, destination in self.runtime_distribution_sources()}
+        added = sorted(planned - previous)
+        removed = sorted(previous - planned)
+        changed: list[str] = []
+        entries = self.manifest.get('entries', []) if isinstance(self.manifest, dict) else []
+        old_hash = {str(item.get('relative_path')): item.get('source_sha256') for item in entries if isinstance(item, dict)}
+        for source, destination in self.runtime_distribution_sources():
+            rel = destination.relative_to(self.repo).as_posix()
+            if rel in previous and old_hash.get(rel) not in {None, self.sha256_file(source)}:
+                changed.append(rel)
+        print('Update dry-run distribution diff:')
+        for label, values in [('add', added), ('update', sorted(set(changed))), ('remove', removed)]:
+            for rel in values:
+                print(f'  {label}: {rel}')
+        if not (added or changed or removed):
+            print('  no payload changes (no-op)')
 
     def skill_names(self) -> list[str]:
         source_root = SRC / 'adapters/shared/skills'
@@ -1647,10 +1659,14 @@ class Installer:
     def write_install_manifest(self) -> None:
         if self.dry_run:
             return
+        distributed = sorted(self.manifest_entries_by_rel)
         manifest = {
             'installed_at': datetime.now(timezone.utc).isoformat(),
             'source_commit': self.source_commit_value(),
             'source_version': (SRC / 'VERSION').read_text(encoding='utf-8').strip(),
+            # Stable public fields used by installed-repository tooling.
+            'kit_commit': self.source_commit_value(),
+            'version': (SRC / 'VERSION').read_text(encoding='utf-8').strip(),
             'profile': self.profile,
             'self_mode': self.maybe_self_mode(),
             'update_mode': self.update_mode,
@@ -1658,12 +1674,41 @@ class Installer:
             'conflict_policy': self.conflict,
             'backup_root': str(self.backup_root.relative_to(self.repo)) if self.backup_root.exists() else None,
             'actions': self.actions,
+            'distributed': distributed,
             'entries': [self.manifest_entries_by_rel[key] for key in sorted(self.manifest_entries_by_rel)],
         }
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         self.atomic_write_text(self.manifest_path, json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
 
+    def rollback_transaction(self) -> None:
+        """Restore every touched managed file when an update aborts mid-flight."""
+        if self.dry_run:
+            return
+        for item in reversed(self.actions):
+            destination = Path(item['destination'])
+            if not self.is_inside_repository(destination) or self.backup_root in destination.parents:
+                continue
+            backup = self.backup_path(destination)
+            try:
+                if backup.is_file():
+                    self.unlock_for_update(destination)
+                    self.ensure_parent(destination)
+                    shutil.copy2(backup, destination)
+                elif item['action'] in {'copy', 'copy-missing', 'write', 'render', 'patch'}:
+                    destination.unlink(missing_ok=True)
+            except OSError:
+                # Preserve the original failure; the backup remains available
+                # for explicit recovery if filesystem rollback itself fails.
+                continue
+
     def install(self, *, agent_plan_dir: Path | None = None) -> None:
+        try:
+            self._install(agent_plan_dir=agent_plan_dir)
+        except BaseException:
+            self.rollback_transaction()
+            raise
+
+    def _install(self, *, agent_plan_dir: Path | None = None) -> None:
         if self.update_mode and not self.is_self_install():
             self.run_legacy_migration()
         conflicts, migrations = self.analyze_layout()
@@ -1692,6 +1737,7 @@ class Installer:
                     print('Obsolete manifest entries:')
                     for rel in self.obsolete_manifest_paths:
                         print(f'  - {rel}')
+            self.print_update_diff()
         if self.conflict == 'agent':
             plan = self.generate_agent_plan(conflicts, migrations, agent_plan_dir)
             print(f'LLM-assisted installation plan created: {plan}')
@@ -1716,14 +1762,9 @@ class Installer:
                 self.print_conflicts(after_migration)
                 raise SystemExit(2)
 
-        for entry in self.manifest_entries():
-            rel = str(entry['path'])
-            self.copy_file(SRC / rel, self.repo / rel)
+        for source, destination in self.runtime_distribution_sources():
+            self.copy_file(source, destination)
         if self.profile == PROFILE_FULL:
-            for source in (SRC / 'loopeng' / 'audit').rglob('*.py'):
-                self.copy_file(source, self.repo / source.relative_to(SRC))
-            for source in (SRC / 'loopeng' / 'okf').rglob('*.py'):
-                self.copy_file(source, self.repo / source.relative_to(SRC))
             runtime_state = self.repo / ('.' + 'agent-loop') / 'state'
             for relative in ('journal', 'learning', 'reports'):
                 (runtime_state / relative).mkdir(parents=True, exist_ok=True)
@@ -1795,6 +1836,15 @@ class Installer:
                     shutil.rmtree(path)
         self.write_install_manifest()
         self.write_migration_report()
+        if self.update_mode and self.profile == PROFILE_FULL and not self.dry_run:
+            verification = subprocess.run(
+                [sys.executable, '-m', 'loopeng', 'doctor', '--repo', str(self.repo)],
+                cwd=self.repo, text=True, capture_output=True, check=False,
+            )
+            print('Post-update doctor verification:')
+            print(verification.stdout.strip() or verification.stderr.strip())
+            if verification.returncode != 0:
+                print('WARNING: update was applied but post-update doctor could not execute.')
 
 
 def main() -> int:

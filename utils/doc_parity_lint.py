@@ -141,6 +141,11 @@ def lint(root: Path) -> list[str]:
             if platform not in body:
                 _record(errors, "1 hook platform", rel, platform)
 
+    for rel, body in _docs(root, list(doc_map.get("distributed_surface", []))).items():
+        for token in ("install-manifest.json", "VERSION", "loopeng/"):
+            if token not in body:
+                _record(errors, "1 distributed surface", rel, token)
+
     # 2. Event contract.
     from loopeng.journal import EVENT_KINDS
 

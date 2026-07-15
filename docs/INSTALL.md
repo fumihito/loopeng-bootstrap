@@ -42,6 +42,20 @@ Use the self-update flow from the repository root when you are updating the kit 
 
 `adapters/shared/skills/` is the source of truth for shared skills. `install.py --self --update` is the distribution path. In v0.2, only frame-* skills remain in the shared skill set.
 
+## Distribution boundary and integrity
+
+The full profile distributes the complete `loopeng/` Python package, `loopeng.py`,
+`VERSION`, `utils/skill_structure_lint.py`, the frame-* skills, state templates,
+and hook sidecars. Tests, development gates and lints, documentation, and
+adapter source remain kit-only. Each installation records the exact payload in
+`.agent-loop/runtime/install-manifest.json`; `python3 -m loopeng doctor` checks
+that payload and the installed version. Use `doctor --against /path/to/kit`
+when the source kit is available.
+
+`python3 install.py --repo /path/to/repository --update --dry-run` prints the
+planned payload changes without modifying the repository. Re-running an update
+from the same kit is idempotent and reports no payload changes.
+
 ## Hooks
 
 Installation registers the managed hook entry points for Claude Code and Codex

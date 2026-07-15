@@ -423,6 +423,7 @@ def run_record_checks(root: Path) -> CheckResult:
         ("doc parity lint", (sys.executable, str(root / "utils/doc_parity_lint.py"), "--root", str(root))),
         ("protocol lint", (sys.executable, str(root / "utils/completion_protocol_lint.py"), "--root", str(root))),
         ("skill structure lint", (sys.executable, str(root / "utils/skill_structure_lint.py"), "--root", str(root))),
+        ("distribution lint", (sys.executable, str(root / "utils/distribution_lint.py"), "--root", str(root))),
     ]:
         result = run_named_check(root, label, *args)
         if result.error:

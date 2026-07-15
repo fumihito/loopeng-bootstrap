@@ -61,6 +61,8 @@ python3 install.py --repo /path/to/repository --profile full
 python3 install.py --repo /path/to/repository --profile full --update
 ```
 
+full インストールは配布物を `.agent-loop/runtime/install-manifest.json` に記録し、`python3 -m loopeng doctor` がファイル完全性と版整合を検査します（隣接 kit がある場合は `--against /path/to/kit` で比較できます）。
+
 v0.1 を導入していた環境では、`.loop-engineering-backups/<timestamp>/` に待避されます。移行の内容は `.agent-loop/state/reports/` の移行レポートに記録されます。詳細は `docs/INSTALL.md` を参照してください。
 
 ## Run cycle

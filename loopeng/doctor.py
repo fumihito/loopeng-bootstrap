@@ -14,6 +14,42 @@ from .locking import _stale
 from .okf.schema import validate_bundle
 
 
+def _install_integrity(repo: Path, against: Path | None = None) -> dict[str, Any]:
+    path = repo / agent_root("runtime", "install-manifest.json")
+    if not path.is_file():
+        return {"ok": False, "error": "install manifest missing"}
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"ok": False, "error": f"invalid install manifest: {type(exc).__name__}"}
+    if not isinstance(manifest, dict):
+        return {"ok": False, "error": "install manifest root is not an object"}
+    listed = manifest.get("distributed")
+    entries = manifest.get("entries")
+    if not isinstance(listed, list):
+        listed = [item.get("relative_path") for item in entries or [] if isinstance(item, dict)]
+    listed = sorted({str(item) for item in listed if item})
+    missing = [rel for rel in listed if not (repo / rel).is_file()]
+    entry_paths = sorted({str(item.get("relative_path")) for item in entries or [] if isinstance(item, dict) and item.get("relative_path")})
+    unlisted_entries = sorted(set(entry_paths) - set(listed))
+    version_path = repo / "VERSION"
+    version = version_path.read_text(encoding="utf-8").strip() if version_path.is_file() else None
+    recorded_version = manifest.get("version", manifest.get("source_version"))
+    errors = list(missing)
+    if unlisted_entries:
+        errors.append("manifest entries absent from distributed")
+    if version != recorded_version:
+        errors.append("VERSION does not match install manifest")
+    comparison = None
+    if against is not None:
+        kit_version = (against / "VERSION").read_text(encoding="utf-8").strip() if (against / "VERSION").is_file() else None
+        comparison = {"kit": str(against), "kit_version": kit_version, "installed_version": version,
+                      "kit_commit": manifest.get("kit_commit", manifest.get("source_commit")),
+                      "version_match": kit_version == version}
+    return {"ok": not errors, "missing": missing, "unlisted_entries": unlisted_entries,
+            "version": version, "manifest_version": recorded_version, "comparison": comparison}
+
+
 def _json_files(repo: Path) -> list[Path]:
     root = repo / agent_root("state")
     return sorted([*root.glob("**/*.json"), *root.glob("**/*.jsonl")]) if root.is_dir() else []
@@ -39,7 +75,7 @@ def _parse_health(path: Path) -> list[str]:
     return errors
 
 
-def inspect(repo: Path) -> dict[str, Any]:
+def inspect(repo: Path, against: Path | None = None) -> dict[str, Any]:
     repo = repo.resolve()
     parse_errors = [error for path in _json_files(repo) for error in _parse_health(path)]
     lock = repo / agent_root("state", "lock")
@@ -77,15 +113,16 @@ def inspect(repo: Path) -> dict[str, Any]:
         if not (journals / f"{run_id}.jsonl").is_file():
             mismatches.append(run_id)
     reserved_run_ids = [path.stem for path in (journals.glob("*.jsonl") if journals.is_dir() else ()) if path.stem in RESERVED_RUN_SELECTORS]
-    return {"ok": not (parse_errors or orphaned or mismatches or reserved_run_ids or not bundle.get("ok")),
+    install_integrity = _install_integrity(repo, against)
+    return {"ok": not (parse_errors or orphaned or mismatches or reserved_run_ids or not bundle.get("ok") or not install_integrity.get("ok")),
             "json_errors": parse_errors, "stale_lock": stale_lock, "orphaned_active_runs": orphaned,
             "bundle": bundle, "drafts": drafts, "sidecar_journal_mismatches": mismatches,
-            "reserved_run_ids": reserved_run_ids}
+            "reserved_run_ids": reserved_run_ids, "install_integrity": install_integrity}
 
 
-def doctor(repo: Path, fix: bool = False) -> dict[str, Any]:
+def doctor(repo: Path, fix: bool = False, against: Path | None = None) -> dict[str, Any]:
     repo = repo.resolve()
-    result = inspect(repo)
+    result = inspect(repo, against)
     repaired: list[str] = []
     if fix:
         lock = repo / agent_root("state", "lock")
@@ -111,7 +148,7 @@ def doctor(repo: Path, fix: bool = False) -> dict[str, Any]:
             break
         if repaired:
             append_event(repo, "doctor", {"kind": EVENT_COMMAND, "command": "doctor repairs", "repaired": repaired})
-            result = inspect(repo)
+            result = inspect(repo, against)
     result["repaired"] = repaired
     result["instructions"] = ["run loopeng doctor --fix for safe repairs", "see docs/RECOVERY.md for non-repairable conditions"]
     return result

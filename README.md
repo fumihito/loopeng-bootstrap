@@ -61,6 +61,8 @@ python3 install.py --repo /path/to/repository --profile full
 python3 install.py --repo /path/to/repository --profile full --update
 ```
 
+Full installs record their payload in `.agent-loop/runtime/install-manifest.json`; `python3 -m loopeng doctor` checks installed-file and version integrity (`--against /path/to/kit` compares a neighboring kit).
+
 In environments where v0.1 was installed, the v0.1 materials are archived under `.loop-engineering-backups/<timestamp>/`. The migration is recorded in a migration report under `.agent-loop/state/reports/`. See `docs/INSTALL.md` for details.
 
 ## Run cycle

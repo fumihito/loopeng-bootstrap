@@ -273,6 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_cmd = sub.add_parser("doctor", help=t("ループ機構の健全性を検査", "Inspect loop health"), formatter_class=formatter)
     doctor_cmd.add_argument("--repo", type=_path, default=Path("."))
     doctor_cmd.add_argument("--fix", action="store_true")
+    doctor_cmd.add_argument("--against", type=_path, help=t("隣接するkitとの版を比較", "Compare with a neighboring kit"))
     inbox_cmd = sub.add_parser("inbox", help=t("人間の非同期受信箱を表示", "Show the human async inbox"), formatter_class=formatter)
     inbox_cmd.add_argument("--repo", type=_path, default=Path("."))
     inbox_cmd.add_argument("--tui", action="store_true", help=t("TTY の対話画面", "Launch curses inbox UI"))
@@ -561,7 +562,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "doctor":
-        print(json.dumps(doctor(args.repo, args.fix), indent=2, ensure_ascii=False))
+        print(json.dumps(doctor(args.repo, args.fix, args.against), indent=2, ensure_ascii=False))
         return 0
 
     if args.command == "inbox":
