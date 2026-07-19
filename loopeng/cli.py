@@ -29,6 +29,7 @@ from .run_stats import collect_run_stats, render_run_stats
 from .audit.export import export_packet
 from .review_intake import intake
 from .review_request import build_request
+from .trace import render as render_trace, show as show_trace
 
 
 def _path(value: str) -> Path:
@@ -217,6 +218,17 @@ def build_parser() -> argparse.ArgumentParser:
     audit_export = audit_sub.add_parser("export", help=t("レビューパケットを出力", "Export a review packet"), formatter_class=formatter)
     audit_export.add_argument("--run", required=True, help=run_selector_help)
     audit_export.add_argument("--repo", type=_path, default=Path("."))
+
+    trace = sub.add_parser("trace", help=t("ツール動作 trace を生成・表示", "Render and show tool traces"), formatter_class=formatter)
+    trace_sub = trace.add_subparsers(dest="trace_command", required=True, metavar="COMMAND")
+    trace_render = trace_sub.add_parser("render", help=t("trace の Markdown ビューを生成", "Render deterministic Markdown trace views"), formatter_class=formatter)
+    target = trace_render.add_mutually_exclusive_group(required=True)
+    target.add_argument("--run", help=run_selector_help)
+    target.add_argument("--all", action="store_true", help=t("全 run を生成", "Render all runs"))
+    trace_render.add_argument("--repo", type=_path, default=Path("."))
+    trace_show = trace_sub.add_parser("show", help=t("trace の端末向け要約を表示", "Show a terminal trace summary"), formatter_class=formatter)
+    trace_show.add_argument("--run", required=True, help=run_selector_help)
+    trace_show.add_argument("--repo", type=_path, default=Path("."))
 
     review = sub.add_parser(
         "review", help=t("過去の run 結果・懸念・前提をレビュー", "Review past run results, concerns, and premises"),
@@ -452,6 +464,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "audit" and args.audit_command == "export":
         print(str(export_packet(args.repo, args.run)))
+        return 0
+
+    if args.command == "trace" and args.trace_command == "render":
+        paths = render_trace(args.repo.resolve(), run_id=args.run, all_runs=args.all)
+        print("\n".join(str(path) for path in paths))
+        return 0
+
+    if args.command == "trace" and args.trace_command == "show":
+        print(show_trace(args.repo.resolve(), args.run), end="")
         return 0
 
     if args.command == "review":

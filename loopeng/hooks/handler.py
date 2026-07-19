@@ -17,6 +17,7 @@ from ..review import MODE_PREFIX
 from ..journal import BLOCKED_SUMMARY_MAX, EVENT_BLOCKED, EVENT_COMMAND, EVENT_HOOK_FAILURE, EVENT_LEARNING_CANDIDATE, EVENT_MUTATION, EVENT_RECURRENCE, EVENT_REVIEW_FAILURE, EVENT_RUN_END, EVENT_RUN_START, EVENT_SKILL_USED, sanitize_event
 from ..run import verify_run
 from ..okf.approval import approval_context
+from ..trace import record_deny, record_post, record_pre, render as render_trace
 from .events import EventKind, NormalizedEvent
 
 HANDOFF_CONTEXT_LIMIT = 2000
@@ -199,6 +200,11 @@ def _review_context(event: NormalizedEvent, run_id: str) -> tuple[str | None, st
 
 def _post_tool(event: NormalizedEvent, run_id: str) -> None:
     payload = event.payload
+    try:
+        record_post(event.repo, run_id, event.platform, payload)
+    except Exception:
+        # Trace is pure observation and must never affect tool handling.
+        pass
     tool = str(payload.get("tool_name") or payload.get("tool") or "unknown")
     tool_input = payload.get("tool_input")
     command = tool_input.get("command") if isinstance(tool_input, dict) else None
@@ -369,6 +375,11 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
         run_id = str(active.get("run_id")) if active else _run_id(event)
         result["run_id"] = run_id
         if event.kind is EventKind.PRE_TOOL:
+            try:
+                record_pre(event.repo, run_id, event.platform, event.payload)
+            except Exception:
+                # The policy decision below is independent of trace storage.
+                pass
             reason = pre_tool_hard_block(event.payload, event.repo)
             if reason:
                 try:
@@ -376,6 +387,10 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
                 except Exception:
                     # Journal capture is best effort; the established deny is
                     # never changed by a recording failure.
+                    pass
+                try:
+                    record_deny(event.repo, run_id, event.platform, event.payload, reason)
+                except Exception:
                     pass
                 result["response"] = {"hookSpecificOutput": {"permissionDecision": "deny", "permissionDecisionReason": _banner(event) + reason}}
             else:
@@ -407,6 +422,13 @@ def handle(event: NormalizedEvent) -> dict[str, Any]:
                 refreshed = _audit(event.repo, run_id)
                 if refreshed:
                     append_event(event.repo, run_id, {"kind": EVENT_HOOK_FAILURE, "error": refreshed})
+            try:
+                render_trace(event.repo, run_id=run_id)
+            except Exception as exc:
+                try:
+                    append_event(event.repo, run_id, {"kind": EVENT_HOOK_FAILURE, "error": f"trace render failure: {type(exc).__name__}"})
+                except Exception:
+                    pass
             try:
                 _state_path(event.repo).unlink()
             except FileNotFoundError:

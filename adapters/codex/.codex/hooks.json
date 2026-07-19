@@ -2,8 +2,8 @@
   "hooks": {
     "SessionStart": [{"matcher": "startup|resume|clear|compact", "hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 30, "statusMessage": "Loading loop protocol"}]}],
     "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 30}]}],
-    "PreToolUse": [{"matcher": "Bash|Edit|Write|apply_patch|mcp__.*", "hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 30, "statusMessage": "Governor policy check"}]}],
-    "PostToolUse": [{"matcher": "Bash|Edit|Write|apply_patch|mcp__.*", "hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 30, "statusMessage": "Recording loop state"}]}],
+    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 30, "statusMessage": "Governor policy check"}]}],
+    "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 30, "statusMessage": "Recording loop state"}]}],
     "Stop": [{"hooks": [{"type": "command", "command": "python3 -m loopeng hook codex", "timeout": 60, "statusMessage": "Writing Run Report"}]}]
   }
 }

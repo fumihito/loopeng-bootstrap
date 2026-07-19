@@ -28,6 +28,7 @@ v0.2 は 4 つの柱で構成されます。
 | `loopeng inbox --tui` / `--interactive` | curses または行指向フォールバックで inbox を対話処理 |
 | `loopeng journal add` | ランへのイベント追記(`run-start` / `intent` / `mutation` / `run-end` など) |
 | `loopeng audit run` | 検査の実行、Run Report 生成、handoff 書き出し |
+| `loopeng trace render` / `trace show` | 決定論的な run 別 tool-trace Markdown ビューの生成、または端末向け要約の表示 |
 | `loopeng run verify` / `run outcome` | 宣言された受入コマンドの検証、または人間の成果ラベル追記 |
 | `loopeng doctor` | ループ状態を検査し、`--fix` では安全な修復だけを行う |
 | `loopeng inbox` | 承認待ち・保留・未解決成果を人間向けに一覧表示 |

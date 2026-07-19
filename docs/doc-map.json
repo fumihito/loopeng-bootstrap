@@ -4,5 +4,6 @@
   "event_kinds": ["docs/RUN_REPORT.md"],
   "hook_platforms": ["docs/INSTALL.md", "docs/ARCHITECTURE.md"],
   "mode_words": ["AGENTS.md", "CLAUDE.md"],
-  "distributed_surface": ["docs/INSTALL.md"]
+  "distributed_surface": ["docs/INSTALL.md"],
+  "tool_trace": ["docs/TOOL_TRACE.md"]
 }

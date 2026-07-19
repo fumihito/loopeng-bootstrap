@@ -28,6 +28,7 @@ Pending durable-memory drafts are listed with `python3 -m loopeng memory drafts 
 | `loopeng inbox --tui` / `--interactive` | Process inbox items with curses or line-oriented fallback |
 | `loopeng journal add` | Append events to a run (`run-start` / `intent` / `mutation` / `run-end`, etc.) |
 | `loopeng audit run` | Run inspections, generate the Run Report, and write the handoff |
+| `loopeng trace render` / `trace show` | Render deterministic per-run tool-trace Markdown views or show a terminal summary |
 | `loopeng run verify` / `run outcome` | Verify declared acceptance commands or append a human outcome label |
 | `loopeng doctor` | Inspect loop state and apply only safe repairs with `--fix` |
 | `loopeng inbox` | Show pending human approvals, held decisions, and unresolved outcomes |
