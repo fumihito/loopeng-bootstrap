@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -59,6 +60,10 @@ class Finding:
 
 
 def iter_files(root: Path) -> list[Path]:
+    git_files = iter_git_files(root)
+    if git_files is not None:
+        return git_files
+
     files: list[Path] = []
     for path in sorted(root.rglob("*")):
         if not path.is_file():
@@ -67,6 +72,58 @@ def iter_files(root: Path) -> list[Path]:
             continue
         files.append(path)
     return files
+
+
+def iter_git_files(root: Path) -> list[Path] | None:
+    """Return tracked and non-ignored untracked files, or None outside a Git worktree."""
+    try:
+        top_level_result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            check=False,
+        )
+        if top_level_result.returncode != 0:
+            return None
+        git_root = Path(top_level_result.stdout.decode("utf-8").strip()).resolve()
+        root.relative_to(git_root)
+
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(git_root),
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "--full-name",
+                "-z",
+            ],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    files: list[Path] = []
+    for raw_path in result.stdout.split(b"\0"):
+        if not raw_path:
+            continue
+        try:
+            relative_path = raw_path.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        path = git_root / relative_path
+        try:
+            path.relative_to(root)
+        except ValueError:
+            continue
+        if path.is_file():
+            files.append(path)
+    return sorted(files)
 
 
 def file_name_finding(path: Path, root: Path) -> Finding | None:

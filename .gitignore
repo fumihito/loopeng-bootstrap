@@ -4,6 +4,7 @@ _out/
 .agent-loop/runtime/
 .agent-loop/state/
 .agent-loop/bin/okfctl.bin
+.agent-loop/state/tls/
 
 # Loop Engineering runtime and installer backups
 .loop-engineering-backups/
