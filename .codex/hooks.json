@@ -35,11 +35,33 @@
             "statusMessage": "Governor policy check"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m loopeng hook codex",
+            "timeout": 30,
+            "statusMessage": "Governor policy check"
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Bash|Edit|Write|apply_patch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m loopeng hook codex",
+            "timeout": 30,
+            "statusMessage": "Recording loop state"
+          }
+        ]
+      },
+      {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
