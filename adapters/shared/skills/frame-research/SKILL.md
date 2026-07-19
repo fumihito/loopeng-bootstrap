@@ -21,7 +21,7 @@ Keep codebase analysis, implementation planning, and local repository change wor
 
 ## Evidence hierarchy
 
-Assign each source an initial level. This is an EBM-style pyramid adapted for technical and general research domains: study-design categories are replaced by source-type categories.
+Assign each source an initial level. This is an EBM-style pyramid adapted for technical and general research domains, not the clinical original: study-design categories are replaced by source-type categories.
 
 | Level | Category | Typical sources |
 |-------|----------|-----------------|
@@ -81,6 +81,7 @@ Upgrade when:
 ## Output
 
 - Research question
+- Evidence level legend: one line per level that appears in this output (e.g., `E2 = peer-reviewed or normative primary`), placed before any graded content — never emit bare E-labels without it
 - Source set, each entry with: initial level, modifiers applied, resulting level
 - Findings, each tagged with the evidence level of its supporting basis
 - Evidence profile: for each key claim, the highest level supporting it and the highest level contradicting it
