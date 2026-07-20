@@ -70,3 +70,15 @@ Stop when the redesign is handoffable and the gap has been translated into concr
 
 - Use `frame-diag` when the incident is still active and the next step is live diagnosis or stabilization.
 - Use `frame-distributed-incident-analysis` when the symptom pattern is still too distributed or too early for a redesign conversation.
+
+## Merged operational contract
+
+Run the seven steps explicitly: Accept the WAI/WAD gap; Locate its type;
+Trace the adaptation chain; grill assumptions with Argyris; grill rationality
+and constraints with Elster; grill power and voice with Starhawk; then Redesign
+the conditions. Keep incident facts, imagined work, done work, gap types,
+adaptation, assumptions, constraints, and redesign ideas in separate fields.
+
+Use after containment. The output must explain what changes in practice, who
+can observe the change, and what condition would show that the redesign failed.
+Do not turn the grill into blame assignment or live incident response.

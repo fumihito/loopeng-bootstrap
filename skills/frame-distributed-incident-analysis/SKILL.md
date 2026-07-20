@@ -62,3 +62,16 @@ Stop when the fastest separating checks are clear or when the problem should be 
 
 - Use `frame-diag` when the incident is live and the next step is symptom diagnosis or stabilization.
 - Use `frame-waiwad-grill` when the incident is already contained and the next step is redesigning the conditions from the WAI/WAD gap.
+
+## Merged operational contract
+
+Use this sequence: normalize the incident; split evidence from interpretation;
+classify all four axes; generate competing hypotheses; select discriminating
+checks; and rank current risk. The axes are location, failure mode, time and
+ordering, and broken guarantee.
+
+Use the pattern prompts deliberately: half-dead for reachable-but-stalled
+components, thread-safety for load/timing/retry sensitivity, and Byzantine-like
+for stale, replayed, inconsistent, or observer-dependent evidence. These are
+probes, not diagnoses. Do not skip ordering or collapse partial failure into a
+single healthy/unhealthy state.

@@ -64,3 +64,16 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-research-tactics` when the uncertainty can still be turned into hypotheses and verification on paper.
 - Use `frame-research` when the answer may still be settled by comparing external sources or published evidence.
 - Use `frame-research-arch` when the uncertainty is about design options rather than intervention design.
+
+## Merged operational contract
+
+Use this six-part procedure: clarify the learning target; choose Clear,
+Complicated, Complex, Chaotic, or Disorder; select causal-test,
+design-optimization, or exploratory-probe; bound risk and reversibility; define
+observations and decision rules; then generate the smallest next step.
+
+For Complicated problems, narrow on paper before probing. For Complex problems,
+prefer a safe-to-fail probe. For Chaotic problems, stabilize first. A probe
+must state the intervention, blast radius, timebox, success observation,
+failure observation, ambiguity rule, and the condition for expanding or
+stopping it. Do not widen the intervention before reading the first result.

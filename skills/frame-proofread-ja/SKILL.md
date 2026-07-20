@@ -116,3 +116,19 @@ to `dev:`.
 
 - Use `frame-critical-review` when the issue is whether the claim or argument holds, not whether the Japanese reads cleanly.
 - Use `frame-smeac` when the text should be compressed into a handoffable brief rather than proofread.
+
+## Merged operational contract
+
+Activation is explicit: use this frame for a Japanese Markdown or plain-text
+passage when the user requests `proofread-ja:` or the corresponding command.
+The scope may be a blog, technical article, or report, but the default is
+public-facing Web prose. If the path is absent or unreadable, ask or report the
+error instead of starting with no target.
+
+For the editor pass, list paragraph-opening sentences and judge whether they
+show the document's skeleton. Identify paragraphs containing more than one
+logical point and flag under-explained, abrupt, or assumption-heavy passages.
+For the AI-smell pass, combine script findings with contextual completion and
+deduplicate them. Present counts by Lint, editor review, script findings, and
+AI completion. Offer each finding as original text, problem, revision, and an
+adopt/alternative/skip choice; never write the file automatically.

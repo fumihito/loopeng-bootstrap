@@ -75,3 +75,15 @@ Hand off explicitly after classification. Do not auto-connect the next frame fro
 - Use `frame-first-principles` when the problem is still in disorder.
 - Use `frame-inertia` when the answer looks inherited from convention or authority rather than reasoned.
 - Use `frame-axis` when the disagreement is about what a term means, not what domain the problem is in.
+
+## Merged operational contract
+
+Use these signals before assigning a landing: Clear has a repeatable answer;
+Complicated needs specialist analysis; Complex needs probing; Chaotic needs
+containment; Disorder needs classification first.
+
+Keep one stabilizing action in Chaotic, two or three hypotheses in Complicated,
+and several provisional hypotheses in Complex. In Disorder, ask only the
+smallest classifying questions. When consulting other agents, collect
+independent classifications first and retain disagreement as uncertainty. Do
+not solve the problem inside this frame or auto-dispatch the next frame.

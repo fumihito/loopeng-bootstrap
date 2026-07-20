@@ -46,3 +46,15 @@ Stop when the dependency structure is explicit enough to hand off or turn into p
 - Use `frame-plandev` when the workflow graph needs phases, verification, and handoff decisions.
 - Use `frame-smeac` when the graph is already known and only needs compression into a brief.
 - Use `frame-first-principles` when the task graph is still unclear and needs decomposition first.
+
+## Merged operational contract
+
+For multi-step workflows, render a small `workflow.yaml`-style specification
+and Mermaid when a visual view helps. Use stable node IDs and make each edge a
+real prerequisite. Separate execution nodes from validation gates, approvals,
+and archival steps.
+
+Before accepting the graph, check that every node has an owner and completion
+condition, edges point in executable order, unintended cycles are absent, and
+failure paths have a next state. Keep transient run data separate from the
+final Markdown artifact and archive the final graph only after validation.

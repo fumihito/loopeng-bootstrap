@@ -79,3 +79,17 @@ If this session produced a deliverable goal or verification conditions, you can 
 
 - Use `frame-distributed-incident-analysis` when timing, duplication, or partial failure across components still needs early triage.
 - Use `frame-waiwad-grill` when the incident is already contained and the task is redesigning the conditions rather than diagnosing the live failure.
+
+## Merged operational contract
+
+In Emergency Mode, preserve evidence, stop irreversible or cascading harm,
+isolate the affected path, and collect only the minimum observation needed for
+containment. In Standard Mode, prefer low-cost read-only checks and avoid
+mutation until the cause and change boundary are clear.
+
+For Assessment, run these perspectives in parallel: systems specialist, frame
+auditor, branch or release surgeon, and generalist risk reviewer. Each states
+observations, inference, confidence, and the next discriminating check. Keep
+time, ordering, scope, reproducibility, and broken guarantee distinct. Finish
+with immediate actions, ranked hypotheses, verification, and an explicit
+handoff or approval request before remediation.

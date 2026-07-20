@@ -56,3 +56,17 @@ End when the choice space is narrowed enough to compare or commit. If a bounded 
 - Use `frame-decision-making` when the design choice has become a commitment question.
 - Use `frame-research-tactics` when the architecture choice needs hypothesis and verification planning.
 - Use `frame-experiments` when the choice can only be separated by a bounded live probe.
+
+## Merged operational contract
+
+Run four phases: enumerate architecture patterns, narrow to at least two
+options, propose standard OSS or component candidates for each, and check the
+fit against the relevant AWS, GCP, or Azure practices. For every option state
+the selection conditions, tradeoffs, operational cost, migration risk, and
+what evidence could change the ranking.
+
+When external research is used, record the research date and distinguish
+documented practice from the recommendation. Keep a reusable report with the
+option set, comparison, chosen shortlist, OSS candidates, cloud checks, and
+residual uncertainty; do not turn the shortlist into an implementation plan
+inside this frame.

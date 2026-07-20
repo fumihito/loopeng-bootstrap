@@ -89,3 +89,16 @@ End when the strongest counterarguments and evidence checks are on the table, or
 - Use `frame-proofread-ja` when the issue is sentence quality, notation, or readability rather than argument validity.
 - Use `frame-first-principles` when the claim set is still too underspecified and needs decomposition before it can be reviewed.
 - Use `frame-axis` as the prior step when a claim turns out to bundle more than one axis.
+
+## Merged operational contract
+
+For each major claim, keep a thesis map: claim, grounds, warrant, backing,
+qualifier, existing rebuttal, and missing element. Classify it before checking
+it as factual, causal, predictive, normative, or definitional. Verify factual
+and technical claims against primary sources first and state when one is absent.
+
+Generate the strongest plausible antithesis, identify the evidence that would
+distinguish it, and scan for ambiguous definitions, broad scope, causal versus
+correlational confusion, counterexamples, alternatives, costs, and failure
+modes. End with a synthesis hint to narrow, qualify, add, preempt, or strengthen.
+Do not rewrite or implement automatically.

@@ -72,3 +72,19 @@ Finish when the outcome is defined, every phase has verification, blockers are n
 - Use `frame-plantask` when the main work is making dependencies and ordering explicit.
 - Use `frame-smeac` when the plan already exists and needs compression into a handoffable brief.
 - Use `frame-first-principles` when the plan still rests on shaky assumptions that need decomposition first.
+
+## Merged operational contract
+
+Treat the plan as five protected phases: preparation, design, implementation,
+verification, and handoff. Each phase states its input, output, gate, and
+owner. Do not silently skip a phase because the change looks small.
+
+- Preparation: confirm request, scope, non-goals, constraints, and checkpoint.
+- Design: record decisions, rejected alternatives, risks, and test strategy.
+- Implementation: make the smallest change satisfying the design.
+- Verification: run relevant tests and checks; preserve failures and uncertainty.
+- Handoff: summarize changed files, evidence, open decisions, and next action.
+
+Postponed protected steps require an explicit blocker and unblocking condition.
+When implementation is requested, confirm the design brief before editing; if
+the design is blocked, report the block instead of inventing requirements.

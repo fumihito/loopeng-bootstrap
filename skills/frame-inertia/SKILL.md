@@ -71,3 +71,15 @@ End when the inherited judgment either survives with a context-specific reason o
 - Use `frame-critical-review` when there is a claim to test rather than an inherited judgment to audit.
 - Use `frame-first-principles` when the judgment needs to be rebuilt from scratch.
 - Use `frame-blind-spot` when the concern is the hidden commitment that keeps the inherited judgment in place.
+
+## Merged operational contract
+
+Classify the trigger as socialized conformity, Goodhart metric fixation,
+authority deference, inertia, or self-authoring. For each trap, ask whether
+the decision would survive if the norm, metric, authority, or original context
+were removed. Also ask what observation would reveal harm to the real goal.
+
+Report the trigger phrase, trap type, probe, why the probe matters, the
+self-authoring reason if the judgment survives, and the next step if it does
+not. Coordinate with Cynefin when the inherited judgment also determines the
+response domain; do not treat the framework itself as evidence.

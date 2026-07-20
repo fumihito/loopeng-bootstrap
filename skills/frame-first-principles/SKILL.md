@@ -57,3 +57,14 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-blind-spot` when the main problem is hidden assumptions or avoided alternatives.
 - Use `frame-critical-review` when the work has become a claim that can be tested against evidence.
 - Use `frame-axis` as the next step once a concrete case exists for a candidate distinction.
+
+## Merged operational contract
+
+Decompose in this order: restate the goal, strip inherited assumptions,
+identify primitives, then derive constraints, tools, minimal subproblems, and
+verification. Keep facts, assumptions, decisions, and unknowns in separate
+lists. Do not implement while the problem signature is unstable.
+
+Replan when the goal changes, a key assumption fails, or another frame becomes
+more appropriate. The handoff must contain the goal, facts, constraints,
+assumptions, primitives, subproblems, verification, and next step.

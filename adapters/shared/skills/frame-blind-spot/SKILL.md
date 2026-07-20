@@ -44,3 +44,20 @@ Stop when the omission is named with enough evidence to act on, or state that th
 - Use `frame-inertia` when the main question is whether a judgment is being repeated by habit or authority.
 - Use `frame-first-principles` when the problem still needs decomposition before any claim can be tested.
 - Use `frame-axis` when the disagreement turns out to be two people using the same word for two different things, not a hidden assumption.
+
+## Merged operational contract
+
+Run two passes: extract observations without interpretation, then test each
+candidate through these lenses:
+
+- Argyris: stated values versus actual action and defensive reasoning
+- Kegan: commitments and the change they prevent
+- Schein: unspoken group assumptions and norms
+- Language: repeated labels, omissions, euphemisms, and tense changes
+- Memory: mismatch with earlier decisions, incidents, or established beliefs
+
+For each candidate, separate evidence, inference, alternatives, confidence,
+and the observation that would settle it. A lens is not proof. Report observed
+patterns, candidate blind spots, supporting lenses, confidence, next action,
+and a small check or experiment. If none survives, say so and retain the
+settling condition.

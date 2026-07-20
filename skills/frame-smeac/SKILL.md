@@ -55,3 +55,14 @@ Finish when the brief is ready to hand off and the distortions are named. If a n
 - Use `frame-plandev` when a new phased plan is needed.
 - Use `frame-plantask` when the input needs explicit dependency structure before it can be compressed.
 - Use `frame-critical-review` when the brief needs argument validity checked instead of compression.
+
+## Merged operational contract
+
+Before compressing, identify the source reality, decisions, open issues,
+distortions, and required additions. The final brief must say what changed,
+what still needs attention, and what the next person must know. Report what was
+removed or weakened by compression and preserve unresolved uncertainty.
+
+Do not use this frame to create a new plan, settle an argument, or hide a
+missing decision. If the source is not stable enough to compress, hand off to
+first principles, critical review, or planning instead.

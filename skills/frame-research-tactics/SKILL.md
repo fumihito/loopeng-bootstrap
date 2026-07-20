@@ -47,3 +47,17 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-research` when the task is still source-backed comparison rather than a verification plan.
 - Use `frame-experiments` when the uncertainty has to be resolved by a bounded probe in the world.
 - Use `frame-research-arch` when the task is narrowing architecture choices instead of building a test plan.
+
+## Merged operational contract
+
+Run five phases: survey relevant mental models, enumerate candidates, select
+the top two frameworks, turn them into explicit hypotheses, and define
+verification or reductio actions. Each hypothesis must name supporting and
+disconfirming evidence, a priority, and the observation that would change the
+answer.
+
+Prefer checks with high information gain and low cost. Save the research trail
+in the normal report when the surrounding workflow requires it, and state
+which claims remain unverified. If the uncertainty requires changing the
+world rather than checking sources or reasoning on paper, hand off to
+`frame-experiments`.
