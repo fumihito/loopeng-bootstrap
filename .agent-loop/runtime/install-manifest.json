@@ -1,20 +1,20 @@
 {
-  "installed_at": "2026-07-19T12:08:51.797664+00:00",
-  "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+  "installed_at": "2026-07-20T04:14:28.584905+00:00",
+  "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
   "source_version": "0.2.0",
-  "kit_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+  "kit_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
   "version": "0.2.0",
   "profile": "full",
   "self_mode": true,
   "update_mode": true,
   "force_overwrite_tampered_reason": null,
   "conflict_policy": "error",
-  "backup_root": ".loop-engineering-backups/20260719T120851.440693Z",
+  "backup_root": ".loop-engineering-backups/20260720T041428.364367Z",
   "actions": [
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/.codex/hooks.json",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/.codex/hooks.json"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/.codex/hooks.json"
     },
     {
       "action": "write",
@@ -24,7 +24,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/.claude/settings.json",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/.claude/settings.json"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/.claude/settings.json"
     },
     {
       "action": "write",
@@ -38,293 +38,8 @@
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-cynefin/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-cynefin/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-cynefin/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-cynefin/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-waiwad-grill/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-waiwad-grill/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-waiwad-grill/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-waiwad-grill/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-inertia/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-inertia/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-inertia/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-inertia/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-plantask/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plantask/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-plantask/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plantask/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-research-arch/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research-arch/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-research-arch/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research-arch/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-diag/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-diag/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-diag/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-diag/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-loop-audit-review/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-loop-audit-review/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-loop-audit-review/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-loop-audit-review/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-research/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-research/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-experiments/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-experiments/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-experiments/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-experiments/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-research-tactics/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research-tactics/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md"
-    },
-    {
-      "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-research-tactics/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-research-tactics/routing.md"
     },
     {
       "action": "write",
@@ -338,83 +53,23 @@
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-distributed-incident-analysis/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-research-tactics/SKILL.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-distributed-incident-analysis/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-distributed-incident-analysis/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-distributed-incident-analysis/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-wall/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-wall/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-wall/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-wall/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-first-principles/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-first-principles/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research-tactics/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md"
     },
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-first-principles/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-first-principles/routing.md"
     },
     {
       "action": "write",
@@ -428,173 +83,83 @@
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-blind-spot/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-first-principles/SKILL.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-blind-spot/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-first-principles/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md"
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-blind-spot/routing.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-loop-audit-review/routing.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-blind-spot/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-loop-audit-review/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md"
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-critical-review/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-loop-audit-review/SKILL.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-critical-review/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-loop-audit-review/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md"
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-critical-review/routing.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-distributed-incident-analysis/routing.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-critical-review/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-distributed-incident-analysis/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md"
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-axis/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-distributed-incident-analysis/SKILL.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-axis/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-axis/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-axis/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-decision-making/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-decision-making/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-decision-making/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-decision-making/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-plandev/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plandev/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-plandev/routing.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plandev/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md"
-    },
-    {
-      "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-smeac/SKILL.md"
-    },
-    {
-      "action": "write",
-      "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md"
-    },
-    {
-      "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-smeac/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-distributed-incident-analysis/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md"
     },
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-smeac/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-smeac/routing.md"
     },
     {
       "action": "write",
@@ -608,8 +173,368 @@
     },
     {
       "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-smeac/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-smeac/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-axis/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-axis/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-axis/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-axis/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-plandev/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plandev/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-plandev/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plandev/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-research-arch/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research-arch/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-research-arch/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research-arch/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-wall/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-wall/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-wall/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-wall/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-inertia/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-inertia/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-inertia/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-inertia/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-waiwad-grill/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-waiwad-grill/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-waiwad-grill/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-waiwad-grill/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-blind-spot/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-blind-spot/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-blind-spot/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-blind-spot/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-cynefin/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-cynefin/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-cynefin/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-cynefin/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-diag/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-diag/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-diag/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-diag/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-plantask/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plantask/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-plantask/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-plantask/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-experiments/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-experiments/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-experiments/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-experiments/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-proofread-ja/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-proofread-ja/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md"
+    },
+    {
+      "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-proofread-ja/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-proofread-ja/SKILL.md"
     },
     {
       "action": "write",
@@ -623,18 +548,103 @@
     },
     {
       "action": "backup-file",
-      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260719T120851.440693Z/skills/frame-proofread-ja/routing.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-research/routing.md"
     },
     {
       "action": "write",
       "source": "",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md"
     },
     {
       "action": "copy",
-      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-proofread-ja/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md"
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-research/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-research/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-decision-making/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-decision-making/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-decision-making/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-decision-making/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-critical-review/routing.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-critical-review/routing.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md"
+    },
+    {
+      "action": "backup-file",
+      "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T041428.364367Z/skills/frame-critical-review/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-critical-review/SKILL.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md"
+    },
+    {
+      "action": "write",
+      "source": "",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/references/ai-smell-signals.md"
+    },
+    {
+      "action": "copy",
+      "source": "/home/hito/work/git/loopeng-bootstrap/adapters/shared/skills/frame-proofread-ja/references/ai-smell-signals.md",
+      "destination": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/references/ai-smell-signals.md"
     },
     {
       "action": "write",
@@ -679,6 +689,7 @@
     "skills/frame-plantask/SKILL.md",
     "skills/frame-plantask/routing.md",
     "skills/frame-proofread-ja/SKILL.md",
+    "skills/frame-proofread-ja/references/ai-smell-signals.md",
     "skills/frame-proofread-ja/routing.md",
     "skills/frame-research-arch/SKILL.md",
     "skills/frame-research-arch/routing.md",
@@ -696,33 +707,33 @@
   "entries": [
     {
       "relative_path": ".claude/GENERATED — DO NOT EDIT.md",
-      "sha256": "29c0ba276295de8c12a5f25f960aa6566d9462f1d7f2bd6a28a8da81590bd23c",
+      "sha256": "1509ee8cf7378e38797ad9eb66d1a28885613da13a7a2c3e58e970887ebd170f",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967"
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed"
     },
     {
       "relative_path": ".claude/settings.json",
       "sha256": "553219d153986c1700eec13b39da35f3d644ed9225310542c65918b54bbb6657",
       "classification": "config",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967"
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed"
     },
     {
       "relative_path": ".codex/GENERATED — DO NOT EDIT.md",
-      "sha256": "4b0565f23ddb00d6658859dd49c25bc560d85e676b72311b3945b1f5bb14ea4d",
+      "sha256": "2b0ebd8a85a61a7e061f04f2ebd23a5fa8ef45fd6b30c39b9ad43bb2bbcc5374",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967"
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed"
     },
     {
       "relative_path": ".codex/hooks.json",
       "sha256": "2830e9ab2de3406b483a3a7ebcea5296629c516cca3f8e9db57137181898e39c",
       "classification": "config",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967"
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed"
     },
     {
       "relative_path": "skills/frame-axis/SKILL.md",
       "sha256": "1b30e178859a9de5778f5d717ca03be6cb7e10b20338679ab4a51256265eb458",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "1b30e178859a9de5778f5d717ca03be6cb7e10b20338679ab4a51256265eb458",
       "source_rel": "adapters/shared/skills/frame-axis/SKILL.md"
     },
@@ -730,7 +741,7 @@
       "relative_path": "skills/frame-axis/routing.md",
       "sha256": "18bca9091c748b02cdc3f7e0219bdfc81271dece0b6515a0e028fb8c53f7dbff",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "18bca9091c748b02cdc3f7e0219bdfc81271dece0b6515a0e028fb8c53f7dbff",
       "source_rel": "adapters/shared/skills/frame-axis/routing.md"
     },
@@ -738,7 +749,7 @@
       "relative_path": "skills/frame-blind-spot/SKILL.md",
       "sha256": "03624dfc52220363f46c76922e2feb889dd30812d61b2cc095609663aa52e317",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "03624dfc52220363f46c76922e2feb889dd30812d61b2cc095609663aa52e317",
       "source_rel": "adapters/shared/skills/frame-blind-spot/SKILL.md"
     },
@@ -746,7 +757,7 @@
       "relative_path": "skills/frame-blind-spot/routing.md",
       "sha256": "1961a19ac7e563a0f58eae3ba228212481a1367ba2f6104ac10fb2e2f5c0f298",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "1961a19ac7e563a0f58eae3ba228212481a1367ba2f6104ac10fb2e2f5c0f298",
       "source_rel": "adapters/shared/skills/frame-blind-spot/routing.md"
     },
@@ -754,7 +765,7 @@
       "relative_path": "skills/frame-critical-review/SKILL.md",
       "sha256": "60defd3a09068fad1933de4f3e58e3c01436f00ee1234f4168c79b8fd8f42611",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "60defd3a09068fad1933de4f3e58e3c01436f00ee1234f4168c79b8fd8f42611",
       "source_rel": "adapters/shared/skills/frame-critical-review/SKILL.md"
     },
@@ -762,7 +773,7 @@
       "relative_path": "skills/frame-critical-review/routing.md",
       "sha256": "847961edb3da37856662a766894b1301c6c1940c8ab18e26b50ae9c64ff11fc5",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "847961edb3da37856662a766894b1301c6c1940c8ab18e26b50ae9c64ff11fc5",
       "source_rel": "adapters/shared/skills/frame-critical-review/routing.md"
     },
@@ -770,7 +781,7 @@
       "relative_path": "skills/frame-cynefin/SKILL.md",
       "sha256": "567b5c9290e73f2844c2d6c763a4d422bc6bc16e45135570b0300a5f48f5a5d2",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "567b5c9290e73f2844c2d6c763a4d422bc6bc16e45135570b0300a5f48f5a5d2",
       "source_rel": "adapters/shared/skills/frame-cynefin/SKILL.md"
     },
@@ -778,7 +789,7 @@
       "relative_path": "skills/frame-cynefin/routing.md",
       "sha256": "37e1b35e88bd6dfc1a9bd798483c5ff151ca6787230da61ec1c7b6d9189d5ae7",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "37e1b35e88bd6dfc1a9bd798483c5ff151ca6787230da61ec1c7b6d9189d5ae7",
       "source_rel": "adapters/shared/skills/frame-cynefin/routing.md"
     },
@@ -786,7 +797,7 @@
       "relative_path": "skills/frame-decision-making/SKILL.md",
       "sha256": "ddbd8b247ffb074cbec5d5339d89a77e035eb35aef8d6ecefe4c7ca6c3c043b4",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "ddbd8b247ffb074cbec5d5339d89a77e035eb35aef8d6ecefe4c7ca6c3c043b4",
       "source_rel": "adapters/shared/skills/frame-decision-making/SKILL.md"
     },
@@ -794,7 +805,7 @@
       "relative_path": "skills/frame-decision-making/routing.md",
       "sha256": "d742a016702b51dd1d1fcbe1acd38cb4abf313967ae7c1dc3a0486389e91f4c2",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "d742a016702b51dd1d1fcbe1acd38cb4abf313967ae7c1dc3a0486389e91f4c2",
       "source_rel": "adapters/shared/skills/frame-decision-making/routing.md"
     },
@@ -802,7 +813,7 @@
       "relative_path": "skills/frame-diag/SKILL.md",
       "sha256": "fa23ad5d92c08250ae86beb4001c3c50971c7c40b3bcb0eb6886210d1ed22b4f",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "fa23ad5d92c08250ae86beb4001c3c50971c7c40b3bcb0eb6886210d1ed22b4f",
       "source_rel": "adapters/shared/skills/frame-diag/SKILL.md"
     },
@@ -810,7 +821,7 @@
       "relative_path": "skills/frame-diag/routing.md",
       "sha256": "1f770fb813121da6fa6dd1d26bd356315c067c31de62cae1455bd82fa8dd35c7",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "1f770fb813121da6fa6dd1d26bd356315c067c31de62cae1455bd82fa8dd35c7",
       "source_rel": "adapters/shared/skills/frame-diag/routing.md"
     },
@@ -818,7 +829,7 @@
       "relative_path": "skills/frame-distributed-incident-analysis/SKILL.md",
       "sha256": "b5e5e181c9e459867f1f57e0e81e71f4f1d64e6bca1db7b3b1c18640f1dab04e",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "b5e5e181c9e459867f1f57e0e81e71f4f1d64e6bca1db7b3b1c18640f1dab04e",
       "source_rel": "adapters/shared/skills/frame-distributed-incident-analysis/SKILL.md"
     },
@@ -826,7 +837,7 @@
       "relative_path": "skills/frame-distributed-incident-analysis/routing.md",
       "sha256": "89aa39ec99bfbac425ec99d27ffa291088709af495cc794b807465e14c78cbe7",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "89aa39ec99bfbac425ec99d27ffa291088709af495cc794b807465e14c78cbe7",
       "source_rel": "adapters/shared/skills/frame-distributed-incident-analysis/routing.md"
     },
@@ -834,7 +845,7 @@
       "relative_path": "skills/frame-experiments/SKILL.md",
       "sha256": "328cbd9738a1f18443a466af339ce7199e52b81bd280312ae4231cd3f81f5972",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "328cbd9738a1f18443a466af339ce7199e52b81bd280312ae4231cd3f81f5972",
       "source_rel": "adapters/shared/skills/frame-experiments/SKILL.md"
     },
@@ -842,7 +853,7 @@
       "relative_path": "skills/frame-experiments/routing.md",
       "sha256": "3c812ece096aafd5167c867dcc9fcd00404e012851b5aa5b931ebdd6e5162139",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "3c812ece096aafd5167c867dcc9fcd00404e012851b5aa5b931ebdd6e5162139",
       "source_rel": "adapters/shared/skills/frame-experiments/routing.md"
     },
@@ -850,7 +861,7 @@
       "relative_path": "skills/frame-first-principles/SKILL.md",
       "sha256": "b7d8cd6e78ab1a612e845ee294b48353ad16abdf9f4462d3b0e9150093393578",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "b7d8cd6e78ab1a612e845ee294b48353ad16abdf9f4462d3b0e9150093393578",
       "source_rel": "adapters/shared/skills/frame-first-principles/SKILL.md"
     },
@@ -858,7 +869,7 @@
       "relative_path": "skills/frame-first-principles/routing.md",
       "sha256": "d0f1394a228103c3106da0ab766753d79442e135ee39f94d61dba42cd88cb68f",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "d0f1394a228103c3106da0ab766753d79442e135ee39f94d61dba42cd88cb68f",
       "source_rel": "adapters/shared/skills/frame-first-principles/routing.md"
     },
@@ -866,7 +877,7 @@
       "relative_path": "skills/frame-inertia/SKILL.md",
       "sha256": "85c325a7ba560b916b7b4d14b06b75fe1dee542aa4c7f145b88c56496d045f02",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "85c325a7ba560b916b7b4d14b06b75fe1dee542aa4c7f145b88c56496d045f02",
       "source_rel": "adapters/shared/skills/frame-inertia/SKILL.md"
     },
@@ -874,7 +885,7 @@
       "relative_path": "skills/frame-inertia/routing.md",
       "sha256": "bf4f30bbc9027d874e21e9572b209d84b905ad9ea05791416d74db967685f3b8",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "bf4f30bbc9027d874e21e9572b209d84b905ad9ea05791416d74db967685f3b8",
       "source_rel": "adapters/shared/skills/frame-inertia/routing.md"
     },
@@ -882,7 +893,7 @@
       "relative_path": "skills/frame-loop-audit-review/SKILL.md",
       "sha256": "bd80aba2f77989c040dd20aee38419f66e401cec48be9fc4e59459837eed9e78",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "bd80aba2f77989c040dd20aee38419f66e401cec48be9fc4e59459837eed9e78",
       "source_rel": "adapters/shared/skills/frame-loop-audit-review/SKILL.md"
     },
@@ -890,7 +901,7 @@
       "relative_path": "skills/frame-loop-audit-review/routing.md",
       "sha256": "a2f79e346cdefd09745bcc496018d8649494650f107ca0e2731186cf86c3032f",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "a2f79e346cdefd09745bcc496018d8649494650f107ca0e2731186cf86c3032f",
       "source_rel": "adapters/shared/skills/frame-loop-audit-review/routing.md"
     },
@@ -898,7 +909,7 @@
       "relative_path": "skills/frame-plandev/SKILL.md",
       "sha256": "8e3437cb015aa5599514fd4842ac8a79f2752a277861a40c2615218ba392de57",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "8e3437cb015aa5599514fd4842ac8a79f2752a277861a40c2615218ba392de57",
       "source_rel": "adapters/shared/skills/frame-plandev/SKILL.md"
     },
@@ -906,7 +917,7 @@
       "relative_path": "skills/frame-plandev/routing.md",
       "sha256": "0e1afefd5a9fcaeb20ba5e8f54f099a9190500d73df10e1447a2c40d84b7fff6",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "0e1afefd5a9fcaeb20ba5e8f54f099a9190500d73df10e1447a2c40d84b7fff6",
       "source_rel": "adapters/shared/skills/frame-plandev/routing.md"
     },
@@ -914,7 +925,7 @@
       "relative_path": "skills/frame-plantask/SKILL.md",
       "sha256": "74aed50ba56d10f5a8f61c66d48566ea8358948185a9e69b477bc61d2f64aa0d",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "74aed50ba56d10f5a8f61c66d48566ea8358948185a9e69b477bc61d2f64aa0d",
       "source_rel": "adapters/shared/skills/frame-plantask/SKILL.md"
     },
@@ -922,23 +933,31 @@
       "relative_path": "skills/frame-plantask/routing.md",
       "sha256": "532421acb0d2303ffe816c846e04fa822151d52a5222946f7dd3b542cf238059",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "532421acb0d2303ffe816c846e04fa822151d52a5222946f7dd3b542cf238059",
       "source_rel": "adapters/shared/skills/frame-plantask/routing.md"
     },
     {
       "relative_path": "skills/frame-proofread-ja/SKILL.md",
-      "sha256": "f1206d20cedf93f1710d81a45eb65dddf8983a902b479a6d29c4cac46066260b",
+      "sha256": "bdc9258d99d52a368437562331de030ebd8c08f818e9fbc4af02fe2c04a5b983",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
-      "source_sha256": "f1206d20cedf93f1710d81a45eb65dddf8983a902b479a6d29c4cac46066260b",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
+      "source_sha256": "bdc9258d99d52a368437562331de030ebd8c08f818e9fbc4af02fe2c04a5b983",
       "source_rel": "adapters/shared/skills/frame-proofread-ja/SKILL.md"
+    },
+    {
+      "relative_path": "skills/frame-proofread-ja/references/ai-smell-signals.md",
+      "sha256": "b4cd7183038791f24e19b259f7bb9fd82c1b1b96c9c02034d19d186e382baef7",
+      "classification": "generated",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
+      "source_sha256": "b4cd7183038791f24e19b259f7bb9fd82c1b1b96c9c02034d19d186e382baef7",
+      "source_rel": "adapters/shared/skills/frame-proofread-ja/references/ai-smell-signals.md"
     },
     {
       "relative_path": "skills/frame-proofread-ja/routing.md",
       "sha256": "326b3bce46e4bd5caba781132f9cfe4c0b140d431f93bd51e2e87d971c8be66b",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "326b3bce46e4bd5caba781132f9cfe4c0b140d431f93bd51e2e87d971c8be66b",
       "source_rel": "adapters/shared/skills/frame-proofread-ja/routing.md"
     },
@@ -946,7 +965,7 @@
       "relative_path": "skills/frame-research-arch/SKILL.md",
       "sha256": "a37b263860f1b9713e14ec935f8dafabb94799977cad9a8b6de246695a2a70ed",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "a37b263860f1b9713e14ec935f8dafabb94799977cad9a8b6de246695a2a70ed",
       "source_rel": "adapters/shared/skills/frame-research-arch/SKILL.md"
     },
@@ -954,7 +973,7 @@
       "relative_path": "skills/frame-research-arch/routing.md",
       "sha256": "e9bb1604c1c2657b7b0e32346dde3679f5de1482d9b68c844458fc279e9df3ae",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "e9bb1604c1c2657b7b0e32346dde3679f5de1482d9b68c844458fc279e9df3ae",
       "source_rel": "adapters/shared/skills/frame-research-arch/routing.md"
     },
@@ -962,7 +981,7 @@
       "relative_path": "skills/frame-research-tactics/SKILL.md",
       "sha256": "0176e8c6e80988bedf0bb0899329e506d724db5c9b4b7d3e2a4a6bdba77e85b8",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "0176e8c6e80988bedf0bb0899329e506d724db5c9b4b7d3e2a4a6bdba77e85b8",
       "source_rel": "adapters/shared/skills/frame-research-tactics/SKILL.md"
     },
@@ -970,7 +989,7 @@
       "relative_path": "skills/frame-research-tactics/routing.md",
       "sha256": "87dbd00371539be991d27d44f6a675618ccfe3ae80c9fcaba242560c045dbe2c",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "87dbd00371539be991d27d44f6a675618ccfe3ae80c9fcaba242560c045dbe2c",
       "source_rel": "adapters/shared/skills/frame-research-tactics/routing.md"
     },
@@ -978,7 +997,7 @@
       "relative_path": "skills/frame-research/SKILL.md",
       "sha256": "214f6bc6d7dd1f689c6c1d020d98f81232a8bada651e575f762dd17b9072f1c4",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "214f6bc6d7dd1f689c6c1d020d98f81232a8bada651e575f762dd17b9072f1c4",
       "source_rel": "adapters/shared/skills/frame-research/SKILL.md"
     },
@@ -986,7 +1005,7 @@
       "relative_path": "skills/frame-research/routing.md",
       "sha256": "7f03f9bd8ebd5bfc8ff645a0a20e8f44e3d5c26435350169d8c612189b75ff5e",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "7f03f9bd8ebd5bfc8ff645a0a20e8f44e3d5c26435350169d8c612189b75ff5e",
       "source_rel": "adapters/shared/skills/frame-research/routing.md"
     },
@@ -994,7 +1013,7 @@
       "relative_path": "skills/frame-smeac/SKILL.md",
       "sha256": "923261c5e003ebd3e22ab0645ff989fa97d87ed7728c91fb6856c36486285080",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "923261c5e003ebd3e22ab0645ff989fa97d87ed7728c91fb6856c36486285080",
       "source_rel": "adapters/shared/skills/frame-smeac/SKILL.md"
     },
@@ -1002,7 +1021,7 @@
       "relative_path": "skills/frame-smeac/routing.md",
       "sha256": "9cb7e30bc26c9721d3e540b1d55341435f1e97d4fcfd03eb02b75dc2c5755d66",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "9cb7e30bc26c9721d3e540b1d55341435f1e97d4fcfd03eb02b75dc2c5755d66",
       "source_rel": "adapters/shared/skills/frame-smeac/routing.md"
     },
@@ -1010,7 +1029,7 @@
       "relative_path": "skills/frame-waiwad-grill/SKILL.md",
       "sha256": "fc39522b87f2b94b0e9049fd0de6fb3912a1da23a6981dd0d250a1afe51a825a",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "fc39522b87f2b94b0e9049fd0de6fb3912a1da23a6981dd0d250a1afe51a825a",
       "source_rel": "adapters/shared/skills/frame-waiwad-grill/SKILL.md"
     },
@@ -1018,7 +1037,7 @@
       "relative_path": "skills/frame-waiwad-grill/routing.md",
       "sha256": "831f536cfddea42e59b4bbebbe8580e2af1c63c809a6e224cfdf7ab53324202c",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "831f536cfddea42e59b4bbebbe8580e2af1c63c809a6e224cfdf7ab53324202c",
       "source_rel": "adapters/shared/skills/frame-waiwad-grill/routing.md"
     },
@@ -1026,7 +1045,7 @@
       "relative_path": "skills/frame-wall/SKILL.md",
       "sha256": "83f2159f761af21e2f8c6254cd8c33e389b83e82ee9051dcf8bb4a0c910476f8",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "83f2159f761af21e2f8c6254cd8c33e389b83e82ee9051dcf8bb4a0c910476f8",
       "source_rel": "adapters/shared/skills/frame-wall/SKILL.md"
     },
@@ -1034,7 +1053,7 @@
       "relative_path": "skills/frame-wall/routing.md",
       "sha256": "068da86831bde6e16f8c3f651b87d1b05c18b28acb28532b97e160ef0d0e4d87",
       "classification": "generated",
-      "source_commit": "0dd1039710fad2d1b8236ecdacbcb2b92685a967",
+      "source_commit": "d5b944341b8129eb30738e181afe63b17c0016ed",
       "source_sha256": "068da86831bde6e16f8c3f651b87d1b05c18b28acb28532b97e160ef0d0e4d87",
       "source_rel": "adapters/shared/skills/frame-wall/routing.md"
     }
