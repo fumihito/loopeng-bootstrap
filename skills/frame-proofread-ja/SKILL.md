@@ -17,15 +17,17 @@ Use this frame for Japanese surface-quality review. It focuses on wording, rhyth
 ## Workflow
 
 1. Read the whole passage. If it cannot be read, report the error and stop.
-2. Run the fast AI-smell pre-check:
+2. If the optional fast AI-smell pre-check is available, run it:
 
    ```bash
    python3 scripts/proofread-ng-check.py <filepath>
    ```
 
-   Preserve its output, including line numbers, categories, and matching text.
-   Exit code 0 means below the threshold; exit code 1 means the document is
-   over the threshold.
+   If `scripts/proofread-ng-check.py` is absent or cannot be run, report that
+   the scripted pre-check was skipped and continue with the review passes.
+   When it runs, preserve its output, including line numbers, categories, and
+   matching text. Exit code 0 means below the threshold; exit code 1 means the
+   document is over the threshold.
 
 3. Run the following review passes in parallel and wait for all of them to
    finish before integrating the pre-check output:
@@ -131,7 +133,8 @@ error instead of starting with no target.
 For the editor pass, list paragraph-opening sentences and judge whether they
 show the document's skeleton. Identify paragraphs containing more than one
 logical point and flag under-explained, abrupt, or assumption-heavy passages.
-For the AI-smell pass, combine script findings with contextual completion and
-deduplicate them. Present counts by Lint, editor review, script findings, and
-AI completion. Offer each finding as original text, problem, revision, and an
+For the AI-smell pass, combine script findings when the optional script ran
+with contextual completion and deduplicate them. State when the script was
+skipped. Present counts by Lint, editor review, script findings, and AI
+completion. Offer each finding as original text, problem, revision, and an
 adopt/alternative/skip choice; never write the file automatically.

@@ -1,20 +1,20 @@
 {
-  "installed_at": "2026-07-20T12:26:15.058846+00:00",
-  "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+  "installed_at": "2026-07-20T12:31:57.989837+00:00",
+  "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
   "source_version": "0.2.0",
-  "kit_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+  "kit_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
   "version": "0.2.0",
   "profile": "full",
   "self_mode": true,
   "update_mode": true,
   "force_overwrite_tampered_reason": null,
   "conflict_policy": "error",
-  "backup_root": ".loop-engineering-backups/20260720T122614.848668Z",
+  "backup_root": ".loop-engineering-backups/20260720T123157.776036Z",
   "actions": [
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/.codex/hooks.json",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/.codex/hooks.json"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/.codex/hooks.json"
     },
     {
       "action": "write",
@@ -24,7 +24,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/.claude/settings.json",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/.claude/settings.json"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/.claude/settings.json"
     },
     {
       "action": "write",
@@ -39,7 +39,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-research-tactics/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-research-tactics/routing.md"
     },
     {
       "action": "write",
@@ -54,7 +54,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-tactics/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-research-tactics/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-research-tactics/SKILL.md"
     },
     {
       "action": "write",
@@ -69,7 +69,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-first-principles/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-first-principles/routing.md"
     },
     {
       "action": "write",
@@ -84,7 +84,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-first-principles/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-first-principles/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-first-principles/SKILL.md"
     },
     {
       "action": "write",
@@ -99,7 +99,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-loop-audit-review/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-loop-audit-review/routing.md"
     },
     {
       "action": "write",
@@ -114,7 +114,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-loop-audit-review/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-loop-audit-review/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-loop-audit-review/SKILL.md"
     },
     {
       "action": "write",
@@ -129,7 +129,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-distributed-incident-analysis/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-distributed-incident-analysis/routing.md"
     },
     {
       "action": "write",
@@ -144,7 +144,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-distributed-incident-analysis/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-distributed-incident-analysis/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-distributed-incident-analysis/SKILL.md"
     },
     {
       "action": "write",
@@ -159,7 +159,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-smeac/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-smeac/routing.md"
     },
     {
       "action": "write",
@@ -174,7 +174,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-smeac/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-smeac/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-smeac/SKILL.md"
     },
     {
       "action": "write",
@@ -189,7 +189,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-axis/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-axis/routing.md"
     },
     {
       "action": "write",
@@ -204,7 +204,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-axis/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-axis/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-axis/SKILL.md"
     },
     {
       "action": "write",
@@ -219,7 +219,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-plandev/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-plandev/routing.md"
     },
     {
       "action": "write",
@@ -234,7 +234,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plandev/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-plandev/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-plandev/SKILL.md"
     },
     {
       "action": "write",
@@ -249,7 +249,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-research-arch/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-research-arch/routing.md"
     },
     {
       "action": "write",
@@ -264,7 +264,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research-arch/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-research-arch/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-research-arch/SKILL.md"
     },
     {
       "action": "write",
@@ -279,7 +279,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-wall/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-wall/routing.md"
     },
     {
       "action": "write",
@@ -294,7 +294,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-wall/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-wall/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-wall/SKILL.md"
     },
     {
       "action": "write",
@@ -309,7 +309,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-inertia/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-inertia/routing.md"
     },
     {
       "action": "write",
@@ -324,7 +324,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-inertia/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-inertia/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-inertia/SKILL.md"
     },
     {
       "action": "write",
@@ -339,7 +339,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-waiwad-grill/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-waiwad-grill/routing.md"
     },
     {
       "action": "write",
@@ -354,7 +354,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-waiwad-grill/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-waiwad-grill/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-waiwad-grill/SKILL.md"
     },
     {
       "action": "write",
@@ -369,7 +369,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-blind-spot/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-blind-spot/routing.md"
     },
     {
       "action": "write",
@@ -384,7 +384,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-blind-spot/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-blind-spot/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-blind-spot/SKILL.md"
     },
     {
       "action": "write",
@@ -399,7 +399,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-cynefin/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-cynefin/routing.md"
     },
     {
       "action": "write",
@@ -414,7 +414,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-cynefin/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-cynefin/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-cynefin/SKILL.md"
     },
     {
       "action": "write",
@@ -429,7 +429,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-diag/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-diag/routing.md"
     },
     {
       "action": "write",
@@ -444,7 +444,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-diag/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-diag/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-diag/SKILL.md"
     },
     {
       "action": "write",
@@ -459,7 +459,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-plantask/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-plantask/routing.md"
     },
     {
       "action": "write",
@@ -474,7 +474,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-plantask/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-plantask/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-plantask/SKILL.md"
     },
     {
       "action": "write",
@@ -489,7 +489,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-experiments/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-experiments/routing.md"
     },
     {
       "action": "write",
@@ -504,7 +504,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-experiments/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-experiments/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-experiments/SKILL.md"
     },
     {
       "action": "write",
@@ -519,7 +519,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-proofread-ja/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-proofread-ja/routing.md"
     },
     {
       "action": "write",
@@ -534,7 +534,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-proofread-ja/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-proofread-ja/SKILL.md"
     },
     {
       "action": "write",
@@ -549,7 +549,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-research/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-research/routing.md"
     },
     {
       "action": "write",
@@ -564,7 +564,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-research/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-research/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-research/SKILL.md"
     },
     {
       "action": "write",
@@ -579,7 +579,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-decision-making/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-decision-making/routing.md"
     },
     {
       "action": "write",
@@ -594,7 +594,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-decision-making/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-decision-making/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-decision-making/SKILL.md"
     },
     {
       "action": "write",
@@ -609,7 +609,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/routing.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-critical-review/routing.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-critical-review/routing.md"
     },
     {
       "action": "write",
@@ -624,7 +624,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-critical-review/SKILL.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-critical-review/SKILL.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-critical-review/SKILL.md"
     },
     {
       "action": "write",
@@ -639,7 +639,7 @@
     {
       "action": "backup-file",
       "source": "/home/hito/work/git/loopeng-bootstrap/skills/frame-proofread-ja/references/ai-smell-signals.md",
-      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T122614.848668Z/skills/frame-proofread-ja/references/ai-smell-signals.md"
+      "destination": "/home/hito/work/git/loopeng-bootstrap/.loop-engineering-backups/20260720T123157.776036Z/skills/frame-proofread-ja/references/ai-smell-signals.md"
     },
     {
       "action": "write",
@@ -712,33 +712,33 @@
   "entries": [
     {
       "relative_path": ".claude/GENERATED — DO NOT EDIT.md",
-      "sha256": "9ca83fce01c266b1446aef4e06587e3c6ac13b8865801b4687b2e41cbd3c7dd0",
+      "sha256": "92bed6b657dda3e86a261d96bd239e8a01c4663b83a125a21c12c9c147902288",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231"
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a"
     },
     {
       "relative_path": ".claude/settings.json",
       "sha256": "553219d153986c1700eec13b39da35f3d644ed9225310542c65918b54bbb6657",
       "classification": "config",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231"
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a"
     },
     {
       "relative_path": ".codex/GENERATED — DO NOT EDIT.md",
-      "sha256": "e00291bcacedf40a13ba6b765db3b96f3648e4c1d72c0a76e32527d6c1e35eda",
+      "sha256": "3928208ded11e90e867aba499ea44f8b90cc2b2675b794978155c6966c691f89",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231"
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a"
     },
     {
       "relative_path": ".codex/hooks.json",
       "sha256": "2830e9ab2de3406b483a3a7ebcea5296629c516cca3f8e9db57137181898e39c",
       "classification": "config",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231"
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a"
     },
     {
       "relative_path": "skills/frame-axis/SKILL.md",
       "sha256": "1b30e178859a9de5778f5d717ca03be6cb7e10b20338679ab4a51256265eb458",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "1b30e178859a9de5778f5d717ca03be6cb7e10b20338679ab4a51256265eb458",
       "source_rel": "adapters/shared/skills/frame-axis/SKILL.md"
     },
@@ -746,7 +746,7 @@
       "relative_path": "skills/frame-axis/routing.md",
       "sha256": "18bca9091c748b02cdc3f7e0219bdfc81271dece0b6515a0e028fb8c53f7dbff",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "18bca9091c748b02cdc3f7e0219bdfc81271dece0b6515a0e028fb8c53f7dbff",
       "source_rel": "adapters/shared/skills/frame-axis/routing.md"
     },
@@ -754,7 +754,7 @@
       "relative_path": "skills/frame-blind-spot/SKILL.md",
       "sha256": "89c8e18e35eb36ab4ae8b8b859b955535aeab7aae6f9d3b317ee1c1d37411435",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "89c8e18e35eb36ab4ae8b8b859b955535aeab7aae6f9d3b317ee1c1d37411435",
       "source_rel": "adapters/shared/skills/frame-blind-spot/SKILL.md"
     },
@@ -762,7 +762,7 @@
       "relative_path": "skills/frame-blind-spot/routing.md",
       "sha256": "1961a19ac7e563a0f58eae3ba228212481a1367ba2f6104ac10fb2e2f5c0f298",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "1961a19ac7e563a0f58eae3ba228212481a1367ba2f6104ac10fb2e2f5c0f298",
       "source_rel": "adapters/shared/skills/frame-blind-spot/routing.md"
     },
@@ -770,7 +770,7 @@
       "relative_path": "skills/frame-critical-review/SKILL.md",
       "sha256": "0615ad1fb44fbdf9f0067f64ade1f09d95e8809301fde653a7a24870acd66aec",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "0615ad1fb44fbdf9f0067f64ade1f09d95e8809301fde653a7a24870acd66aec",
       "source_rel": "adapters/shared/skills/frame-critical-review/SKILL.md"
     },
@@ -778,7 +778,7 @@
       "relative_path": "skills/frame-critical-review/routing.md",
       "sha256": "847961edb3da37856662a766894b1301c6c1940c8ab18e26b50ae9c64ff11fc5",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "847961edb3da37856662a766894b1301c6c1940c8ab18e26b50ae9c64ff11fc5",
       "source_rel": "adapters/shared/skills/frame-critical-review/routing.md"
     },
@@ -786,7 +786,7 @@
       "relative_path": "skills/frame-cynefin/SKILL.md",
       "sha256": "0463523c93b84a6c1f47ffafb2ae15c34c2a1e31da0db752b9e3945c5cf5becf",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "0463523c93b84a6c1f47ffafb2ae15c34c2a1e31da0db752b9e3945c5cf5becf",
       "source_rel": "adapters/shared/skills/frame-cynefin/SKILL.md"
     },
@@ -794,7 +794,7 @@
       "relative_path": "skills/frame-cynefin/routing.md",
       "sha256": "37e1b35e88bd6dfc1a9bd798483c5ff151ca6787230da61ec1c7b6d9189d5ae7",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "37e1b35e88bd6dfc1a9bd798483c5ff151ca6787230da61ec1c7b6d9189d5ae7",
       "source_rel": "adapters/shared/skills/frame-cynefin/routing.md"
     },
@@ -802,7 +802,7 @@
       "relative_path": "skills/frame-decision-making/SKILL.md",
       "sha256": "ddbd8b247ffb074cbec5d5339d89a77e035eb35aef8d6ecefe4c7ca6c3c043b4",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "ddbd8b247ffb074cbec5d5339d89a77e035eb35aef8d6ecefe4c7ca6c3c043b4",
       "source_rel": "adapters/shared/skills/frame-decision-making/SKILL.md"
     },
@@ -810,7 +810,7 @@
       "relative_path": "skills/frame-decision-making/routing.md",
       "sha256": "d742a016702b51dd1d1fcbe1acd38cb4abf313967ae7c1dc3a0486389e91f4c2",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "d742a016702b51dd1d1fcbe1acd38cb4abf313967ae7c1dc3a0486389e91f4c2",
       "source_rel": "adapters/shared/skills/frame-decision-making/routing.md"
     },
@@ -818,7 +818,7 @@
       "relative_path": "skills/frame-diag/SKILL.md",
       "sha256": "5ff323c9787e337ecc3275b42358d87c5a473583a742a4fdc419192d381609bd",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "5ff323c9787e337ecc3275b42358d87c5a473583a742a4fdc419192d381609bd",
       "source_rel": "adapters/shared/skills/frame-diag/SKILL.md"
     },
@@ -826,7 +826,7 @@
       "relative_path": "skills/frame-diag/routing.md",
       "sha256": "1f770fb813121da6fa6dd1d26bd356315c067c31de62cae1455bd82fa8dd35c7",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "1f770fb813121da6fa6dd1d26bd356315c067c31de62cae1455bd82fa8dd35c7",
       "source_rel": "adapters/shared/skills/frame-diag/routing.md"
     },
@@ -834,7 +834,7 @@
       "relative_path": "skills/frame-distributed-incident-analysis/SKILL.md",
       "sha256": "24fa096f0ecb71a11f200aa4bdf7126c7b908e8b11e995d8291de6b17cfe54f7",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "24fa096f0ecb71a11f200aa4bdf7126c7b908e8b11e995d8291de6b17cfe54f7",
       "source_rel": "adapters/shared/skills/frame-distributed-incident-analysis/SKILL.md"
     },
@@ -842,7 +842,7 @@
       "relative_path": "skills/frame-distributed-incident-analysis/routing.md",
       "sha256": "89aa39ec99bfbac425ec99d27ffa291088709af495cc794b807465e14c78cbe7",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "89aa39ec99bfbac425ec99d27ffa291088709af495cc794b807465e14c78cbe7",
       "source_rel": "adapters/shared/skills/frame-distributed-incident-analysis/routing.md"
     },
@@ -850,7 +850,7 @@
       "relative_path": "skills/frame-experiments/SKILL.md",
       "sha256": "f96ab8328ec82961bad05bcddc8600a020b972383fe8e86c396a01a174981cf7",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "f96ab8328ec82961bad05bcddc8600a020b972383fe8e86c396a01a174981cf7",
       "source_rel": "adapters/shared/skills/frame-experiments/SKILL.md"
     },
@@ -858,7 +858,7 @@
       "relative_path": "skills/frame-experiments/routing.md",
       "sha256": "3c812ece096aafd5167c867dcc9fcd00404e012851b5aa5b931ebdd6e5162139",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "3c812ece096aafd5167c867dcc9fcd00404e012851b5aa5b931ebdd6e5162139",
       "source_rel": "adapters/shared/skills/frame-experiments/routing.md"
     },
@@ -866,7 +866,7 @@
       "relative_path": "skills/frame-first-principles/SKILL.md",
       "sha256": "f13ad8b83e5515a2d485dbfaa7fff3825b2e4bd808a1339c7fbfa9acbd14ca38",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "f13ad8b83e5515a2d485dbfaa7fff3825b2e4bd808a1339c7fbfa9acbd14ca38",
       "source_rel": "adapters/shared/skills/frame-first-principles/SKILL.md"
     },
@@ -874,7 +874,7 @@
       "relative_path": "skills/frame-first-principles/routing.md",
       "sha256": "d0f1394a228103c3106da0ab766753d79442e135ee39f94d61dba42cd88cb68f",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "d0f1394a228103c3106da0ab766753d79442e135ee39f94d61dba42cd88cb68f",
       "source_rel": "adapters/shared/skills/frame-first-principles/routing.md"
     },
@@ -882,7 +882,7 @@
       "relative_path": "skills/frame-inertia/SKILL.md",
       "sha256": "67632dac652b3c6aa09cb5af2c87afc69d6d3dcdc042eb771d423ea5e8508d21",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "67632dac652b3c6aa09cb5af2c87afc69d6d3dcdc042eb771d423ea5e8508d21",
       "source_rel": "adapters/shared/skills/frame-inertia/SKILL.md"
     },
@@ -890,7 +890,7 @@
       "relative_path": "skills/frame-inertia/routing.md",
       "sha256": "bf4f30bbc9027d874e21e9572b209d84b905ad9ea05791416d74db967685f3b8",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "bf4f30bbc9027d874e21e9572b209d84b905ad9ea05791416d74db967685f3b8",
       "source_rel": "adapters/shared/skills/frame-inertia/routing.md"
     },
@@ -898,7 +898,7 @@
       "relative_path": "skills/frame-loop-audit-review/SKILL.md",
       "sha256": "bd80aba2f77989c040dd20aee38419f66e401cec48be9fc4e59459837eed9e78",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "bd80aba2f77989c040dd20aee38419f66e401cec48be9fc4e59459837eed9e78",
       "source_rel": "adapters/shared/skills/frame-loop-audit-review/SKILL.md"
     },
@@ -906,7 +906,7 @@
       "relative_path": "skills/frame-loop-audit-review/routing.md",
       "sha256": "a2f79e346cdefd09745bcc496018d8649494650f107ca0e2731186cf86c3032f",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "a2f79e346cdefd09745bcc496018d8649494650f107ca0e2731186cf86c3032f",
       "source_rel": "adapters/shared/skills/frame-loop-audit-review/routing.md"
     },
@@ -914,7 +914,7 @@
       "relative_path": "skills/frame-plandev/SKILL.md",
       "sha256": "ee29ec74b4f6b307f06a27d26008f58e38192d1ef74dda2bd2babdfe20660d3f",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "ee29ec74b4f6b307f06a27d26008f58e38192d1ef74dda2bd2babdfe20660d3f",
       "source_rel": "adapters/shared/skills/frame-plandev/SKILL.md"
     },
@@ -922,7 +922,7 @@
       "relative_path": "skills/frame-plandev/routing.md",
       "sha256": "0e1afefd5a9fcaeb20ba5e8f54f099a9190500d73df10e1447a2c40d84b7fff6",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "0e1afefd5a9fcaeb20ba5e8f54f099a9190500d73df10e1447a2c40d84b7fff6",
       "source_rel": "adapters/shared/skills/frame-plandev/routing.md"
     },
@@ -930,7 +930,7 @@
       "relative_path": "skills/frame-plantask/SKILL.md",
       "sha256": "2273331dbe6c3f8637d670a35feccee902b77f98b74779f31332d934c49c9708",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "2273331dbe6c3f8637d670a35feccee902b77f98b74779f31332d934c49c9708",
       "source_rel": "adapters/shared/skills/frame-plantask/SKILL.md"
     },
@@ -938,23 +938,23 @@
       "relative_path": "skills/frame-plantask/routing.md",
       "sha256": "532421acb0d2303ffe816c846e04fa822151d52a5222946f7dd3b542cf238059",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "532421acb0d2303ffe816c846e04fa822151d52a5222946f7dd3b542cf238059",
       "source_rel": "adapters/shared/skills/frame-plantask/routing.md"
     },
     {
       "relative_path": "skills/frame-proofread-ja/SKILL.md",
-      "sha256": "a6dad3f6949aa6f09fb8300b8731c58799cd53f2dbdfd607456627072fb7c2b8",
+      "sha256": "64fd8b712df5dd367104f45bde409376513b58df1efd65e0acc1d928dd647c79",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
-      "source_sha256": "a6dad3f6949aa6f09fb8300b8731c58799cd53f2dbdfd607456627072fb7c2b8",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
+      "source_sha256": "64fd8b712df5dd367104f45bde409376513b58df1efd65e0acc1d928dd647c79",
       "source_rel": "adapters/shared/skills/frame-proofread-ja/SKILL.md"
     },
     {
       "relative_path": "skills/frame-proofread-ja/references/ai-smell-signals.md",
       "sha256": "b4cd7183038791f24e19b259f7bb9fd82c1b1b96c9c02034d19d186e382baef7",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "b4cd7183038791f24e19b259f7bb9fd82c1b1b96c9c02034d19d186e382baef7",
       "source_rel": "adapters/shared/skills/frame-proofread-ja/references/ai-smell-signals.md"
     },
@@ -962,7 +962,7 @@
       "relative_path": "skills/frame-proofread-ja/routing.md",
       "sha256": "326b3bce46e4bd5caba781132f9cfe4c0b140d431f93bd51e2e87d971c8be66b",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "326b3bce46e4bd5caba781132f9cfe4c0b140d431f93bd51e2e87d971c8be66b",
       "source_rel": "adapters/shared/skills/frame-proofread-ja/routing.md"
     },
@@ -970,7 +970,7 @@
       "relative_path": "skills/frame-research-arch/SKILL.md",
       "sha256": "ff16a7df8d2f2aa093a76a9f1a10a170018a0d1205797a789b683b3a192325c0",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "ff16a7df8d2f2aa093a76a9f1a10a170018a0d1205797a789b683b3a192325c0",
       "source_rel": "adapters/shared/skills/frame-research-arch/SKILL.md"
     },
@@ -978,7 +978,7 @@
       "relative_path": "skills/frame-research-arch/routing.md",
       "sha256": "e9bb1604c1c2657b7b0e32346dde3679f5de1482d9b68c844458fc279e9df3ae",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "e9bb1604c1c2657b7b0e32346dde3679f5de1482d9b68c844458fc279e9df3ae",
       "source_rel": "adapters/shared/skills/frame-research-arch/routing.md"
     },
@@ -986,7 +986,7 @@
       "relative_path": "skills/frame-research-tactics/SKILL.md",
       "sha256": "a84610b9055e3efd31a374d41a542628754619f88ebbccb3cdc723f7ade6f4a5",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "a84610b9055e3efd31a374d41a542628754619f88ebbccb3cdc723f7ade6f4a5",
       "source_rel": "adapters/shared/skills/frame-research-tactics/SKILL.md"
     },
@@ -994,7 +994,7 @@
       "relative_path": "skills/frame-research-tactics/routing.md",
       "sha256": "87dbd00371539be991d27d44f6a675618ccfe3ae80c9fcaba242560c045dbe2c",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "87dbd00371539be991d27d44f6a675618ccfe3ae80c9fcaba242560c045dbe2c",
       "source_rel": "adapters/shared/skills/frame-research-tactics/routing.md"
     },
@@ -1002,7 +1002,7 @@
       "relative_path": "skills/frame-research/SKILL.md",
       "sha256": "214f6bc6d7dd1f689c6c1d020d98f81232a8bada651e575f762dd17b9072f1c4",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "214f6bc6d7dd1f689c6c1d020d98f81232a8bada651e575f762dd17b9072f1c4",
       "source_rel": "adapters/shared/skills/frame-research/SKILL.md"
     },
@@ -1010,7 +1010,7 @@
       "relative_path": "skills/frame-research/routing.md",
       "sha256": "7f03f9bd8ebd5bfc8ff645a0a20e8f44e3d5c26435350169d8c612189b75ff5e",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "7f03f9bd8ebd5bfc8ff645a0a20e8f44e3d5c26435350169d8c612189b75ff5e",
       "source_rel": "adapters/shared/skills/frame-research/routing.md"
     },
@@ -1018,7 +1018,7 @@
       "relative_path": "skills/frame-smeac/SKILL.md",
       "sha256": "d8aa1db48fbd7ca6204b37fba3e90fe9109750174173c5397b1102bfb3ffe128",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "d8aa1db48fbd7ca6204b37fba3e90fe9109750174173c5397b1102bfb3ffe128",
       "source_rel": "adapters/shared/skills/frame-smeac/SKILL.md"
     },
@@ -1026,7 +1026,7 @@
       "relative_path": "skills/frame-smeac/routing.md",
       "sha256": "9cb7e30bc26c9721d3e540b1d55341435f1e97d4fcfd03eb02b75dc2c5755d66",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "9cb7e30bc26c9721d3e540b1d55341435f1e97d4fcfd03eb02b75dc2c5755d66",
       "source_rel": "adapters/shared/skills/frame-smeac/routing.md"
     },
@@ -1034,7 +1034,7 @@
       "relative_path": "skills/frame-waiwad-grill/SKILL.md",
       "sha256": "91f0c3fa2d70376b77c24f79cf789badc8c92f344819e4ea276c892c131b7baf",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "91f0c3fa2d70376b77c24f79cf789badc8c92f344819e4ea276c892c131b7baf",
       "source_rel": "adapters/shared/skills/frame-waiwad-grill/SKILL.md"
     },
@@ -1042,7 +1042,7 @@
       "relative_path": "skills/frame-waiwad-grill/routing.md",
       "sha256": "831f536cfddea42e59b4bbebbe8580e2af1c63c809a6e224cfdf7ab53324202c",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "831f536cfddea42e59b4bbebbe8580e2af1c63c809a6e224cfdf7ab53324202c",
       "source_rel": "adapters/shared/skills/frame-waiwad-grill/routing.md"
     },
@@ -1050,7 +1050,7 @@
       "relative_path": "skills/frame-wall/SKILL.md",
       "sha256": "83f2159f761af21e2f8c6254cd8c33e389b83e82ee9051dcf8bb4a0c910476f8",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "83f2159f761af21e2f8c6254cd8c33e389b83e82ee9051dcf8bb4a0c910476f8",
       "source_rel": "adapters/shared/skills/frame-wall/SKILL.md"
     },
@@ -1058,7 +1058,7 @@
       "relative_path": "skills/frame-wall/routing.md",
       "sha256": "068da86831bde6e16f8c3f651b87d1b05c18b28acb28532b97e160ef0d0e4d87",
       "classification": "generated",
-      "source_commit": "5250ef7dc845292e1fdb7afca916abafae4dd231",
+      "source_commit": "fcf0ecab66f655bfe9322b7568ede4aecb08739a",
       "source_sha256": "068da86831bde6e16f8c3f651b87d1b05c18b28acb28532b97e160ef0d0e4d87",
       "source_rel": "adapters/shared/skills/frame-wall/routing.md"
     }
