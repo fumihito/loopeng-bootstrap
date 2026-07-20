@@ -48,7 +48,10 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-experiments` when the uncertainty has to be resolved by a bounded probe in the world.
 - Use `frame-research-arch` when the task is narrowing architecture choices instead of building a test plan.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Run five phases: survey relevant mental models, enumerate candidates, select
 the top two frameworks, turn them into explicit hypotheses, and define

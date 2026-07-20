@@ -90,7 +90,10 @@ End when the strongest counterarguments and evidence checks are on the table, or
 - Use `frame-first-principles` when the claim set is still too underspecified and needs decomposition before it can be reviewed.
 - Use `frame-axis` as the prior step when a claim turns out to bundle more than one axis.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 For each major claim, keep a thesis map: claim, grounds, warrant, backing,
 qualifier, existing rebuttal, and missing element. Classify it before checking

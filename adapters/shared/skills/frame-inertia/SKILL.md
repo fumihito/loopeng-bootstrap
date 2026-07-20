@@ -72,7 +72,10 @@ End when the inherited judgment either survives with a context-specific reason o
 - Use `frame-first-principles` when the judgment needs to be rebuilt from scratch.
 - Use `frame-blind-spot` when the concern is the hidden commitment that keeps the inherited judgment in place.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Classify the trigger as socialized conformity, Goodhart metric fixation,
 authority deference, inertia, or self-authoring. For each trap, ask whether

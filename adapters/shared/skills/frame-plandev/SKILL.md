@@ -73,7 +73,10 @@ Finish when the outcome is defined, every phase has verification, blockers are n
 - Use `frame-smeac` when the plan already exists and needs compression into a handoffable brief.
 - Use `frame-first-principles` when the plan still rests on shaky assumptions that need decomposition first.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Treat the plan as five protected phases: preparation, design, implementation,
 verification, and handoff. Each phase states its input, output, gate, and

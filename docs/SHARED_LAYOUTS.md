@@ -18,6 +18,14 @@ Maintaining independent Codex and Claude copies creates configuration drift: one
 
 Platform-specific behavior belongs in `.codex/agents/*.toml`, `.claude/agents/*.md`, hook adapters, or runtime context. It must not be encoded by forking the shared `SKILL.md`.
 
+## Skill editing policy
+
+For distributed frame skills, `adapters/shared/skills/` is the sole edit point.
+The root `skills/` tree is an installed/generated result and must not be edited
+directly. After changing a shared skill, run `python3 install.py --self --update`
+before validation or commit so the installed tree and manifest are regenerated
+from the adapter source.
+
 ## Deterministic migration
 
 The installer handles these legacy forms before copying package files:

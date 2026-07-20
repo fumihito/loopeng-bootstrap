@@ -65,7 +65,10 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-research` when the answer may still be settled by comparing external sources or published evidence.
 - Use `frame-research-arch` when the uncertainty is about design options rather than intervention design.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Use this six-part procedure: clarify the learning target; choose Clear,
 Complicated, Complex, Chaotic, or Disorder; select causal-test,

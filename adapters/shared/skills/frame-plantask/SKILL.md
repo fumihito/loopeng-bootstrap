@@ -47,7 +47,10 @@ Stop when the dependency structure is explicit enough to hand off or turn into p
 - Use `frame-smeac` when the graph is already known and only needs compression into a brief.
 - Use `frame-first-principles` when the task graph is still unclear and needs decomposition first.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 For multi-step workflows, render a small `workflow.yaml`-style specification
 and Mermaid when a visual view helps. Use stable node IDs and make each edge a

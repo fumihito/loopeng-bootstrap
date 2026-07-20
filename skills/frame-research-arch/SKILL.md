@@ -57,7 +57,10 @@ End when the choice space is narrowed enough to compare or commit. If a bounded 
 - Use `frame-research-tactics` when the architecture choice needs hypothesis and verification planning.
 - Use `frame-experiments` when the choice can only be separated by a bounded live probe.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Run four phases: enumerate architecture patterns, narrow to at least two
 options, propose standard OSS or component candidates for each, and check the

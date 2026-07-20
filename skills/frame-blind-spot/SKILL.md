@@ -45,7 +45,10 @@ Stop when the omission is named with enough evidence to act on, or state that th
 - Use `frame-first-principles` when the problem still needs decomposition before any claim can be tested.
 - Use `frame-axis` when the disagreement turns out to be two people using the same word for two different things, not a hidden assumption.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Run two passes: extract observations without interpretation, then test each
 candidate through these lenses:

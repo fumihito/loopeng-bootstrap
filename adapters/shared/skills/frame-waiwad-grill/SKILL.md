@@ -71,7 +71,10 @@ Stop when the redesign is handoffable and the gap has been translated into concr
 - Use `frame-diag` when the incident is still active and the next step is live diagnosis or stabilization.
 - Use `frame-distributed-incident-analysis` when the symptom pattern is still too distributed or too early for a redesign conversation.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Run the seven steps explicitly: Accept the WAI/WAD gap; Locate its type;
 Trace the adaptation chain; grill assumptions with Argyris; grill rationality

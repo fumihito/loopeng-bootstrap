@@ -58,7 +58,10 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-critical-review` when the work has become a claim that can be tested against evidence.
 - Use `frame-axis` as the next step once a concrete case exists for a candidate distinction.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Decompose in this order: restate the goal, strip inherited assumptions,
 identify primitives, then derive constraints, tools, minimal subproblems, and

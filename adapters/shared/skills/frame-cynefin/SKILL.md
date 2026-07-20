@@ -76,7 +76,10 @@ Hand off explicitly after classification. Do not auto-connect the next frame fro
 - Use `frame-inertia` when the answer looks inherited from convention or authority rather than reasoned.
 - Use `frame-axis` when the disagreement is about what a term means, not what domain the problem is in.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Use these signals before assigning a landing: Clear has a repeatable answer;
 Complicated needs specialist analysis; Complex needs probing; Chaotic needs

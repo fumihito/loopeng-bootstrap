@@ -56,7 +56,10 @@ Finish when the brief is ready to hand off and the distortions are named. If a n
 - Use `frame-plantask` when the input needs explicit dependency structure before it can be compressed.
 - Use `frame-critical-review` when the brief needs argument validity checked instead of compression.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Before compressing, identify the source reality, decisions, open issues,
 distortions, and required additions. The final brief must say what changed,

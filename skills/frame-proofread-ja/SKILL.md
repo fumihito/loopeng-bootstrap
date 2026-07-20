@@ -117,7 +117,10 @@ to `dev:`.
 - Use `frame-critical-review` when the issue is whether the claim or argument holds, not whether the Japanese reads cleanly.
 - Use `frame-smeac` when the text should be compressed into a handoffable brief rather than proofread.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 Activation is explicit: use this frame for a Japanese Markdown or plain-text
 passage when the user requests `proofread-ja:` or the corresponding command.

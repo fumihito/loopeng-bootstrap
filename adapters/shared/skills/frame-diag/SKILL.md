@@ -80,7 +80,10 @@ If this session produced a deliverable goal or verification conditions, you can 
 - Use `frame-distributed-incident-analysis` when timing, duplication, or partial failure across components still needs early triage.
 - Use `frame-waiwad-grill` when the incident is already contained and the task is redesigning the conditions rather than diagnosing the live failure.
 
-## Merged operational contract
+## Operational contract
+
+This is the standalone contract for this skill. The adjacent-frame references
+above are optional handoffs, not prerequisites or additional instructions.
 
 In Emergency Mode, preserve evidence, stop irreversible or cascading harm,
 isolate the affected path, and collect only the minimum observation needed for
