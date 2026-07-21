@@ -1,0 +1,4 @@
+interface:
+  display_name: "Presentation Foundation Review"
+  short_description: "Find decision-critical gaps in presentation drafts"
+  default_prompt: "Use $frame-ppt-review to identify what this presentation still needs before it can support a decision."
