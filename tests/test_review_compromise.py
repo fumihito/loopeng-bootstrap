@@ -55,7 +55,7 @@ class ReviewCompromiseTests(unittest.TestCase):
 
     def test_d5_target_mismatch_is_rejected(self):
         repo, packet_hash, dims = self.fixture()
-        dims[-1]["evidence"][0]["ref"] = "file:claim.py:1"
+        dims[-1]["evidence"][0]["ref"] = "file:not-the-d5-target.py:1"
         result = intake(repo, self.report(repo, packet_hash, dims, relation="external"))
         self.assertFalse(result["accepted"]); self.assertTrue(any("d5_target mismatch" in item for item in result["errors"]))
 
