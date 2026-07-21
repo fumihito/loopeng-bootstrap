@@ -67,3 +67,10 @@ under their respective repository configuration. With hooks enabled, events
 are journaled automatically and hard blocks are enforced before execution;
 hooks-disabled operation remains a supported degraded mode. The invariants
 and platform boundaries are defined in `docs/ARCHITECTURE.md`.
+
+When a shared skill under `adapters/shared/skills/` is changed, the hook marks
+the generated tree as pending synchronization. The next mutation is denied
+until `python3 install.py --self --update` succeeds. This closes the common
+workflow gap in which the source skill was edited but the root `skills/` tree
+was not regenerated. If hooks are disabled, `audit_guard record` still checks
+the source and installed trees before completion.

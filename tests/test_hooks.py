@@ -59,6 +59,36 @@ class HookTests(unittest.TestCase):
             allowed = handler.handle(normalize_claude({"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_input": {"command": "echo hello"}}))
             self.assertEqual(allowed["response"]["hookSpecificOutput"]["permissionDecision"], "allow")
 
+    def test_shared_skill_edit_requires_self_update_before_next_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            source = repo / "adapters/shared/skills/frame-diag/SKILL.md"
+            edit = normalize_codex({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": "sync-run",
+                                    "tool_name": "apply_patch", "tool_input": {"path": str(source)}})
+            handler.handle(edit)
+            blocked = handler.handle(normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo),
+                                                       "tool_name": "Bash", "tool_input": {"command": "pytest"}}))
+            self.assertEqual(blocked["response"]["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertIn("self-update", blocked["response"]["hookSpecificOutput"]["permissionDecisionReason"])
+
+            update = normalize_codex({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": "sync-run",
+                                      "tool_name": "Bash", "tool_success": True,
+                                      "tool_input": {"command": "python3 install.py --self --update"}})
+            handler.handle(update)
+            allowed = handler.handle(normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo),
+                                                       "tool_name": "Bash", "tool_input": {"command": "pytest"}}))
+            self.assertNotIn("permissionDecision", allowed["response"].get("hookSpecificOutput", {}))
+
+    def test_apply_patch_body_marks_shared_skill_source_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            handler.handle(normalize_codex({"hook_event_name": "PostToolUse", "cwd": str(repo), "run_id": "patch-run",
+                                            "tool_name": "apply_patch", "tool_input": {
+                                                "patch": "*** Update File: adapters/shared/skills/frame-diag/SKILL.md\n"}}))
+            denied = handler.handle(normalize_codex({"hook_event_name": "PreToolUse", "cwd": str(repo),
+                                                     "tool_name": "Write", "tool_input": {"path": str(repo / "notes.md")}}))
+            self.assertEqual(denied["response"]["hookSpecificOutput"]["permissionDecision"], "deny")
+
     def test_skill_used_records_tool_and_path_sources_with_consecutive_suppression(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td)

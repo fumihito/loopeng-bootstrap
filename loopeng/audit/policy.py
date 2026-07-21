@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import shlex
+import json
 from pathlib import Path
 from typing import Any
 
@@ -115,7 +116,34 @@ HARD_BLOCKS = {
     "secret_persistence": "Secrets or tokens written to durable artifacts",
     "okf_invalid_apply": "Invalid OKF report application",
     "out_of_repo_write": "Writes outside the repository root",
+    "skill_source_not_installed": "Shared skill source changed without running self-update",
 }
+
+SKILL_SOURCE_ROOT = "adapters/shared/skills"
+
+
+def _skill_sync_state_path(repo: Path) -> Path:
+    return repo / ".agent-loop" / "state" / "skill-sync.json"
+
+
+def _skill_sync_pending(repo: Path) -> bool:
+    try:
+        value = json.loads(_skill_sync_state_path(repo).read_text(encoding="utf-8"))
+        return isinstance(value, dict) and bool(value.get("pending"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError, TypeError):
+        return False
+
+
+def _is_self_update_command(command: str) -> bool:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return False
+    return any(Path(token).name == "install.py" for token in tokens) and "--self" in tokens and "--update" in tokens
+
+
+def _is_mutation_tool(tool_name: str) -> bool:
+    return any(name in tool_name.lower() for name in ("write", "edit", "patch", "apply_patch", "bash", "shell"))
 
 
 def _contains_destructive_command(command: str) -> bool:
@@ -161,8 +189,12 @@ def pre_tool_hard_block(payload: dict[str, Any], repo: Path) -> str | None:
     if isinstance(command, str) and _contains_destructive_command(command):
         return HARD_BLOCKS["destructive_command"]
     root = repo.resolve()
-    if not any(name in tool_name for name in ("write", "edit", "patch", "apply_patch", "bash", "shell")):
+    if not _is_mutation_tool(tool_name):
         return None
+    if _skill_sync_pending(repo):
+        if isinstance(command, str) and _is_self_update_command(command):
+            return None
+        return HARD_BLOCKS["skill_source_not_installed"]
     for raw in _candidate_paths(tool_input):
         try:
             candidate = Path(raw).expanduser()

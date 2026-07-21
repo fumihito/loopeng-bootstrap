@@ -52,9 +52,11 @@ The following are normative invariants:
    `_trusted_subagent` pattern is prohibited.
 2. RUN_STOP hooks observe and generate reports only. They always allow stopping;
    they never return a deny, block, or continuation demand.
-3. PRE_TOOL may deny only the four `HARD_BLOCKS` declared in `audit/policy.py`,
-   and only `destructive_command` and `out_of_repo_write` are evaluated before
-   the tool runs. Hook code must not add policy conditions.
+3. PRE_TOOL may deny only the declared `HARD_BLOCKS` in `audit/policy.py`.
+   In addition to destructive commands and out-of-repository writes, a
+   mutation is denied while a shared skill source edit is pending its required
+   `python3 install.py --self --update`; the self-update command itself remains
+   permitted. Hook code must not add policy conditions outside this classifier.
 4. Hook failures, timeouts, and corrupt state fail open and are recorded.
    Fail-closed behavior is reserved for an established HARD_BLOCK.
 5. A PRE_TOOL HARD_BLOCK is evaluated in the fixed order decision → best-effort
